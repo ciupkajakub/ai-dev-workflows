@@ -9,11 +9,11 @@ Do not use it as a replacement for human review, security review, production cha
 ## 5-minute quickstart
 
 1. Copy `feature_execution_blueprint.md` into your project or keep it open next to your project.
-2. Ask your coding agent to run sections 2-6 of the blueprint to create the base `ai-workflow/` files.
-3. Paste raw feedback into the prompt from section 7 to create backlog and batch entries.
-4. Run section 8 to turn one selected batch into `FEATURE.md`.
-5. Run section 9 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
-6. Use section 10 or 11 for repeated execution, one task at a time.
+2. Ask your coding agent to run sections 2-7 of the blueprint to create the base `ai-workflow/` files.
+3. Paste raw feedback into the prompt from section 8 to create backlog and batch entries.
+4. Run section 9 to turn one selected batch into `FEATURE.md`.
+5. Run section 10 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
+6. Use section 11 or 12 for repeated execution, one task at a time.
 
 ## Core flow
 
@@ -32,6 +32,7 @@ feedback
 The blueprint is the source of truth. It contains prompts and templates for generating:
 
 - `ai-workflow/AGENTS.md`
+- `ai-workflow/SECURITY.md`
 - `ai-workflow/TESTING_POLICY.md`
 - `ai-workflow/PRODUCT_BACKLOG.md`
 - `ai-workflow/WORK_INDEX.md`
