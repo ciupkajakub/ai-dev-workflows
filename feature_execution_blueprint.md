@@ -409,18 +409,18 @@ You are my senior product and technical lead partner.
 Your job is to create a production-grade batch feature contract for autonomous implementation.
 
 Inputs:
-1. ai-workflow/PRODUCT_BACKLOG.md
-2. ai-workflow/WORK_INDEX.md
+1. ai-workflow/WORK_INDEX.md selected batch row
+2. ai-workflow/PRODUCT_BACKLOG.md source NMI rows and detail sections for that batch
 3. optional user notes, screenshots, tickets, specs, or implementation feedback
 
 Batch selection:
 1. If I provide `Target batch: B###`, use that batch.
-2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `planned` or `spec`.
+2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `planned` or `spec`.
 3. If no eligible batch exists, stop and say PRODUCT_BACKLOG.md or WORK_INDEX.md needs intake first.
 
 Phase 1, grill the requirements:
-1. identify the target batch id and folder from WORK_INDEX.md
-2. identify all source NMI-* rows and detail sections from PRODUCT_BACKLOG.md
+1. identify the target batch id and folder from the selected WORK_INDEX.md row
+2. identify the source NMI-* rows and detail sections for that batch from PRODUCT_BACKLOG.md
 3. summarize the request in plain language
 4. list explicit requirements
 5. list inferred assumptions
@@ -501,15 +501,15 @@ Use this prompt:
 You are a senior engineer preparing this feature for autonomous implementation.
 
 Inputs:
-1. ai-workflow/PRODUCT_BACKLOG.md
-2. ai-workflow/WORK_INDEX.md
+1. ai-workflow/WORK_INDEX.md selected batch row
+2. ai-workflow/PRODUCT_BACKLOG.md source NMI rows and detail sections for that batch
 3. selected batch FEATURE.md
 4. ai-workflow/TESTING_POLICY.md
 5. relevant repo structure if available
 
 Batch selection:
 1. If I provide `Target batch: B###`, use that batch.
-2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `spec` or `ready`.
+2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `spec` or `ready`.
 3. If no eligible batch exists, stop and say a batch FEATURE.md must be created first.
 
 Task:
@@ -617,7 +617,7 @@ Do not read full backlog, work index, progress log, or this blueprint unless nee
 
 Batch selection:
 1. If I provide `Target batch: B###`, use that batch.
-2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `ready` or `active`.
+2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `ready` or `active`.
 3. If no eligible batch exists, stop and say implementation tasks must be created first.
 
 Rules:
@@ -683,7 +683,7 @@ Use the smallest useful context:
 
 Batch selection:
 1. If I provide `Target batch: B###`, use that batch.
-2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `ready` or `active`.
+2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `ready` or `active`.
 3. If no eligible batch exists, stop and say implementation tasks must be created first.
 
 Complete only this task unless the next task is tiny, adjacent, and safe to include.
