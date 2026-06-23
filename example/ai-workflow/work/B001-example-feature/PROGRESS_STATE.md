@@ -29,3 +29,8 @@ Example note: this file is fictional sanitized output for a sample task manageme
 ## Open risks or blockers
 
 - None.
+
+## Context notes
+
+- Keep this file compact enough to reload quickly.
+- Read `PROGRESS.md` only when prior blockers, validation evidence, or history are needed.

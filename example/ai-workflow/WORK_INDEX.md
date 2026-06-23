@@ -4,8 +4,8 @@
 
 | Batch | Status | Source items | Folder | Purpose | Updated |
 | --- | --- | --- | --- | --- | --- |
-| B001 | done | NMI-001 | `work/B001-example-feature/` | Show overdue tasks on the dashboard. | 2026-06-23 |
-| B002 | planned | NMI-002 | `work/B002-reminder-preferences/` | Add account-level due-date reminder preferences. | 2026-06-23 |
+| B001 | done | NMI-001 | `ai-workflow/work/B001-example-feature/` | Show overdue tasks on the dashboard. | 2026-06-23 |
+| B002 | planned | NMI-002 | `ai-workflow/work/B002-reminder-preferences/` | Add account-level due-date reminder preferences. | 2026-06-23 |
 
 ## Dependency and history notes
 

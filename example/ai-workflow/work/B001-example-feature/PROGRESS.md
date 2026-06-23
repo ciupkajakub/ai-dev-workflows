@@ -1,6 +1,8 @@
 # Progress log
 
 Append only.
+Use this file for detailed evidence. Do not include secrets, credentials, private customer data, proprietary logs, or production data.
+Archive old evidence only with explicit user approval.
 
 Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
 
