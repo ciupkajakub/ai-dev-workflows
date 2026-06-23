@@ -592,64 +592,46 @@ Lifecycle update:
 Use this default runtime prompt:
 
 ```text
-You are a supervising engineering agent executing this feature from repo artifacts.
+You are executing one task from ai-workflow artifacts.
 
-Context loading:
-Use the smallest useful context for the selected task.
+Goal:
+Complete the next unfinished task from the selected batch IMPLEMENTATION.md with the smallest coherent change.
+
+Context:
+Use the smallest useful context.
 
 Start with:
 1. batch PROGRESS_STATE.md
 2. selected task from batch IMPLEMENTATION.md
 3. relevant batch FEATURE.md acceptance criteria
 4. ai-workflow/AGENTS.md
-5. ai-workflow/TESTING_POLICY.md only when tests are touched
-6. approved user clarifications, if any
 
 Read only when needed:
-1. ai-workflow/WORK_INDEX.md selected batch row for batch selection or status updates
-2. ai-workflow/PRODUCT_BACKLOG.md relevant NMI rows for product scope or status updates
-3. batch PROGRESS.md when prior evidence, blockers, or history are needed
+1. ai-workflow/TESTING_POLICY.md if tests are touched
+2. ai-workflow/WORK_INDEX.md for batch selection or status changes
+3. ai-workflow/PRODUCT_BACKLOG.md for product scope or status changes
+4. batch PROGRESS.md for prior blockers or evidence history
+5. approved user clarifications, if any
 
-Do not read full PRODUCT_BACKLOG.md, WORK_INDEX.md, FEATURE.md, IMPLEMENTATION.md, PROGRESS.md, or this blueprint unless the current task needs it.
-
-Goal:
-Complete the next unfinished task from the selected batch IMPLEMENTATION.md with the smallest coherent change.
+Do not read full backlog, work index, progress log, or this blueprint unless needed.
 
 Batch selection:
 1. If I provide `Target batch: B###`, use that batch.
 2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `ready` or `active`.
 3. If no eligible batch exists, stop and say implementation tasks must be created first.
 
-Default scope:
-Complete one selected task fully.
-Continue to another task only if the current task was verified, the next task is small and adjacent, no validation/debugging loop occurred, and context is clean.
-
-Success criteria:
-1. selected task has objective done_when conditions
-2. implementation satisfies task acceptance criteria
-3. relevant FEATURE.md acceptance criteria are checked
-4. diff is minimal and follows repo conventions
-5. relevant validation is run
-6. PROGRESS.md records what changed, checks run, results, risks, and gaps
-7. PROGRESS_STATE.md records compact current state
-8. IMPLEMENTATION.md is marked done only if done_when is satisfied
-9. WORK_INDEX.md and PRODUCT_BACKLOG.md are updated when statuses change
-10. history rows are appended for material state changes
-11. after verification, a commit is requested or created for the selected B###/T### task using ai-workflow/COMMIT_MESSAGE.md
-12. if blocked, the blocker is recorded instead of guessed through
-
-Working rules:
+Rules:
 1. explore before editing
-2. read only files and artifact sections needed for the current task
-3. do not invent requirements
-4. do not perform unrelated refactors
-5. if artifacts conflict with repo behavior, stop and report the conflict
-6. if a safe assumption is needed, record it in PROGRESS.md
-7. if new product work is discovered, add or propose a new NMI-* instead of expanding the active task silently
-8. if blocked, update PROGRESS.md, PROGRESS_STATE.md, WORK_INDEX.md, and affected NMI rows, then stop
+2. complete one selected task fully
+3. continue only if the next task is tiny, adjacent, safe, and the current task is verified
+4. do not invent requirements
+5. keep the diff scoped to the selected task
+6. follow repo conventions
+7. if artifacts conflict with repo behavior, stop and report the conflict
+8. if a safe assumption is needed, record it in PROGRESS.md
+9. if new product work is discovered, propose a new NMI-* instead of expanding scope silently
 
 Validation:
-Run the smallest reliable check first.
 Use the strongest practical signal available:
 1. targeted tests
 2. typecheck
@@ -660,13 +642,18 @@ Use the strongest practical signal available:
 7. screenshot or visual comparison
 8. exact command output
 
-Before finishing, check:
-1. done_when
-2. relevant acceptance criteria
-3. regression risk
-4. accidental side effects
-5. unrelated changes
-6. verification evidence
+Completion checklist:
+1. satisfy task done_when
+2. check relevant acceptance criteria
+3. run required validation or record the exact gap
+4. consider regression risk and accidental side effects
+5. update IMPLEMENTATION.md only when verified
+6. append evidence to PROGRESS.md
+7. update PROGRESS_STATE.md
+8. update WORK_INDEX.md and PRODUCT_BACKLOG.md only if lifecycle status changed
+9. append history rows for material lifecycle changes
+10. request or create a commit for the verified B###/T### task using ai-workflow/COMMIT_MESSAGE.md
+11. if blocked, record the blocker instead of guessing through
 
 Final output:
 1. task completed or blocked
@@ -674,9 +661,7 @@ Final output:
 3. validation run and result
 4. tests added or changed, if any
 5. risks or gaps
-6. commit requested or created
-7. workflow files updated, if any
-8. recommended next task, if obvious
+6. next task, if obvious
 ```
 
 ## 11. Execute A Specific Task
