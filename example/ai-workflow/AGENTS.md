@@ -83,6 +83,12 @@ If exploration becomes noisy, summarize findings in `PROGRESS.md` and restart fr
 
 Keep `PROGRESS_STATE.md` compact enough to reload quickly.
 Use `PROGRESS.md` for detailed evidence, not repeated summaries.
+Default size targets:
+
+1. keep `PROGRESS_STATE.md` under 80 lines
+2. propose archiving `PROGRESS.md` after 300 lines
+3. propose archiving done or superseded backlog/history entries when `PRODUCT_BACKLOG.md` or `WORK_INDEX.md` becomes slow to scan
+
 When `PRODUCT_BACKLOG.md`, `WORK_INDEX.md`, or `PROGRESS.md` grows too large to scan safely, propose an archive file such as `ai-workflow/archive/YYYY-MM.md` or `ai-workflow/work/B###/PROGRESS_ARCHIVE.md` before continuing.
 Do not delete historical evidence unless the user explicitly approves an archival or retention policy.
 

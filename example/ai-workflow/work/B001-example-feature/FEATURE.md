@@ -38,7 +38,7 @@ When a user opens the dashboard, the overdue section appears above today's tasks
 
 ## 7. Non functional requirements
 
-The dashboard query must remain efficient for a typical account with thousands of tasks.
+The dashboard query must use the existing indexed task due-date/user filtering path or an equivalent query plan; it must not introduce an N+1 query for overdue task rendering.
 
 ## 8. Data and system impact
 

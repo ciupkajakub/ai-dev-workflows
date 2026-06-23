@@ -6,6 +6,8 @@ Implementation commits should be scoped to one verified `B###/T###` task from a 
 
 Do not use `PRODUCT_BACKLOG.md` or `WORK_INDEX.md` as the commit unit for execution work. Those files may be included in a task commit only when their status/history updates belong to the verified task.
 
+This workflow prefers small verified task commits. If your agent or environment requires approval for git operations, approve the commit step explicitly or ask the assistant to draft the message first.
+
 ## Prompt
 
 ````md
