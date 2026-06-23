@@ -1,1 +1,18 @@
+.DS_Store
 .idea/
+.vscode/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+.tmp/
+
+# Dependency/cache directories
+node_modules/
+.cache/

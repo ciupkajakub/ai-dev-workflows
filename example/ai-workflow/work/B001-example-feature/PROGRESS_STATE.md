@@ -2,6 +2,8 @@
 
 Updated: 2026-06-23
 
+Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
+
 ## Current batch
 
 - Batch: B001

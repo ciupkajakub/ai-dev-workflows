@@ -2,6 +2,8 @@
 
 Append only.
 
+Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
+
 ## 2026-06-22
 
 Initialized feature execution for B001.

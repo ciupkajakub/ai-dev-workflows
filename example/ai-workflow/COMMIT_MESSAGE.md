@@ -8,7 +8,7 @@ Do not use `PRODUCT_BACKLOG.md` or `WORK_INDEX.md` as the commit unit for execut
 
 ## Prompt
 
-```md
+````md
 Write a descriptive commit message for my current local changes.
 
 First inspect the diff enough to understand:
@@ -35,4 +35,4 @@ Rules:
 - Do not mention irrelevant implementation details.
 - Do not invent motivation that is not visible from the diff or provided context.
 - If the reasoning is unclear, say what assumption the message is based on.
-```
+````
