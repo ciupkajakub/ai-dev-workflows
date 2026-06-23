@@ -1,0 +1,709 @@
+# Feature Execution Blueprint
+
+This blueprint creates a small file-based workflow for AI-assisted software development. It is model-agnostic: use the prompts with any capable coding assistant that can read and edit files.
+
+The workflow turns raw feedback into a backlog, groups backlog items into execution batches, writes a feature contract, writes a task plan, executes one task at a time, and records verification evidence.
+
+## 1. Directory Layout
+
+Generated workflow files should live under your project's `ai-workflow/` directory:
+
+```text
+ai-workflow/
+  AGENTS.md
+  TESTING_POLICY.md
+  PRODUCT_BACKLOG.md
+  WORK_INDEX.md
+  COMMIT_MESSAGE.md
+  work/
+    B001-short-feature-name/
+      FEATURE.md
+      IMPLEMENTATION.md
+      PROGRESS.md
+      PROGRESS_STATE.md
+```
+
+Rules:
+
+1. `PRODUCT_BACKLOG.md` is the source of truth for product backlog item status and history.
+2. `WORK_INDEX.md` maps backlog items to executable batches.
+3. Each batch `FEATURE.md` is the product and technical contract.
+4. Each batch `IMPLEMENTATION.md` is the task plan.
+5. Each batch `PROGRESS.md` is append-only runtime evidence.
+6. Each batch `PROGRESS_STATE.md` is compact restart state.
+7. `AGENTS.md` contains durable repo and workflow rules.
+8. `TESTING_POLICY.md` contains test discipline.
+9. `COMMIT_MESSAGE.md` contains the commit message prompt.
+10. If workflow artifacts conflict with repo evidence, stop and report the conflict.
+
+## 2. Create `AGENTS.md`
+
+Use this prompt:
+
+```text
+Create ai-workflow/AGENTS.md for this repository.
+
+Purpose:
+Durable rules for AI-assisted implementation.
+
+Use this structure:
+
+# Agent rules
+
+## Contract
+
+Follow the selected batch FEATURE.md and IMPLEMENTATION.md as the feature contract.
+
+Do not invent requirements.
+
+Repo behavior, existing tests, schemas, migrations, commands, and conventions are authoritative implementation evidence.
+
+If the feature contract conflicts with repo evidence, stop and report:
+1. the conflict
+2. why it matters
+3. likely options
+4. recommended next step
+
+## Clarification
+
+Ask for clarification only when the missing decision blocks safe progress.
+
+When asking, include:
+1. what is ambiguous
+2. why it matters
+3. options
+4. recommendation
+5. default if no answer
+
+If a reasonable default is safe and consistent with the contract, proceed and record the assumption in PROGRESS.md.
+
+## Execution discipline
+
+Explore before editing.
+Identify likely files and touchpoints before implementation.
+Prefer the smallest coherent change.
+Avoid unrelated refactors.
+Follow existing repo conventions first.
+Use parallel reading/searching when independent touchpoints need investigation.
+Do not use parallel write workflows unless file ownership boundaries are explicit and low overlap.
+
+## Done discipline
+
+Mark a task done only after:
+1. done_when is satisfied
+2. relevant acceptance criteria are checked
+3. validation was run or the exact gap is recorded
+4. evidence is appended to PROGRESS.md
+
+If verification is partial, do not claim completion.
+
+## Validation discipline
+
+Every task needs a practical verification plan.
+Prefer the strongest practical signal:
+1. tests
+2. typecheck
+3. lint
+4. build
+5. migration check
+6. smoke test
+7. screenshot or visual comparison
+8. exact command output
+
+Run the smallest reliable check first.
+Record validation evidence in PROGRESS.md.
+
+## Context hygiene
+
+Read only the files and artifact sections needed for the current task.
+Default to one task per session.
+Continue only when the next task is small, adjacent, and low risk.
+If exploration becomes noisy, summarize findings in PROGRESS.md and restart from artifacts.
+
+## Communication
+
+Be concise and technical.
+Keep commands, file paths, identifiers, and exact error messages unchanged.
+```
+
+## 3. Create `TESTING_POLICY.md`
+
+Use this prompt:
+
+```text
+Create ai-workflow/TESTING_POLICY.md for this repository.
+
+Use this structure:
+
+# Testing policy
+
+## 1. Scope and intent
+
+Test behavior, not implementation details.
+Tests should document business rules.
+Do not test private methods directly unless the repo already has a clear convention and there is no better public boundary.
+
+## 2. Required coverage for behavior changes
+
+For every behavior-changing task, include relevant coverage for:
+1. success path
+2. failure, validation, or authorization path
+3. rollback or no-partial-write behavior for write paths
+4. nearby branch that must remain unchanged
+5. side effect risk introduced by the implementation
+
+Do not add every category mechanically. Add the cases that match the touched behavior.
+
+## 3. Test structure
+
+Prefer self-contained tests with clear Arrange, Act, Assert structure.
+Respect established local test style in the touched file or directory.
+Do not rewrite existing test structure solely to satisfy this policy.
+When deviating from this policy because of local conventions, record the reason in PROGRESS.md.
+
+## 4. Naming
+
+Test names should describe business behavior.
+Avoid generic names unless the full name still explains the rule.
+
+## 5. Assertions
+
+Prefer explicit expected outputs.
+Keep assertion order stable.
+Keep assertions minimal and strong.
+If code filters, scopes, or selects records, tests should include included records, excluded records, and proof that excluded records remain unchanged when relevant.
+
+## 6. Determinism
+
+Tests must be deterministic.
+Use fixed timestamps or time-freezing helpers when time matters.
+
+## 7. External boundaries
+
+Mock or stub external boundaries when appropriate:
+1. HTTP
+2. queues
+3. external services
+4. clock
+5. file system boundaries
+6. third-party APIs
+
+Avoid stubbing internal domain logic under test.
+
+## 8. Persistence and side effects
+
+For write paths, assert public contract, persisted state, and rollback/no-partial-write behavior when relevant.
+Before finishing a task, ask what the implementation could accidentally update, select, send, expose, enqueue, cache, or delete.
+
+## 9. Reporting
+
+For each task that creates or changes tests, report:
+1. tests added or changed
+2. business rule each test proves
+3. validation command and result
+
+## 10. Forbidden final state
+
+Do not leave new tests skipped, pending, or focused.
+```
+
+## 4. Create `PRODUCT_BACKLOG.md`
+
+Use this prompt:
+
+```text
+Create ai-workflow/PRODUCT_BACKLOG.md.
+
+Purpose:
+Track product backlog items created from feedback, QA notes, product thoughts, bugs, missing requirements, or implementation discoveries.
+
+Use item ids formatted as NMI-001, NMI-002, NMI-003.
+
+Use this structure:
+
+# Product backlog
+
+## Backlog index
+
+| ID | Status | Priority | Title | Related | Batch | Updated |
+| --- | --- | --- | --- | --- | --- | --- |
+
+Status values:
+- new
+- planned
+- spec
+- active
+- done
+- blocked
+- superseded
+
+## Item details
+
+### NMI-001: <title>
+
+Status:
+Priority:
+Related:
+Batch:
+Created:
+Updated:
+
+#### Feedback / source
+#### Problem
+#### Requested outcome
+#### Notes / assumptions
+#### Acceptance hints
+
+## Backlog history
+
+| Date | Change |
+| --- | --- |
+
+Rules:
+1. Keep existing NMI descriptions historical.
+2. Update existing rows only for lifecycle metadata: status, priority, batch, updated date, related item, or superseded state.
+3. If feedback refines, contradicts, or replaces an existing item, create a new NMI item and link it through Related or mark the old item superseded.
+4. Append a history row for material changes.
+```
+
+## 5. Create `WORK_INDEX.md`
+
+Use this prompt:
+
+```text
+Create ai-workflow/WORK_INDEX.md.
+
+Purpose:
+Map product backlog items to coherent execution batches.
+
+Use batch ids formatted as B001, B002, B003.
+
+Use this structure:
+
+# Work index
+
+## Batch queue
+
+| Batch | Status | Source items | Folder | Purpose | Updated |
+| --- | --- | --- | --- | --- | --- |
+
+Status values:
+- planned
+- spec
+- ready
+- active
+- done
+- blocked
+- superseded
+
+## Dependency and history notes
+
+- Add short notes when one batch depends on, replaces, or follows another batch.
+
+## Batch history
+
+| Date | Change |
+| --- | --- |
+
+Rules:
+1. Create a new B### batch for new feedback unless an existing planned/spec batch is clearly the same scope.
+2. Do not expand active or done batches with new feedback.
+3. Each batch should map to one future `ai-workflow/work/B###-short-name/` folder.
+4. Append a history row for material changes.
+```
+
+## 6. Create `COMMIT_MESSAGE.md`
+
+Use this prompt to create `ai-workflow/COMMIT_MESSAGE.md`:
+
+````text
+Create ai-workflow/COMMIT_MESSAGE.md.
+
+Purpose:
+Help the assistant draft concise commit messages for verified batch tasks.
+
+Use this content:
+
+# Descriptive commit message prompt
+
+Use this prompt when you want an AI assistant to write a concise commit message for local changes.
+
+Implementation commits should be scoped to one verified `B###/T###` task from a batch `IMPLEMENTATION.md`.
+
+Do not use `PRODUCT_BACKLOG.md` or `WORK_INDEX.md` as the commit unit for execution work. Those files may be included in a task commit only when their status/history updates belong to the verified task.
+
+## Prompt
+
+```md
+Write a descriptive commit message for my current local changes.
+
+First inspect the diff enough to understand:
+
+- what changed
+- why the change was needed
+- why this implementation approach was chosen over obvious alternatives
+- which `B###/T###` task from `IMPLEMENTATION.md` this commit completes, if this is execution work
+
+Use this format:
+
+```text
+<type>: <short summary>
+
+<sentences explaining what changed, why, and the reasoning behind the chosen implementation.>
+```
+
+Rules:
+
+- Keep it concise and practical.
+- Use past tense or present tense consistently.
+- Prefer `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, or `perf` as the type.
+- Do not list files mechanically.
+- Do not mention irrelevant implementation details.
+- Do not invent motivation that is not visible from the diff or provided context.
+- If the reasoning is unclear, say what assumption the message is based on.
+```
+````
+
+## 7. Turn Raw Feedback Into Backlog And Batch Items
+
+Use this prompt when you have raw feedback and need to update intake files before feature planning starts:
+
+```text
+I have feedback, QA notes, product thoughts, or missing requirements.
+
+Use the ai-workflow intake structure:
+1. Read ai-workflow/PRODUCT_BACKLOG.md.
+2. Read ai-workflow/WORK_INDEX.md.
+3. Turn my feedback into one or more new NMI-* backlog items.
+4. Do not rewrite existing NMI descriptions.
+5. Update existing NMI rows only for lifecycle metadata: status, priority, batch, updated date, related item, or superseded state.
+6. Add detailed item sections for each new NMI-*.
+7. Append a row to Backlog history.
+8. Create or update B* rows in WORK_INDEX.md that group related NMI-* items into coherent execution batches.
+9. Prefer a new B* batch for new feedback. Add NMI-* to an existing B* only when that batch is still planned/spec and the scope remains coherent.
+10. Add or update batch status, source items, folder, updated date, and purpose.
+11. Append a row to Batch history for material batch changes.
+
+Rules:
+1. Do not create FEATURE.md yet.
+2. Do not create IMPLEMENTATION.md yet.
+3. Do not create PROGRESS.md or PROGRESS_STATE.md yet.
+4. Do not implement code.
+5. Keep PRODUCT_BACKLOG.md as the product backlog source of truth.
+6. Keep WORK_INDEX.md as the execution batch queue.
+7. If feedback refines, contradicts, or replaces an existing item, create a new NMI-* and link it or mark the old item superseded.
+8. Do not expand an active/done batch with new feedback.
+9. If feedback is ambiguous, ask only questions that block safe backlog grouping; otherwise make a conservative assumption and record it.
+
+Feedback:
+<PASTE FEEDBACK>
+```
+
+## 8. Turn Backlog And Work Index Items Into Batch `FEATURE.md`
+
+Use this prompt:
+
+```text
+You are my senior product and technical lead partner.
+
+Your job is to create a production-grade batch feature contract for autonomous implementation.
+
+Inputs:
+1. ai-workflow/PRODUCT_BACKLOG.md
+2. ai-workflow/WORK_INDEX.md
+3. optional user notes, screenshots, tickets, specs, or implementation feedback
+
+Batch selection:
+1. If I provide `Target batch: B###`, use that batch.
+2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `planned` or `spec`.
+3. If no eligible batch exists, stop and say PRODUCT_BACKLOG.md or WORK_INDEX.md needs intake first.
+
+Phase 1, extraction and interview:
+1. identify the target batch id and folder from WORK_INDEX.md
+2. identify all source NMI-* rows and detail sections from PRODUCT_BACKLOG.md
+3. summarize what the inputs say
+4. list explicit requirements
+5. list inferred assumptions
+6. identify ambiguities that could affect implementation, data, permissions, UX, edge cases, or tests
+7. ask only targeted questions that block a reliable FEATURE.md
+8. offer concrete options for underspecified decisions
+9. recommend defaults where safe
+
+Do not write FEATURE.md until requirements are stable enough.
+
+When I say "ready for FEATURE", write Markdown to:
+ai-workflow/work/B###-short-name/FEATURE.md
+
+Use this exact structure:
+
+# Feature: <Batch title>
+
+Batch: `B###`
+Source items: `NMI-###`, `NMI-###`
+Folder: `ai-workflow/work/B###-short-name/`
+Status: `spec`
+
+## 1. Problem / Context
+## 2. Goals
+## 3. Non goals
+## 4. Users and roles
+## 5. UX and flows
+## 6. Functional requirements
+## 7. Non functional requirements
+## 8. Data and system impact
+## 9. Edge cases and failure modes
+## 10. Acceptance criteria
+## 11. Permissions and visibility rules
+## 12. Rollout and verification
+## 13. Risks and open questions
+## 14. Assumptions
+## 15. Backlog and batch updates
+
+Rules:
+1. acceptance criteria must be objective and testable
+2. list assumptions and non-goals explicitly
+3. keep scope inside the selected B* batch
+4. if new work is discovered, propose new NMI-* entries instead of expanding scope silently
+5. include exact status updates needed for PRODUCT_BACKLOG.md and WORK_INDEX.md
+6. update WORK_INDEX.md selected batch status to `spec`
+7. append history rows for material changes
+```
+
+Contract lock checklist:
+
+1. behavior is unambiguous
+2. roles and visibility rules are explicit
+3. edge cases are defined
+4. failure modes are defined
+5. acceptance criteria are objective and testable
+6. non-goals are listed
+7. data impact is clear
+8. migration needs are clear
+9. rollout and verification expectations are clear enough to plan against
+10. assumptions are visible
+
+Fix `FEATURE.md` before planning if any item is missing.
+
+## 9. Turn Batch `FEATURE.md` Into `IMPLEMENTATION.md`, `PROGRESS.md`, And `PROGRESS_STATE.md`
+
+Use this prompt:
+
+```text
+You are a senior engineer preparing this feature for autonomous implementation.
+
+Inputs:
+1. ai-workflow/PRODUCT_BACKLOG.md
+2. ai-workflow/WORK_INDEX.md
+3. selected batch FEATURE.md
+4. ai-workflow/TESTING_POLICY.md
+5. relevant repo structure if available
+
+Batch selection:
+1. If I provide `Target batch: B###`, use that batch.
+2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `spec` or `ready`.
+3. If no eligible batch exists, stop and say a batch FEATURE.md must be created first.
+
+Task:
+Produce ai-workflow/work/B###-short-name/IMPLEMENTATION.md.
+
+Each task must include:
+1. id, formatted as T001, T002, T003
+2. title
+3. goal
+4. done_when
+5. acceptance_criteria
+6. tests_required
+7. areas
+8. risk
+9. dependencies
+10. batch_group
+11. validation_level
+12. likely_files
+13. context_budget
+14. stop_conditions
+15. source_items
+
+Task rules:
+1. tasks must be small
+2. each done_when must be objectively checkable
+3. each task must map to FEATURE.md acceptance criteria
+4. each task must identify a practical validation signal
+5. tests_required must be specific
+6. task order should reduce integration risk
+7. decision tasks must produce an explicit product decision before code changes
+8. do not include unrelated backlog items just because nearby code is touched
+
+Also create:
+1. ai-workflow/work/B###-short-name/PROGRESS.md
+2. ai-workflow/work/B###-short-name/PROGRESS_STATE.md
+
+Initialize PROGRESS.md as:
+
+# Progress log
+
+Append only.
+
+## <YYYY-MM-DD>
+
+Initialized feature execution.
+
+Initialize PROGRESS_STATE.md as:
+
+# Compact progress state
+
+Updated: <YYYY-MM-DD>
+
+## Current batch
+- Batch:
+- Source items:
+- Status:
+
+## Completed
+- None yet.
+
+## Next
+- T001:
+
+## Validation evidence
+- None yet.
+
+## Open risks or blockers
+- None yet.
+
+Lifecycle update:
+1. Change WORK_INDEX.md selected batch status to `ready` when IMPLEMENTATION.md has objective T* tasks and both progress files exist.
+2. Set Updated date to today's date.
+3. Append a Batch history row for the transition.
+4. Do not mark ready if FEATURE.md is missing, tasks are not objective, or progress files were not created.
+5. Do not implement application code in this step.
+```
+
+## 10. Execute The Next Task
+
+Use this default runtime prompt:
+
+```text
+You are a supervising engineering agent executing this feature from repo artifacts.
+
+Context loading:
+Use the smallest useful context for the selected task.
+
+Start with:
+1. batch PROGRESS_STATE.md
+2. selected task from batch IMPLEMENTATION.md
+3. relevant batch FEATURE.md acceptance criteria
+4. ai-workflow/AGENTS.md
+5. ai-workflow/TESTING_POLICY.md only when tests are touched
+6. approved user clarifications, if any
+
+Read only when needed:
+1. ai-workflow/WORK_INDEX.md selected batch row for batch selection or status updates
+2. ai-workflow/PRODUCT_BACKLOG.md relevant NMI rows for product scope or status updates
+3. batch PROGRESS.md when prior evidence, blockers, or history are needed
+
+Do not read full PRODUCT_BACKLOG.md, WORK_INDEX.md, FEATURE.md, IMPLEMENTATION.md, PROGRESS.md, or this blueprint unless the current task needs it.
+
+Goal:
+Complete the next unfinished task from the selected batch IMPLEMENTATION.md with the smallest coherent change.
+
+Batch selection:
+1. If I provide `Target batch: B###`, use that batch.
+2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `ready` or `active`.
+3. If no eligible batch exists, stop and say implementation tasks must be created first.
+
+Default scope:
+Complete one selected task fully.
+Continue to another task only if the current task was verified, the next task is small and adjacent, no validation/debugging loop occurred, and context is clean.
+
+Success criteria:
+1. selected task has objective done_when conditions
+2. implementation satisfies task acceptance criteria
+3. relevant FEATURE.md acceptance criteria are checked
+4. diff is minimal and follows repo conventions
+5. relevant validation is run
+6. PROGRESS.md records what changed, checks run, results, risks, and gaps
+7. PROGRESS_STATE.md records compact current state
+8. IMPLEMENTATION.md is marked done only if done_when is satisfied
+9. WORK_INDEX.md and PRODUCT_BACKLOG.md are updated when statuses change
+10. history rows are appended for material state changes
+11. after verification, a commit is requested or created for the selected B###/T### task using ai-workflow/COMMIT_MESSAGE.md
+12. if blocked, the blocker is recorded instead of guessed through
+
+Working rules:
+1. explore before editing
+2. read only files and artifact sections needed for the current task
+3. do not invent requirements
+4. do not perform unrelated refactors
+5. if artifacts conflict with repo behavior, stop and report the conflict
+6. if a safe assumption is needed, record it in PROGRESS.md
+7. if new product work is discovered, add or propose a new NMI-* instead of expanding the active task silently
+8. if blocked, update PROGRESS.md, PROGRESS_STATE.md, WORK_INDEX.md, and affected NMI rows, then stop
+
+Validation:
+Run the smallest reliable check first.
+Use the strongest practical signal available:
+1. targeted tests
+2. typecheck
+3. lint
+4. build
+5. migration check
+6. smoke test
+7. screenshot or visual comparison
+8. exact command output
+
+Before finishing, check:
+1. done_when
+2. relevant acceptance criteria
+3. regression risk
+4. accidental side effects
+5. unrelated changes
+6. verification evidence
+
+Final output:
+1. task completed or blocked
+2. files changed
+3. validation run and result
+4. tests added or changed, if any
+5. risks or gaps
+6. commit requested or created
+7. workflow files updated, if any
+8. recommended next task, if obvious
+```
+
+## 11. Execute A Specific Task
+
+Use this prompt:
+
+```text
+Execute task <TASK_ID> from the selected batch IMPLEMENTATION.md.
+
+Use the smallest useful context:
+1. batch PROGRESS_STATE.md
+2. selected task from batch IMPLEMENTATION.md
+3. relevant batch FEATURE.md acceptance criteria
+4. ai-workflow/AGENTS.md
+5. ai-workflow/TESTING_POLICY.md only when tests are touched
+6. ai-workflow/WORK_INDEX.md selected batch row only for batch selection or status updates
+7. ai-workflow/PRODUCT_BACKLOG.md relevant NMI rows only for product scope or status updates
+8. batch PROGRESS.md only when prior evidence, blockers, or history are needed
+
+Batch selection:
+1. If I provide `Target batch: B###`, use that batch.
+2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `ready` or `active`.
+3. If no eligible batch exists, stop and say implementation tasks must be created first.
+
+Complete only this task unless the next task is tiny, adjacent, and safe to include.
+
+Success means:
+1. done_when is satisfied
+2. relevant acceptance criteria are checked
+3. validation is run or the exact gap is recorded
+4. PROGRESS.md is updated with evidence
+5. PROGRESS_STATE.md is updated with compact state
+6. IMPLEMENTATION.md is updated only if verified
+7. WORK_INDEX.md and PRODUCT_BACKLOG.md are updated if statuses changed
+8. a commit is requested or created for this verified T* task using ai-workflow/COMMIT_MESSAGE.md
+9. no unrelated changes are included
+
+If blocked, record the blocker in PROGRESS.md and PROGRESS_STATE.md, update relevant status rows, and stop.
+```
