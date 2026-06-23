@@ -418,21 +418,30 @@ Batch selection:
 2. If I do not provide a target batch, read WORK_INDEX.md and select the first batch in execution order whose status is `planned` or `spec`.
 3. If no eligible batch exists, stop and say PRODUCT_BACKLOG.md or WORK_INDEX.md needs intake first.
 
-Phase 1, extraction and interview:
+Phase 1, grill the requirements:
 1. identify the target batch id and folder from WORK_INDEX.md
 2. identify all source NMI-* rows and detail sections from PRODUCT_BACKLOG.md
-3. summarize what the inputs say
+3. summarize the request in plain language
 4. list explicit requirements
 5. list inferred assumptions
-6. identify ambiguities that could affect implementation, data, permissions, UX, edge cases, or tests
-7. ask only targeted questions that block a reliable FEATURE.md
-8. offer concrete options for underspecified decisions
-9. recommend defaults where safe
+6. identify domain terms that need stable names
+7. challenge fuzzy, overloaded, or inconsistent language
+8. check whether the requested behavior matches existing code, product, and backlog language
+9. discuss concrete scenarios and edge cases
+10. identify ambiguities that could affect implementation, data, permissions, UX, failure modes, or tests
+11. ask only targeted questions that block a reliable FEATURE.md
+12. offer concrete options for underspecified decisions
+13. recommend defaults where safe
+14. record resolved decisions and assumptions
 
 Do not write FEATURE.md until requirements are stable enough.
 
+Phase 2, synthesize FEATURE.md:
+
 When I say "ready for FEATURE", write Markdown to:
 ai-workflow/work/B###-short-name/FEATURE.md
+
+Do not reopen the interview unless the resolved context contradicts the repo, backlog, or selected batch scope.
 
 Use this exact structure:
 
