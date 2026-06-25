@@ -102,6 +102,15 @@ Mark a task done only after:
 
 If verification is partial, do not claim completion.
 
+Do not mark a task, batch, or backlog item done while any validation command in
+a touched or directly related area is failing unless the failure has been proven
+unrelated by reproducing it on the base branch or by another concrete repo-local
+explanation. Record that proof in PROGRESS.md.
+
+Previously failed validation commands in the same batch are not optional. Final
+validation must rerun them after fixes, or the batch must remain blocked with a
+clear reason.
+
 ## Validation discipline
 
 Every task needs a practical verification plan.
@@ -117,6 +126,35 @@ Prefer the strongest practical signal:
 
 Run the smallest reliable check first.
 Record validation evidence in PROGRESS.md.
+
+When a validation failure appears in a touched or directly related area, treat
+it as blocking by default. Do not downgrade it to residual risk merely because a
+smaller focused subset passes.
+
+If a broader suite is too slow or noisy, run a smaller reliable command first,
+but keep the failing broader command in the batch's open validation list until
+it passes or is proven unrelated.
+
+## Batch size gate
+
+Before implementation planning or execution, perform a short size review for
+the selected batch:
+1. source NMI count
+2. implementation task count
+3. acceptance criteria count
+4. risk areas touched
+5. recommended split, if any
+
+Stop and recommend splitting before implementation when any of these are true:
+1. more than 3 source NMI items
+2. more than 6 implementation tasks
+3. more than 12 acceptance criteria
+4. unrelated risk areas are grouped together, such as auth plus reporting plus
+   public routing plus localization
+5. final validation would need many unrelated suites to prove the batch
+
+Continue without asking only when the batch is below those limits or when the
+user explicitly approves the larger scope after the size review.
 
 ## Security and permissions
 
@@ -577,10 +615,12 @@ Phase 1, grill the requirements:
 8. check whether the requested behavior matches existing code, product, and backlog language
 9. discuss concrete scenarios and edge cases
 10. identify ambiguities that could affect implementation, data, permissions, UX, failure modes, or tests
-11. ask only targeted questions that block a reliable FEATURE.md
-12. offer concrete options for underspecified decisions
-13. recommend defaults where safe
-14. record resolved decisions and assumptions
+11. apply the AGENTS.md batch size gate before writing FEATURE.md
+12. stop and recommend a split if the size gate requires it
+13. ask only targeted questions that block a reliable FEATURE.md
+14. offer concrete options for underspecified decisions
+15. recommend defaults where safe
+16. record resolved decisions and assumptions
 
 Do not write FEATURE.md until requirements are stable enough.
 
@@ -621,11 +661,13 @@ Rules:
 2. non-functional requirements must be measurable or tied to an existing repo validation convention
 3. list assumptions and non-goals explicitly
 4. keep scope inside the selected B* batch
-5. if new work is discovered, propose new NMI-* entries instead of expanding scope silently
-6. include exact status updates needed for PRODUCT_BACKLOG.md and WORK_INDEX.md
-7. update WORK_INDEX.md selected batch status to `spec`
-8. append history rows for material changes
-9. do not include secrets, credentials, private customer data, proprietary logs, or production data in FEATURE.md; use redacted examples or synthetic cases
+5. include the size gate result when scope is near or over the threshold
+6. if the size gate requires a split, wait for user approval before writing FEATURE.md
+7. if new work is discovered, propose new NMI-* entries instead of expanding scope silently
+8. include exact status updates needed for PRODUCT_BACKLOG.md and WORK_INDEX.md
+9. update WORK_INDEX.md selected batch status to `spec`
+10. append history rows for material changes
+11. do not include secrets, credentials, private customer data, proprietary logs, or production data in FEATURE.md; use redacted examples or synthetic cases
 ```
 
 Contract lock checklist:
@@ -640,6 +682,7 @@ Contract lock checklist:
 8. migration needs are clear
 9. rollout and verification expectations are clear enough to plan against
 10. assumptions are visible
+11. AGENTS.md size gate is satisfied, explicitly approved, or split
 
 Fix `FEATURE.md` before planning if any item is missing.
 
@@ -665,6 +708,10 @@ Batch selection:
 
 Task:
 Produce ai-workflow/work/B###-short-name/IMPLEMENTATION.md.
+
+Before writing the plan, apply the AGENTS.md batch size gate. If the gate
+requires a split and the user has not approved the larger scope, stop and
+propose the split instead of planning implementation.
 
 Each task must include:
 1. id, formatted as T001, T002, T003
@@ -692,6 +739,9 @@ Task rules:
 6. task order should reduce integration risk
 7. decision tasks must produce an explicit product decision before code changes
 8. do not include unrelated backlog items just because nearby code is touched
+9. if the plan exceeds the AGENTS.md size gate, stop unless the larger scope is
+   explicitly approved
+10. task validation must account for prior related failures recorded in PROGRESS.md
 
 Also create:
 1. ai-workflow/work/B###-short-name/PROGRESS.md
@@ -741,7 +791,8 @@ Lifecycle update:
 2. Set Updated date to today's date.
 3. Append a Batch history row for the transition.
 4. Do not mark ready if FEATURE.md is missing, tasks are not objective, or progress files were not created.
-5. Do not implement application code in this step.
+5. Do not mark ready if the AGENTS.md size gate requires an unapproved split.
+6. Do not implement application code in this step.
 ```
 
 ## 11. Execute The Next Task
@@ -778,6 +829,9 @@ Batch selection:
 2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `ready` or `active`.
 3. If no eligible batch exists, stop and say implementation tasks must be created first.
 
+Before editing, apply the AGENTS.md batch size gate if the batch artifacts do
+not already record it.
+
 Rules:
 1. explore before editing
 2. complete one selected task fully
@@ -802,6 +856,9 @@ Use the strongest practical signal available:
 7. screenshot or visual comparison
 8. exact command output
 
+Apply the AGENTS.md validation failure gate: related failures block completion
+until rerun successfully or proven unrelated in PROGRESS.md.
+
 Completion checklist:
 1. satisfy task done_when
 2. check relevant acceptance criteria
@@ -816,6 +873,7 @@ Completion checklist:
 11. if blocked, record the blocker instead of guessing through
 12. ask for explicit user approval before network access, dependency installation, destructive actions, production or staging access, credential access, GitHub mutations, browser automation in authenticated sessions, MCP/app connector side effects, or transmitting repository data to third-party services
 13. if git operations require approval and approval is not available, draft the commit message and stop before staging or committing
+14. AGENTS.md size and validation failure gates are satisfied
 
 Final output:
 1. task completed or blocked
@@ -851,6 +909,9 @@ Batch selection:
 
 Complete only this task unless the next task is tiny, adjacent, and safe to include.
 
+Before editing, apply the AGENTS.md batch size gate if the batch artifacts do
+not already record it.
+
 Success means:
 1. done_when is satisfied
 2. relevant acceptance criteria are checked
@@ -863,6 +924,8 @@ Success means:
 9. no unrelated changes are included
 10. no secrets, credentials, private customer data, proprietary logs, or production data are added to prompts, logs, commits, screenshots, or workflow files
 11. if git operations require approval and approval is not available, a commit message is drafted instead of staging or committing
+12. AGENTS.md size and validation failure gates are satisfied
 
-If blocked, record the blocker in PROGRESS.md and PROGRESS_STATE.md, update relevant status rows, and stop.
+If blocked, including by related failing validation, record the blocker in
+PROGRESS.md and PROGRESS_STATE.md, update relevant status rows, and stop.
 ```
