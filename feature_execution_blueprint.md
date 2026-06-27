@@ -342,24 +342,36 @@ Respect established local test style in the touched file or directory.
 Do not rewrite existing test structure solely to satisfy this policy.
 When deviating from this policy because of local conventions, record the reason in PROGRESS.md.
 
-## 4. Naming
+## 4. Tracer-bullet TDD loop
+
+For behavior-changing tasks, prefer a tracer-bullet TDD loop:
+1. add or update one behavior-level test through the public interface
+2. run it and confirm it fails for the expected reason when practical
+3. implement the smallest change that makes it pass
+4. repeat for the next behavior
+
+If test-first is impractical because the repo lacks a useful seam, record the reason in PROGRESS.md and use the strongest available validation signal.
+
+Do not write all tests first and then all implementation. Keep tests and implementation moving one behavior at a time.
+
+## 5. Naming
 
 Test names should describe business behavior.
 Avoid generic names unless the full name still explains the rule.
 
-## 5. Assertions
+## 6. Assertions
 
 Prefer explicit expected outputs.
 Keep assertion order stable.
 Keep assertions minimal and strong.
 If code filters, scopes, or selects records, tests should include included records, excluded records, and proof that excluded records remain unchanged when relevant.
 
-## 6. Determinism
+## 7. Determinism
 
 Tests must be deterministic.
 Use fixed timestamps or time-freezing helpers when time matters.
 
-## 7. External boundaries
+## 8. External boundaries
 
 Mock or stub external boundaries when appropriate:
 1. HTTP
@@ -371,19 +383,19 @@ Mock or stub external boundaries when appropriate:
 
 Avoid stubbing internal domain logic under test.
 
-## 8. Persistence and side effects
+## 9. Persistence and side effects
 
 For write paths, assert public contract, persisted state, and rollback/no-partial-write behavior when relevant.
 Before finishing a task, ask what the implementation could accidentally update, select, send, expose, enqueue, cache, or delete.
 
-## 9. Reporting
+## 10. Reporting
 
 For each task that creates or changes tests, report:
 1. tests added or changed
 2. business rule each test proves
 3. validation command and result
 
-## 10. Forbidden final state
+## 11. Forbidden final state
 
 Do not leave new tests skipped, pending, or focused.
 ```
