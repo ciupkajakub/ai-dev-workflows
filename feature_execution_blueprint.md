@@ -135,6 +135,19 @@ If a broader suite is too slow or noisy, run a smaller reliable command first,
 but keep the failing broader command in the batch's open validation list until
 it passes or is proven unrelated.
 
+Final validation must include existing tests or checks that exercise the touched
+behavior, not only tests added by the current batch. When UI copy, labels,
+controls, selectors, routes, or interaction semantics change, rerun the nearest
+existing request/system/browser specs that operate through that UI. If those
+existing specs need expectation updates because the intended behavior changed,
+update them in the same task and rerun them before marking the task or batch
+done.
+
+If workflow ledger files such as PRODUCT_BACKLOG.md or WORK_INDEX.md changed,
+check mergeability against the intended base branch before final completion when
+that base is discoverable locally. Record any ledger conflict as a blocker or
+resolve it before marking the batch done.
+
 ## Batch size gate
 
 Before implementation planning or execution, perform a short size review for
@@ -876,16 +889,19 @@ Completion checklist:
 2. check relevant acceptance criteria
 3. run required validation or record the exact gap
 4. consider regression risk and accidental side effects
-5. update IMPLEMENTATION.md only when verified
-6. append evidence to PROGRESS.md
-7. update PROGRESS_STATE.md
-8. update WORK_INDEX.md and PRODUCT_BACKLOG.md only if lifecycle status changed
-9. append history rows for material lifecycle changes
-10. request or create a commit for the verified B###/T### task using ai-workflow/COMMIT_MESSAGE.md
-11. if blocked, record the blocker instead of guessing through
-12. ask for explicit user approval before network access, dependency installation, destructive actions, production or staging access, credential access, GitHub mutations, browser automation in authenticated sessions, MCP/app connector side effects, or transmitting repository data to third-party services
-13. if git operations require approval and approval is not available, draft the commit message and stop before staging or committing
-14. AGENTS.md size and validation failure gates are satisfied
+5. rerun existing touched-area specs/checks when behavior, copy, labels, routes,
+   selectors, or interaction semantics changed
+6. update IMPLEMENTATION.md only when verified
+7. append evidence to PROGRESS.md
+8. update PROGRESS_STATE.md
+9. update WORK_INDEX.md and PRODUCT_BACKLOG.md only if lifecycle status changed
+10. append history rows for material lifecycle changes
+11. if workflow ledgers changed, check mergeability against the intended base
+12. request or create a commit for the verified B###/T### task using ai-workflow/COMMIT_MESSAGE.md
+13. if blocked, record the blocker instead of guessing through
+14. ask for explicit user approval before network access, dependency installation, destructive actions, production or staging access, credential access, GitHub mutations, browser automation in authenticated sessions, MCP/app connector side effects, or transmitting repository data to third-party services
+15. if git operations require approval and approval is not available, draft the commit message and stop before staging or committing
+16. AGENTS.md size and validation failure gates are satisfied
 
 Final output:
 1. task completed or blocked
@@ -928,15 +944,18 @@ Success means:
 1. done_when is satisfied
 2. relevant acceptance criteria are checked
 3. validation is run or the exact gap is recorded
-4. PROGRESS.md is updated with evidence
-5. PROGRESS_STATE.md is updated with compact state
-6. IMPLEMENTATION.md is updated only if verified
-7. WORK_INDEX.md and PRODUCT_BACKLOG.md are updated if statuses changed
-8. a commit is requested or created for this verified T* task using ai-workflow/COMMIT_MESSAGE.md
-9. no unrelated changes are included
-10. no secrets, credentials, private customer data, proprietary logs, or production data are added to prompts, logs, commits, screenshots, or workflow files
-11. if git operations require approval and approval is not available, a commit message is drafted instead of staging or committing
-12. AGENTS.md size and validation failure gates are satisfied
+4. existing touched-area specs/checks are rerun when behavior, copy, labels,
+   routes, selectors, or interaction semantics changed
+5. PROGRESS.md is updated with evidence
+6. PROGRESS_STATE.md is updated with compact state
+7. IMPLEMENTATION.md is updated only if verified
+8. WORK_INDEX.md and PRODUCT_BACKLOG.md are updated if statuses changed
+9. workflow ledger mergeability is checked when workflow ledgers changed
+10. a commit is requested or created for this verified T* task using ai-workflow/COMMIT_MESSAGE.md
+11. no unrelated changes are included
+12. no secrets, credentials, private customer data, proprietary logs, or production data are added to prompts, logs, commits, screenshots, or workflow files
+13. if git operations require approval and approval is not available, a commit message is drafted instead of staging or committing
+14. AGENTS.md size and validation failure gates are satisfied
 
 If blocked, including by related failing validation, record the blocker in
 PROGRESS.md and PROGRESS_STATE.md, update relevant status rows, and stop.
