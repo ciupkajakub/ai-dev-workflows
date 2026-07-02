@@ -77,3 +77,14 @@ The workflow is designed around small verified task commits. If your agent or en
 ## Blueprint vs example
 
 `feature_execution_blueprint.md` is the reusable source. `example/ai-workflow/` is sanitized generated output for a fictional task management app. Example commands and validation evidence are illustrative; replace them with real project commands in your own workflow.
+
+To tour the example, read the files in workflow order:
+
+1. `example/ai-workflow/PRODUCT_BACKLOG.md` shows raw feedback normalized into NMI backlog items.
+2. `example/ai-workflow/WORK_INDEX.md` groups backlog items into executable batches.
+3. `example/ai-workflow/work/B001-example-feature/FEATURE.md` defines the product and technical contract.
+4. `example/ai-workflow/work/B001-example-feature/IMPLEMENTATION.md` breaks the contract into verified tasks.
+5. `example/ai-workflow/work/B001-example-feature/PROGRESS.md` records detailed execution evidence.
+6. `example/ai-workflow/work/B001-example-feature/PROGRESS_STATE.md` keeps compact restart state.
+
+`WORK_INDEX.md` may list planned batches whose folders do not exist yet. A batch folder is created when that batch moves from intake into feature planning.
