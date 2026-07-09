@@ -49,6 +49,7 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - Passed.
 - Lifecycle statuses agree across workflow artifacts.
 - Open validation list is empty.
+- Workflow ledger mergeability was checked against `origin/main`; no ledger conflicts were found.
 - No remaining risks or blockers.
 
 ## Dirty repo and recovery state

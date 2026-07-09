@@ -108,13 +108,16 @@ Status: `done`
   dependencies:
     - T001
   batch_group: ui
-  validation_level: targeted_tests
+  validation_level: targeted_tests, manual_check
   validation_commands:
     - command: npm test -- dashboard-overdue-section.test.ts
       purpose: proves overdue section visibility and empty state behavior
       required: true
     - command: npm test -- dashboard-today-section.test.ts
       purpose: proves existing today task rendering remains unchanged
+      required: true
+    - command: manual smoke check with synthetic local account fixture
+      purpose: proves final dashboard layout with overdue tasks above today's tasks without authenticated browser automation or customer data
       required: true
   existing_checks_to_rerun:
     - command: npm test -- dashboard-today-section.test.ts

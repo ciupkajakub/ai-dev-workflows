@@ -38,7 +38,7 @@ When a user opens the dashboard, the overdue section appears above today's tasks
 
 ## 7. Non functional requirements
 
-The dashboard query must use the existing indexed task due-date/user filtering path or an equivalent query plan; it must not introduce an N+1 query for overdue task rendering.
+1. The dashboard query must use the existing indexed task due-date/user filtering path or an equivalent query plan; it must not introduce an N+1 query for overdue task rendering.
 
 ## 8. Data and system impact
 
@@ -61,7 +61,7 @@ No schema changes are required.
 
 ## 11. Permissions and visibility rules
 
-Users can only see their own tasks.
+1. Users can only see their own tasks.
 
 ## 12. Rollout and verification
 
@@ -74,7 +74,7 @@ Verify with targeted dashboard query tests, dashboard UI tests, a query-plan or 
 
 ## 14. Assumptions
 
-The app already has a reliable user timezone setting.
+1. The app already has a reliable user timezone setting.
 
 ## 15. Backlog and batch updates
 
