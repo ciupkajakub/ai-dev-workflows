@@ -19,5 +19,6 @@
 | --- | --- |
 | 2026-06-20 | Created B001 from NMI-001. |
 | 2026-06-22 | Moved B001 from spec to ready after planning files were created. |
+| 2026-06-23 | Moved B001 from active to validated after both task validations passed. |
 | 2026-06-23 | Marked B001 done after verification. |
 | 2026-06-23 | Created B002 from NMI-002. |

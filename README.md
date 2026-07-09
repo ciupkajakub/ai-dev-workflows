@@ -45,10 +45,12 @@ feedback
 -> work/B###/PROGRESS_STATE.md
 ```
 
-The execution artifacts also define lifecycle gates for `planned`, `active`,
-`blocked`, `failed_validation`, `done`, `superseded`, and `rolled_back` states.
-Treat validation gaps, related failing tests, and unsafe tool access as blockers
-unless the user explicitly accepts an unvalidated state.
+The execution artifacts define entity-specific lifecycle gates. Backlog items,
+batches, and tasks each have their own allowed statuses, including `spec`,
+`ready`, `in_progress`, `failed_validation`, `validated`, `done`, `superseded`,
+and `rolled_back` where appropriate. Treat validation gaps, related failing
+tests, and unsafe tool access as blockers unless the user explicitly accepts an
+unvalidated state.
 
 ## Generated files
 

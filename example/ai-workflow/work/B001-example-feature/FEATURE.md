@@ -77,10 +77,9 @@ The app already has a reliable user timezone setting.
 
 NMI-001 and B001 were marked done after verification.
 
-Size gate:
+Feature size gate:
 - Source NMI count: 1
-- Implementation task count: 2
-- Acceptance criteria count: 4
+- Estimated acceptance criteria count: 4
 - Risk areas: task query layer, dashboard UI
 - Result: pass
 - Reason: batch is below split thresholds and risk areas are adjacent.

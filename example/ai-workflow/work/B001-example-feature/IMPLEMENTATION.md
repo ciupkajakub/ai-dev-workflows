@@ -4,11 +4,12 @@ Batch: `B001`
 Source items: `NMI-001`
 Status: `done`
 
-## Size gate
+## Implementation size gate
 
 - Source NMI count: 1
 - Implementation task count: 2
 - Acceptance criteria count: 4
+- Validation commands or suites: targeted dashboard query and dashboard UI tests
 - Risk areas: task query layer, dashboard UI
 - Result: pass
 - Reason: batch is below split thresholds and risk areas are adjacent.
@@ -37,6 +38,13 @@ Status: `done`
   dependencies: []
   batch_group: query
   validation_level: targeted_tests
+  validation_commands:
+    - command: npm test -- dashboard-task-query.test.ts
+      purpose: proves overdue query includes overdue tasks and excludes completed or undated tasks
+      required: true
+  existing_checks_to_rerun:
+    - command: npm test -- dashboard-task-query.test.ts
+      reason: nearest existing query behavior coverage for the touched query layer
   likely_files:
     - app queries or services for dashboard tasks
     - dashboard task query tests
@@ -67,6 +75,16 @@ Status: `done`
     - T001
   batch_group: ui
   validation_level: targeted_tests
+  validation_commands:
+    - command: npm test -- dashboard-overdue-section.test.ts
+      purpose: proves overdue section visibility and empty state behavior
+      required: true
+    - command: npm test -- dashboard-today-section.test.ts
+      purpose: proves existing today task rendering remains unchanged
+      required: true
+  existing_checks_to_rerun:
+    - command: npm test -- dashboard-today-section.test.ts
+      reason: nearest existing UI behavior coverage for unchanged today task rendering
   likely_files:
     - dashboard view/component
     - dashboard view/component tests

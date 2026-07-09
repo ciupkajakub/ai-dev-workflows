@@ -71,33 +71,60 @@ If the feature contract conflicts with repo evidence, stop and report:
 
 ## Lifecycle state machine
 
-Use these status meanings consistently across workflow files:
+Use statuses only on the entity types that allow them.
 
-- `planned`: known work that is not ready for execution
+Backlog item statuses:
+- `new`: raw item exists but has not been grouped into a batch
+- `planned`: item is grouped into a future batch
+- `spec`: related batch has a FEATURE.md contract
+- `active`: related batch implementation has started
+- `blocked`: progress cannot continue safely because input, permission, environment, or validation is missing
+- `done`: related batch is completed; do not also use `completed`
+- `superseded`: replaced by newer scope; do not implement unless user reactivates it
+
+Batch statuses:
+- `planned`: batch row exists but FEATURE.md is not written
 - `spec`: FEATURE.md exists, but execution planning is not complete
 - `ready`: IMPLEMENTATION.md, PROGRESS.md, and PROGRESS_STATE.md exist and tasks are objective
-- `active`: implementation has started
-- `in_progress`: selected T* task is currently being edited
-- `blocked`: progress cannot continue safely without missing input, permission, environment, or a passing related validation signal
+- `active`: one or more tasks have started
 - `failed_validation`: implementation exists, but a required related validation command failed
-- `validated`: selected T* task satisfies `done_when` and required validation passed, but ledger/final updates may still be pending
-- `done`: validated work plus required evidence, progress state, and lifecycle updates are complete
+- `blocked`: progress cannot continue safely because input, permission, environment, or validation is missing
+- `validated`: all tasks satisfy `done_when` and required validation passed, but ledger/final updates may still be pending
+- `done`: validated work plus required evidence, progress state, and lifecycle updates are complete; do not also use `completed`
 - `superseded`: replaced by newer scope; do not implement unless user reactivates it
 - `rolled_back`: agent-created implementation was reverted or abandoned and recovery evidence was recorded
 
+Task statuses:
+- `planned`: task is objective but editing has not started
+- `in_progress`: selected T* task is currently being edited
+- `failed_validation`: implementation was attempted but required related validation failed
+- `blocked`: task cannot continue safely because input, permission, environment, or validation is missing
+- `validated`: task satisfies `done_when` and required validation passed, but ledger/final updates may still be pending
+- `done`: validated task plus required evidence, progress state, and lifecycle updates are complete; do not also use `completed`
+- `superseded`: replaced by newer scope; do not implement unless user reactivates it
+- `rolled_back`: agent-created task changes were reverted or abandoned and recovery evidence was recorded
+
 Required transitions:
-1. `planned -> spec`: FEATURE.md is written and contract lock checklist passes.
-2. `spec -> ready`: IMPLEMENTATION.md, PROGRESS.md, and PROGRESS_STATE.md exist; every task has status, objective `done_when`, validation plan, and stop conditions.
-3. `ready -> active`: first task starts; update WORK_INDEX.md and PROGRESS_STATE.md before editing.
-4. `planned -> in_progress`: selected T* task starts.
-5. `in_progress -> blocked`: missing requirement, repo conflict, permission limit, unsafe validation, or unresolved related validation failure blocks progress.
-6. `in_progress -> failed_validation`: implementation was attempted but required related validation failed.
-7. `failed_validation -> in_progress`: fix attempt starts.
-8. `in_progress -> validated`: `done_when` is satisfied and required related validation passed.
-9. `validated -> done`: PROGRESS.md, PROGRESS_STATE.md, IMPLEMENTATION.md, and lifecycle rows are updated.
-10. `active -> done`: all T* tasks are done, open validation list is empty, and batch/backlog lifecycle rows are updated.
-11. `active|blocked -> superseded`: user explicitly replaces the scope with newer backlog or batch work.
-12. `active|blocked|failed_validation -> rolled_back`: agent-created code changes are reverted or abandoned; record exact files, commands, remaining risk, and next state.
+1. Backlog `new -> planned`: item is grouped into a coherent future batch.
+2. Backlog/batch `planned -> spec`: FEATURE.md is written and contract lock checklist passes.
+3. Batch `spec -> ready`: IMPLEMENTATION.md, PROGRESS.md, and PROGRESS_STATE.md exist; every task has status, objective `done_when`, validation commands, and stop conditions.
+4. Batch `ready -> active`: first task starts; update WORK_INDEX.md and PROGRESS_STATE.md before editing.
+5. Backlog `spec -> active`: related batch starts implementation.
+6. Task `planned -> in_progress`: selected T* task starts.
+7. Task `in_progress -> blocked`: missing requirement, repo conflict, permission limit, unsafe validation, or unresolved related validation failure blocks progress.
+8. Task `blocked -> in_progress`: blocker is resolved and the same task resumes.
+9. Task `in_progress -> failed_validation`: implementation was attempted but required related validation failed; set batch to `failed_validation` too.
+10. Task `failed_validation -> in_progress`: fix attempt starts.
+11. Batch `failed_validation -> active`: fix attempt starts for a failed validation path.
+12. Batch `blocked -> active`: blocker is resolved and implementation resumes.
+13. Task `in_progress -> validated`: `done_when` is satisfied and required related validation passed.
+14. Task `validated -> done`: PROGRESS.md, PROGRESS_STATE.md, IMPLEMENTATION.md, and lifecycle rows are updated.
+15. Batch `active -> validated`: all T* tasks are done and open validation list is empty.
+16. Batch `validated -> done`: batch lifecycle rows and required evidence are updated.
+17. Backlog `active -> done`: related batch is done and backlog lifecycle rows are updated.
+18. Backlog/batch/task `active|blocked -> superseded`: user explicitly replaces the scope with newer backlog or batch work.
+19. Batch/task `failed_validation -> superseded`: user explicitly replaces the failed scope with newer backlog or batch work.
+20. Batch/task `active|blocked|failed_validation -> rolled_back`: agent-created code changes are reverted or abandoned; record exact files, commands, remaining risk, and next state.
 
 ## Clarification
 
@@ -206,21 +233,45 @@ repo state differs from assumptions:
    as appropriate
 8. do not claim completion until a new validated path is finished
 
-## Batch size gate
+## Scope size gates
 
-Before implementation planning or execution, perform a short size review for
-the selected batch:
+Use the size gate that matches the current phase.
+
+Feature size gate, before writing FEATURE.md:
+1. source NMI count
+2. estimated acceptance criteria count
+3. risk areas touched
+4. recommended split, if any
+
+Record the result with these fields:
+Feature size gate:
+- Source NMI count:
+- Estimated acceptance criteria count:
+- Risk areas:
+- Result: pass | split_recommended | user_approved_large_scope
+- Reason:
+
+Stop and recommend splitting before FEATURE.md when any of these are true:
+1. more than 3 source NMI items
+2. more than 12 estimated acceptance criteria
+3. unrelated risk areas are grouped together, such as auth plus reporting plus
+   public routing plus localization
+4. final validation would need many unrelated suites to prove the batch
+
+Implementation size gate, before writing IMPLEMENTATION.md or executing tasks:
 1. source NMI count
 2. implementation task count
 3. acceptance criteria count
-4. risk areas touched
-5. recommended split, if any
+4. validation commands or suites required
+5. risk areas touched
+6. recommended split, if any
 
 Record the result with these fields:
-Size gate:
+Implementation size gate:
 - Source NMI count:
 - Implementation task count:
 - Acceptance criteria count:
+- Validation commands or suites:
 - Risk areas:
 - Result: pass | split_recommended | user_approved_large_scope
 - Reason:
@@ -233,8 +284,8 @@ Stop and recommend splitting before implementation when any of these are true:
    public routing plus localization
 5. final validation would need many unrelated suites to prove the batch
 
-Continue without asking only when the batch is below those limits or when the
-user explicitly approves the larger scope after the size review.
+Continue without asking only when the relevant size gate is below those limits
+or when the user explicitly approves the larger scope after the size review.
 
 ## Review gate
 
@@ -582,14 +633,19 @@ Status values:
 - spec
 - ready
 - active
+- failed_validation
+- validated
 - done
 - blocked
 - superseded
 - rolled_back
 
 Use `done` only when all batch tasks are done, required validation passed, and
-the open validation list is empty. Use `rolled_back` when agent-created
-implementation was reverted or abandoned and recovery evidence was recorded.
+the open validation list is empty. Use `failed_validation` when a required
+related validation command failed. Use `validated` only as the short-lived state
+between passing final validation and completing ledger updates. Use
+`rolled_back` when agent-created implementation was reverted or abandoned and
+recovery evidence was recorded.
 
 ## Dependency and history notes
 
@@ -728,8 +784,8 @@ Phase 1, grill the requirements:
 8. check whether the requested behavior matches existing code, product, and backlog language
 9. discuss concrete scenarios and edge cases
 10. identify ambiguities that could affect implementation, data, permissions, UX, failure modes, or tests
-11. apply the AGENTS.md batch size gate before writing FEATURE.md
-12. stop and recommend a split if the size gate requires it
+11. apply the AGENTS.md feature size gate before writing FEATURE.md
+12. stop and recommend a split if the feature size gate requires it
 13. ask only targeted questions that block a reliable FEATURE.md
 14. offer concrete options for underspecified decisions
 15. recommend defaults where safe
@@ -774,8 +830,8 @@ Rules:
 2. non-functional requirements must be measurable or tied to an existing repo validation convention
 3. list assumptions and non-goals explicitly
 4. keep scope inside the selected B* batch
-5. include the exact size gate result
-6. if the size gate requires a split, wait for user approval before writing FEATURE.md
+5. include the exact feature size gate result
+6. if the feature size gate requires a split, wait for user approval before writing FEATURE.md
 7. if new work is discovered, propose new NMI-* entries instead of expanding scope silently
 8. include exact status updates needed for PRODUCT_BACKLOG.md and WORK_INDEX.md
 9. update WORK_INDEX.md selected batch status to `spec`
@@ -795,7 +851,7 @@ Contract lock checklist:
 8. migration needs are clear
 9. rollout and verification expectations are clear enough to plan against
 10. assumptions are visible
-11. AGENTS.md size gate is satisfied, explicitly approved, or split
+11. AGENTS.md feature size gate is satisfied, explicitly approved, or split
 
 Fix `FEATURE.md` before planning if any item is missing.
 
@@ -822,12 +878,12 @@ Batch selection:
 Task:
 Produce ai-workflow/work/B###-short-name/IMPLEMENTATION.md.
 
-Before writing the plan, apply the AGENTS.md batch size gate. If the gate
-requires a split and the user has not approved the larger scope, stop and
+Before writing the plan, apply the AGENTS.md implementation size gate. If the
+gate requires a split and the user has not approved the larger scope, stop and
 propose the split instead of planning implementation.
 
-Include the exact size gate result in IMPLEMENTATION.md so execution agents do
-not need to recalculate it unless artifacts change.
+Include the exact implementation size gate result in IMPLEMENTATION.md so
+execution agents do not need to recalculate it unless artifacts change.
 
 Each task must include:
 1. id, formatted as T001, T002, T003
@@ -842,10 +898,21 @@ Each task must include:
 10. dependencies
 11. batch_group
 12. validation_level
-13. likely_files
-14. context_budget
-15. stop_conditions
-16. source_items
+13. validation_commands
+14. existing_checks_to_rerun
+15. likely_files
+16. context_budget
+17. stop_conditions
+18. source_items
+
+Use this validation field shape:
+validation_commands:
+  - command: "<exact command>"
+    purpose: "<what this proves>"
+    required: true
+existing_checks_to_rerun:
+  - command: "<exact command, or none>"
+    reason: "<why this existing check is needed, or why none exists>"
 
 Task rules:
 1. tasks must be small
@@ -853,14 +920,18 @@ Task rules:
 3. each task must map to FEATURE.md acceptance criteria
 4. each task must identify a practical validation signal
 5. tests_required must be specific
-6. task order should reduce integration risk
-7. decision tasks must produce an explicit product decision before code changes
-8. do not include unrelated backlog items just because nearby code is touched
-9. if the plan exceeds the AGENTS.md size gate, stop unless the larger scope is
+6. validation_commands must list exact commands, what each command proves, and
+   whether it is required for done
+7. existing_checks_to_rerun must list exact existing touched-area commands, or
+   `none` with a reason
+8. task order should reduce integration risk
+9. decision tasks must produce an explicit product decision before code changes
+10. do not include unrelated backlog items just because nearby code is touched
+11. if the plan exceeds the AGENTS.md implementation size gate, stop unless the larger scope is
    explicitly approved
-10. task validation must account for prior related failures recorded in PROGRESS.md
-11. allowed task statuses are `planned`, `in_progress`, `blocked`,
-    `failed_validation`, `validated`, `done`, and `rolled_back`
+12. task validation must account for prior related failures recorded in PROGRESS.md
+13. allowed task statuses are `planned`, `in_progress`, `blocked`,
+    `failed_validation`, `validated`, `done`, `superseded`, and `rolled_back`
 
 Also create:
 1. ai-workflow/work/B###-short-name/PROGRESS.md
@@ -920,8 +991,8 @@ Lifecycle update:
 2. Set Updated date to today's date.
 3. Append a Batch history row for the transition.
 4. Do not mark ready if FEATURE.md is missing, tasks are not objective, or progress files were not created.
-5. Do not mark ready if the AGENTS.md size gate requires an unapproved split.
-6. Do not mark ready if any task lacks a status or validation plan.
+5. Do not mark ready if the AGENTS.md implementation size gate requires an unapproved split.
+6. Do not mark ready if any task lacks a status or validation_commands.
 7. Do not implement application code in this step.
 ```
 
@@ -959,8 +1030,8 @@ Batch selection:
 2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `ready` or `active`.
 3. If no eligible batch exists, stop and say implementation tasks must be created first.
 
-Before editing, apply the AGENTS.md batch size gate if the batch artifacts do
-not already record it.
+Before editing, apply the AGENTS.md implementation size gate if the batch
+artifacts do not already record it.
 
 Before editing, record branch, intended base when known, pre-existing modified
 files, and selected task id in PROGRESS_STATE.md. Change WORK_INDEX.md selected
@@ -996,10 +1067,10 @@ until rerun successfully or proven unrelated in PROGRESS.md.
 Completion checklist:
 1. satisfy task done_when
 2. check relevant acceptance criteria
-3. run required validation successfully
+3. run required validation_commands successfully
 4. consider regression risk and accidental side effects
-5. rerun existing touched-area specs/checks when behavior, copy, labels, routes,
-   selectors, or interaction semantics changed
+5. rerun existing_checks_to_rerun and any other touched-area specs/checks needed
+   when behavior, copy, labels, routes, selectors, or interaction semantics changed
 6. if required validation cannot run or fails, mark the task `blocked` or
    `failed_validation`; record the exact gap in PROGRESS.md and the open
    validation list in PROGRESS_STATE.md
@@ -1009,11 +1080,13 @@ Completion checklist:
 10. update WORK_INDEX.md and PRODUCT_BACKLOG.md only if lifecycle status changed
 11. append history rows for material lifecycle changes
 12. if workflow ledgers changed, check mergeability against the intended base
-13. request or create a commit for the verified B###/T### task using ai-workflow/COMMIT_MESSAGE.md
-14. if blocked, record the blocker instead of guessing through
-15. ask for explicit user approval before network access, dependency installation, destructive actions, production or staging access, credential access, GitHub mutations, browser automation in authenticated sessions, MCP/app connector side effects, or transmitting repository data to third-party services
-16. if git operations require approval and approval is not available, draft the commit message and stop before staging or committing
-17. AGENTS.md size, validation failure, and review gates are satisfied
+13. if blocked, record the blocker instead of guessing through
+14. ask for explicit user approval before network access, dependency installation, destructive actions, production or staging access, credential access, GitHub mutations, browser automation in authenticated sessions, MCP/app connector side effects, or transmitting repository data to third-party services
+15. AGENTS.md implementation size, validation failure, and review gates are satisfied
+
+After task success, optionally prepare commit packaging using
+ai-workflow/COMMIT_MESSAGE.md if the user or repo policy wants it. Task
+completion does not require staging, committing, or pushing.
 
 Final output:
 1. task done, blocked, failed_validation, or rolled_back
@@ -1049,8 +1122,8 @@ Batch selection:
 
 Complete only this task unless the next task is tiny, adjacent, and safe to include.
 
-Before editing, apply the AGENTS.md batch size gate if the batch artifacts do
-not already record it.
+Before editing, apply the AGENTS.md implementation size gate if the batch
+artifacts do not already record it.
 
 Before editing, record branch, intended base when known, pre-existing modified
 files, and selected task id in PROGRESS_STATE.md. Change WORK_INDEX.md selected
@@ -1059,19 +1132,21 @@ batch status to `active` and selected task status to `in_progress`.
 Success means:
 1. done_when is satisfied
 2. relevant acceptance criteria are checked
-3. required validation passed
-4. existing touched-area specs/checks are rerun when behavior, copy, labels,
-   routes, selectors, or interaction semantics changed
+3. required validation_commands passed
+4. existing_checks_to_rerun and any other touched-area specs/checks are rerun
+   when behavior, copy, labels, routes, selectors, or interaction semantics changed
 5. PROGRESS.md is updated with evidence
 6. PROGRESS_STATE.md is updated with compact state
 7. IMPLEMENTATION.md is updated only if verified
 8. WORK_INDEX.md and PRODUCT_BACKLOG.md are updated if statuses changed
 9. workflow ledger mergeability is checked when workflow ledgers changed
-10. a commit is requested or created for this verified T* task using ai-workflow/COMMIT_MESSAGE.md
-11. no unrelated changes are included
-12. no secrets, credentials, private customer data, proprietary logs, or production data are added to prompts, logs, commits, screenshots, or workflow files
-13. if git operations require approval and approval is not available, a commit message is drafted instead of staging or committing
-14. AGENTS.md size, validation failure, and review gates are satisfied
+10. no unrelated changes are included
+11. no secrets, credentials, private customer data, proprietary logs, or production data are added to prompts, logs, commits, screenshots, or workflow files
+12. AGENTS.md implementation size, validation failure, and review gates are satisfied
+
+After task success, optionally prepare commit packaging using
+ai-workflow/COMMIT_MESSAGE.md if the user or repo policy wants it. Task
+completion does not require staging, committing, or pushing.
 
 If blocked, including by related failing validation, record the blocker in
 PROGRESS.md and PROGRESS_STATE.md, update relevant status rows, and stop.

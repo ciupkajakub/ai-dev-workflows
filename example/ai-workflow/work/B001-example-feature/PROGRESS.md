@@ -14,6 +14,11 @@ Initialized feature execution for B001.
 
 Task: T001
 
+State path:
+- T001 `planned -> in_progress` before editing.
+- T001 `in_progress -> validated` after required validation passed.
+- T001 `validated -> done` after evidence and lifecycle updates were recorded.
+
 Changed:
 - Added an overdue task query that selects incomplete tasks due before the user's local date.
 - Excluded completed and undated tasks.
@@ -35,10 +40,17 @@ Risks or gaps:
 
 Workflow updates:
 - Marked T001 done in `IMPLEMENTATION.md`.
+- Kept B001 active because T002 remained open.
 
 ## 2026-06-23
 
 Task: T002
+
+State path:
+- T002 `planned -> in_progress` before editing.
+- T002 `in_progress -> validated` after required validation passed.
+- T002 `validated -> done` after evidence and lifecycle updates were recorded.
+- B001 `active -> validated -> done` after all tasks and validation were complete.
 
 Changed:
 - Rendered the overdue section above today's tasks.
@@ -46,12 +58,13 @@ Changed:
 
 Validation:
 - `npm test -- dashboard-overdue-section.test.ts` passed.
+- `npm test -- dashboard-today-section.test.ts` passed.
 - Manual smoke check: dashboard showed overdue tasks above today's tasks for the sample account.
 
 Evidence:
 - UI test covers visible overdue section.
 - UI test covers empty state.
-- Existing today task rendering test still passes.
+- Existing today task rendering test still passes through `npm test -- dashboard-today-section.test.ts`.
 
 Review:
 - Final diff was scoped to dashboard UI and component tests.

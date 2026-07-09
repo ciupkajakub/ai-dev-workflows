@@ -9,6 +9,7 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - Batch: B001
 - Source items: NMI-001
 - Status: done
+- Last batch state path: active -> validated -> done
 
 ## Completed
 
@@ -24,6 +25,7 @@ Example note: this file is fictional sanitized output for a sample task manageme
 
 - `npm test -- dashboard-task-query.test.ts` passed.
 - `npm test -- dashboard-overdue-section.test.ts` passed.
+- `npm test -- dashboard-today-section.test.ts` passed.
 - Manual smoke check confirmed overdue tasks appear above today's tasks.
 
 ## Open validation list
