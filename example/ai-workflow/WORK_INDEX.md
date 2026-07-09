@@ -19,6 +19,10 @@
 | --- | --- |
 | 2026-06-20 | Created B001 from NMI-001. |
 | 2026-06-22 | Moved B001 from spec to ready after planning files were created. |
-| 2026-06-23 | Moved B001 from active to validated after both task validations passed. |
+| 2026-06-23 | Moved B001 from active to failed_validation after T001 query validation exposed missing due-date sorting. |
+| 2026-06-23 | Returned B001 to active after the T001 validation fix started. |
+| 2026-06-23 | Moved B001 from active to blocked while authenticated browser smoke validation required explicit approval. |
+| 2026-06-23 | Returned B001 to active after the user approved a synthetic local fixture smoke check. |
+| 2026-06-23 | Moved B001 from active to validated after all task validation and traceability rows were closed. |
 | 2026-06-23 | Marked B001 done after verification. |
 | 2026-06-23 | Created B002 from NMI-002. |

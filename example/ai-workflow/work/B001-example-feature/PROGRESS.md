@@ -16,15 +16,17 @@ Task: T001
 
 State path:
 - T001 `planned -> in_progress` before editing.
-- T001 `in_progress -> validated` after required validation passed.
-- T001 `validated -> done` after evidence and lifecycle updates were recorded.
+- T001 `in_progress -> failed_validation` after the first query validation failed.
+- B001 `active -> failed_validation` while required validation was open.
 
 Changed:
 - Added an overdue task query that selects incomplete tasks due before the user's local date.
 - Excluded completed and undated tasks.
 
 Validation:
-- `npm test -- dashboard-task-query.test.ts` passed.
+- `npm test -- dashboard-task-query.test.ts` failed.
+- Failure: multiple overdue tasks were returned in insertion order instead of due-date ascending order.
+- `npm test -- dashboard-query-plan.test.ts` was not run because required behavior validation failed first.
 
 Evidence:
 - Query test covers included overdue tasks.
@@ -32,14 +34,58 @@ Evidence:
 - Query test excludes tasks without due dates.
 
 Review:
+- Diff was scoped to the task query layer and query tests.
+- No generated files, debug code, focused tests, or sensitive data were added.
+
+Risks or gaps:
+- Open validation: fix due-date sort and rerun `npm test -- dashboard-task-query.test.ts`.
+- Open validation: run `npm test -- dashboard-query-plan.test.ts` after behavior validation passes.
+
+Workflow updates:
+- Marked T001 failed_validation in `IMPLEMENTATION.md`.
+- Marked B001 failed_validation in `WORK_INDEX.md`.
+- Added both commands to `PROGRESS_STATE.md` open validation list.
+- Traceability rows for Functional requirement 3 and Acceptance criterion 5 remained blocked until the sort fix.
+
+## 2026-06-23
+
+Task: T001 recovery
+
+State path:
+- T001 `failed_validation -> in_progress` after starting the fix.
+- B001 `failed_validation -> active` while fixing the failed validation path.
+- T001 `in_progress -> validated` after required validation passed.
+- T001 `validated -> done` after evidence, traceability, and lifecycle updates were recorded.
+
+Changed:
+- Added due-date ascending ordering to the overdue query.
+- Confirmed user scoping remains part of the overdue query.
+
+Validation:
+- `npm test -- dashboard-task-query.test.ts` passed.
+- `npm test -- dashboard-query-plan.test.ts` passed.
+
+Evidence:
+- Query test covers included overdue tasks.
+- Query test excludes completed overdue tasks.
+- Query test excludes tasks without due dates.
+- Query test excludes overdue tasks belonging to another user.
+- Query test covers the user's local date boundary.
+- Query test covers due-date ascending ordering.
+- Query-plan check confirms the indexed user/due-date query path and no per-task fetch loop.
+- Existing user timezone fixture was available, so Assumption 1 was verified.
+
+Review:
 - Final diff was scoped to the task query layer and query tests.
 - No generated files, debug code, focused tests, or sensitive data were added.
 
 Risks or gaps:
-- None.
+- None for T001.
 
 Workflow updates:
 - Marked T001 done in `IMPLEMENTATION.md`.
+- Marked T001 traceability rows verified in `IMPLEMENTATION.md`.
+- Cleared T001 commands from `PROGRESS_STATE.md` open validation list.
 - Kept B001 active because T002 remained open.
 
 ## 2026-06-23
@@ -48,6 +94,10 @@ Task: T002
 
 State path:
 - T002 `planned -> in_progress` before editing.
+- T002 `in_progress -> blocked` when an authenticated browser smoke check required explicit approval.
+- B001 `active -> blocked` while the unsafe validation path was unresolved.
+- T002 `blocked -> in_progress` after the user approved a synthetic local fixture smoke check instead of authenticated browser automation.
+- B001 `blocked -> active` after the validation path was safe again.
 - T002 `in_progress -> validated` after required validation passed.
 - T002 `validated -> done` after evidence and lifecycle updates were recorded.
 - B001 `active -> validated -> done` after all tasks and validation were complete.
@@ -59,12 +109,15 @@ Changed:
 Validation:
 - `npm test -- dashboard-overdue-section.test.ts` passed.
 - `npm test -- dashboard-today-section.test.ts` passed.
-- Manual smoke check: dashboard showed overdue tasks above today's tasks for the sample account.
+- Authenticated browser automation was not run because it required explicit approval.
+- User approved a synthetic local fixture smoke check.
+- Manual smoke check with the synthetic local account showed overdue tasks above today's tasks.
 
 Evidence:
 - UI test covers visible overdue section.
 - UI test covers empty state.
 - Existing today task rendering test still passes through `npm test -- dashboard-today-section.test.ts`.
+- Synthetic local smoke check covers the final dashboard layout without exposing customer data or authenticated browser state.
 
 Review:
 - Final diff was scoped to dashboard UI and component tests.
@@ -75,8 +128,10 @@ Risks or gaps:
 
 Workflow updates:
 - Marked T002 done in `IMPLEMENTATION.md`.
+- Marked T002 traceability rows verified in `IMPLEMENTATION.md`.
 - Marked B001 done in `WORK_INDEX.md`.
 - Marked NMI-001 done in `PRODUCT_BACKLOG.md`.
+- Confirmed all traceability rows were verified and `PROGRESS_STATE.md` open validation list was empty before marking B001 done.
 
 Commit:
 - `feat: show overdue tasks on dashboard`

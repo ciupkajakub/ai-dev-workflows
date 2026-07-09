@@ -56,6 +56,8 @@ No schema changes are required.
 2. Given completed tasks due before today, they do not appear in the overdue section.
 3. Given no overdue tasks, the dashboard shows an overdue empty state.
 4. Given tasks due today, they remain in the today section.
+5. Given multiple overdue tasks, they are sorted by due date ascending.
+6. Given overdue tasks render on the dashboard, the implementation uses the existing indexed user/due-date query path or equivalent evidence shows no N+1 query was introduced.
 
 ## 11. Permissions and visibility rules
 
@@ -63,11 +65,12 @@ Users can only see their own tasks.
 
 ## 12. Rollout and verification
 
-Verify with targeted dashboard tests and a local smoke check.
+Verify with targeted dashboard query tests, dashboard UI tests, a query-plan or equivalent no-N+1 check, and a local smoke check.
 
 ## 13. Risks and open questions
 
-Timezone boundaries are the main risk.
+1. Timezone boundaries are the main behavior risk.
+2. Query shape is the main performance risk.
 
 ## 14. Assumptions
 
@@ -79,7 +82,7 @@ NMI-001 and B001 were marked done after verification.
 
 Feature size gate:
 - Source NMI count: 1
-- Estimated acceptance criteria count: 4
+- Estimated acceptance criteria count: 6
 - Risk areas: task query layer, dashboard UI
 - Result: pass
 - Reason: batch is below split thresholds and risk areas are adjacent.

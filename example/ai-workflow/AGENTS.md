@@ -75,6 +75,31 @@ Required transitions:
 18. Backlog/batch `active|blocked -> superseded`; task `in_progress|blocked -> superseded`: user explicitly replaces the scope with newer backlog or batch work.
 19. Batch/task `failed_validation -> superseded`: user explicitly replaces the failed scope with newer backlog or batch work.
 20. Batch `active|blocked|failed_validation -> rolled_back`; task `in_progress|blocked|failed_validation -> rolled_back`: agent-created code changes are reverted or abandoned; record exact files, commands, remaining risk, and next state.
+21. Batch `active -> blocked`: a selected task or batch-level blocker stops safe progress until input, permission, environment, or validation is resolved.
+
+## Traceability closure
+
+Every `FEATURE.md` requirement must be accounted for before execution starts.
+
+`IMPLEMENTATION.md` must include a traceability table that covers:
+
+1. functional requirements
+2. non-functional requirements
+3. acceptance criteria
+4. permissions and visibility rules
+5. assumptions
+6. risks and open questions that affect implementation
+7. edge cases and failure modes
+
+Each row must map to:
+
+1. one or more T* tasks, or an explicit non-code decision
+2. validation commands or checks, or an explicit reason validation is impossible
+3. state: `planned`, `verified`, `blocked`, or `accepted_gap`
+
+Do not mark a batch `ready` if a required feature-contract item is unmapped.
+Do not mark a batch `done` while any required traceability row remains `planned` or `blocked`.
+Use `accepted_gap` only when the user explicitly accepts the gap or unvalidated state, and record that decision in `PROGRESS.md`.
 
 ## Clarification
 

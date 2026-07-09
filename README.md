@@ -2,6 +2,8 @@
 
 A small file-based workflow for AI-assisted software development. It turns raw feedback into a backlog, groups related work into execution batches, creates feature contracts and task plans, then records validation evidence and compact restart state.
 
+The repository is a store for the reusable blueprint. `feature_execution_blueprint.md` is the source of truth; files under `example/ai-workflow/` are generated sample output that demonstrates how the blueprint should behave in practice.
+
 Use it when a change is too large or risky to keep only in chat memory: product feedback, multi-step features, cross-cutting backend/UI changes, migration work, or anything where acceptance criteria and verification evidence matter.
 
 Do not use it as a replacement for human review, security review, production change control, or project-specific engineering judgment.
@@ -52,6 +54,12 @@ and `rolled_back` where appropriate. Treat validation gaps, related failing
 tests, and unsafe tool access as blockers unless the user explicitly accepts an
 unvalidated state.
 
+The workflow also uses traceability closure: every feature requirement,
+acceptance criterion, non-functional requirement, permission rule, assumption,
+risk, edge case, and failure mode must map to a task plus validation evidence, a
+blocker, or an explicitly accepted gap. This is the main guard against a batch
+being marked done while part of the contract was never verified.
+
 ## Generated files
 
 The blueprint is the source of truth. It contains prompts and templates for generating:
@@ -84,6 +92,10 @@ The workflow is designed around small verified task commits. If your agent or en
 ## Blueprint vs example
 
 `feature_execution_blueprint.md` is the reusable source. `example/ai-workflow/` is sanitized generated output for a fictional task management app. Example commands and validation evidence are illustrative; replace them with real project commands in your own workflow.
+
+The example intentionally includes a failed validation and a blocked unsafe
+validation path. It is meant to show how the workflow behaves when something goes
+wrong, not only the clean completion path.
 
 To tour the example, read the files in workflow order:
 

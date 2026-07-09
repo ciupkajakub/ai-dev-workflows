@@ -8,11 +8,34 @@ Status: `done`
 
 - Source NMI count: 1
 - Implementation task count: 2
-- Acceptance criteria count: 4
-- Validation commands or suites: targeted dashboard query and dashboard UI tests
+- Acceptance criteria count: 6
+- Validation commands or suites: targeted dashboard query tests, dashboard UI tests, existing today-section regression test, query-plan/no-N+1 check, local smoke check
 - Risk areas: task query layer, dashboard UI
 - Result: pass
 - Reason: batch is below split thresholds and risk areas are adjacent.
+
+## Traceability closure
+
+| Feature reference | Required item | Covered by | Validation or evidence | State |
+| --- | --- | --- | --- | --- |
+| Functional requirement 1 | Overdue means incomplete task due before the user's current local date. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Functional requirement 2 | Completed tasks do not appear in overdue section. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Functional requirement 3 | Overdue tasks sort by due date ascending. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Functional requirement 4 | Tasks due today remain in the today section. | T002 | `npm test -- dashboard-today-section.test.ts` | verified |
+| Non-functional requirement 1 | Use indexed user/due-date filtering or equivalent query plan; avoid N+1 rendering. | T001 | `npm test -- dashboard-task-query.test.ts`; query plan inspection recorded in `PROGRESS.md` | verified |
+| Edge case 1 | Tasks with no due date are not overdue. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Edge case 2 | Completed overdue tasks are excluded. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Edge case 3 | Timezone handling uses user's local date boundary. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Acceptance criterion 1 | Incomplete tasks due before today appear. | T001, T002 | Query and UI tests recorded in `PROGRESS.md` | verified |
+| Acceptance criterion 2 | Completed tasks due before today do not appear. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Acceptance criterion 3 | Empty state appears when no overdue tasks exist. | T002 | `npm test -- dashboard-overdue-section.test.ts` | verified |
+| Acceptance criterion 4 | Tasks due today remain in today section. | T002 | `npm test -- dashboard-today-section.test.ts` | verified |
+| Acceptance criterion 5 | Multiple overdue tasks sort by due date ascending. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Acceptance criterion 6 | No N+1 query introduced for overdue rendering. | T001 | Query plan inspection recorded in `PROGRESS.md` | verified |
+| Permissions rule 1 | Users can only see their own tasks. | T001 | `npm test -- dashboard-task-query.test.ts` | verified |
+| Assumption 1 | App has reliable user timezone setting. | T001 | Existing user timezone fixture confirmed in `PROGRESS.md` | verified |
+| Risk 1 | Timezone boundaries. | T001 | User-local date boundary test recorded in `PROGRESS.md` | verified |
+| Risk 2 | Query shape/performance. | T001 | Query plan inspection recorded in `PROGRESS.md` | verified |
 
 ## Tasks
 
@@ -25,13 +48,20 @@ Status: `done`
     - query excludes completed tasks
     - query excludes tasks without due dates
     - query uses the user's local date boundary
+    - query sorts overdue tasks by due date ascending
+    - query preserves user scoping and indexed due-date filtering
   acceptance_criteria:
     - FEATURE.md AC1
     - FEATURE.md AC2
+    - FEATURE.md AC5
+    - FEATURE.md AC6
   tests_required:
     - model or service test for included overdue tasks
     - test excluding completed overdue tasks
     - test excluding undated tasks
+    - test sorting multiple overdue tasks by due date
+    - test proving another user's overdue tasks are excluded
+    - query-plan or instrumentation check proving no N+1 path
   areas:
     - task query layer
   risk: medium
@@ -40,7 +70,10 @@ Status: `done`
   validation_level: targeted_tests
   validation_commands:
     - command: npm test -- dashboard-task-query.test.ts
-      purpose: proves overdue query includes overdue tasks and excludes completed or undated tasks
+      purpose: proves overdue query includes overdue tasks, excludes completed/undated/other-user tasks, applies user-local date boundary, and sorts by due date
+      required: true
+    - command: npm test -- dashboard-query-plan.test.ts
+      purpose: proves overdue rendering uses the indexed user/due-date query path or equivalent no-N+1 guard
       required: true
   existing_checks_to_rerun:
     - command: npm test -- dashboard-task-query.test.ts
@@ -51,6 +84,7 @@ Status: `done`
   context_budget: small
   stop_conditions:
     - user timezone source is unclear
+    - no reliable query-plan or instrumentation check exists for the no-N+1 requirement
   source_items:
     - NMI-001
 
@@ -97,7 +131,7 @@ Status: `done`
 
 ## Status update rules
 
-Mark B001 done only when both tasks are verified and evidence is recorded in `PROGRESS.md`.
+Mark B001 done only when both tasks are verified, all traceability rows are verified or explicitly accepted as gaps, the open validation list is empty, and evidence is recorded in `PROGRESS.md`.
 
 ## Sequencing risks
 

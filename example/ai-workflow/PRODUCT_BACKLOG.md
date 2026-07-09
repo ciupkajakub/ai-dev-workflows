@@ -40,6 +40,8 @@ Overdue means incomplete tasks with a due date before the user's current local d
 - Overdue tasks appear before today's tasks.
 - Completed tasks do not appear in the overdue section.
 - Empty state appears when no tasks are overdue.
+- Multiple overdue tasks sort by due date ascending.
+- Dashboard rendering should not introduce an N+1 query path.
 
 ### NMI-002: Add due-date reminder preferences
 
