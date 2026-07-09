@@ -131,7 +131,7 @@ Status: `done`
 
 ## Status update rules
 
-Mark B001 done only when both tasks are verified, all traceability rows are verified or explicitly accepted as gaps, the open validation list is empty, and evidence is recorded in `PROGRESS.md`.
+Mark B001 done only when both tasks are verified, all traceability rows are verified or explicitly accepted as gaps, the open validation list is empty, final audit passes, and evidence is recorded in `PROGRESS.md`.
 
 ## Sequencing risks
 

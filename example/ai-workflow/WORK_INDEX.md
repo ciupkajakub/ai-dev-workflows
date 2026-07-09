@@ -24,5 +24,5 @@
 | 2026-06-23 | Moved B001 from active to blocked while authenticated browser smoke validation required explicit approval. |
 | 2026-06-23 | Returned B001 to active after the user approved a synthetic local fixture smoke check. |
 | 2026-06-23 | Moved B001 from active to validated after all task validation and traceability rows were closed. |
-| 2026-06-23 | Marked B001 done after verification. |
+| 2026-06-23 | Marked B001 done after verification, traceability closure, and final audit. |
 | 2026-06-23 | Created B002 from NMI-002. |

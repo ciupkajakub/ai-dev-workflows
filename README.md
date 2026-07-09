@@ -16,6 +16,7 @@ Do not use it as a replacement for human review, security review, production cha
 4. Run section 9 to turn one selected batch into `FEATURE.md`.
 5. Run section 10 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
 6. Use section 11 or 12 for repeated execution, one task at a time.
+7. Use section 13 to audit artifacts before accepting a batch as done.
 
 Pasteable setup prompt:
 
@@ -59,6 +60,10 @@ acceptance criterion, non-functional requirement, permission rule, assumption,
 risk, edge case, and failure mode must map to a task plus validation evidence, a
 blocker, or an explicitly accepted gap. This is the main guard against a batch
 being marked done while part of the contract was never verified.
+
+Before accepting a completed batch, run the blueprint's final audit prompt. The
+audit checks lifecycle consistency, traceability closure, open validation,
+security approvals, and final-report accuracy without implementing code.
 
 ## Generated files
 

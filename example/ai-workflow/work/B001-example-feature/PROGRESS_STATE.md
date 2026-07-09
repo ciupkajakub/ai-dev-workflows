@@ -44,6 +44,13 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - All required rows in `IMPLEMENTATION.md` traceability closure are verified.
 - No `planned`, `blocked`, or `accepted_gap` traceability rows remain for B001.
 
+## Final audit
+
+- Passed.
+- Lifecycle statuses agree across workflow artifacts.
+- Open validation list is empty.
+- No remaining risks or blockers.
+
 ## Dirty repo and recovery state
 
 - Branch: main
