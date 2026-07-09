@@ -44,7 +44,7 @@ Status: `done`
       required: true
   existing_checks_to_rerun:
     - command: npm test -- dashboard-task-query.test.ts
-      reason: nearest existing query behavior coverage for the touched query layer
+      reason: same command as required validation because the query test file is also the nearest existing behavior coverage for the touched query layer
   likely_files:
     - app queries or services for dashboard tasks
     - dashboard task query tests
@@ -84,7 +84,7 @@ Status: `done`
       required: true
   existing_checks_to_rerun:
     - command: npm test -- dashboard-today-section.test.ts
-      reason: nearest existing UI behavior coverage for unchanged today task rendering
+      reason: same command as required validation because it is the existing UI regression check for unchanged today task rendering
   likely_files:
     - dashboard view/component
     - dashboard view/component tests

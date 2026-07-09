@@ -122,9 +122,9 @@ Required transitions:
 15. Batch `active -> validated`: all T* tasks are done and open validation list is empty.
 16. Batch `validated -> done`: batch lifecycle rows and required evidence are updated.
 17. Backlog `active -> done`: related batch is done and backlog lifecycle rows are updated.
-18. Backlog/batch/task `active|blocked -> superseded`: user explicitly replaces the scope with newer backlog or batch work.
+18. Backlog/batch `active|blocked -> superseded`; task `in_progress|blocked -> superseded`: user explicitly replaces the scope with newer backlog or batch work.
 19. Batch/task `failed_validation -> superseded`: user explicitly replaces the failed scope with newer backlog or batch work.
-20. Batch/task `active|blocked|failed_validation -> rolled_back`: agent-created code changes are reverted or abandoned; record exact files, commands, remaining risk, and next state.
+20. Batch `active|blocked|failed_validation -> rolled_back`; task `in_progress|blocked|failed_validation -> rolled_back`: agent-created code changes are reverted or abandoned; record exact files, commands, remaining risk, and next state.
 
 ## Clarification
 
@@ -923,7 +923,9 @@ Task rules:
 6. validation_commands must list exact commands, what each command proves, and
    whether it is required for done
 7. existing_checks_to_rerun must list exact existing touched-area commands, or
-   `none` with a reason
+   `none` with a reason. If a command is already listed in validation_commands
+   because it is both required validation and the nearest existing regression
+   check, repeat it here and say that explicitly in the reason.
 8. task order should reduce integration risk
 9. decision tasks must produce an explicit product decision before code changes
 10. do not include unrelated backlog items just because nearby code is touched
