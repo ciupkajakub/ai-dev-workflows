@@ -26,9 +26,21 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - `npm test -- dashboard-overdue-section.test.ts` passed.
 - Manual smoke check confirmed overdue tasks appear above today's tasks.
 
+## Open validation list
+
+- None.
+
 ## Open risks or blockers
 
 - None.
+
+## Dirty repo and recovery state
+
+- Branch: main
+- Intended base: origin/main
+- Pre-existing modified files: none
+- Agent-touched files: dashboard query, dashboard UI, related tests, workflow evidence
+- Rollback needed: no
 
 ## Context notes
 

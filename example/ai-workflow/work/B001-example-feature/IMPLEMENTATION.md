@@ -4,6 +4,15 @@ Batch: `B001`
 Source items: `NMI-001`
 Status: `done`
 
+## Size gate
+
+- Source NMI count: 1
+- Implementation task count: 2
+- Acceptance criteria count: 4
+- Risk areas: task query layer, dashboard UI
+- Result: pass
+- Reason: batch is below split thresholds and risk areas are adjacent.
+
 ## Tasks
 
 ```yaml

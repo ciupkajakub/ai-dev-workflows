@@ -26,6 +26,10 @@ Evidence:
 - Query test excludes completed overdue tasks.
 - Query test excludes tasks without due dates.
 
+Review:
+- Final diff was scoped to the task query layer and query tests.
+- No generated files, debug code, focused tests, or sensitive data were added.
+
 Risks or gaps:
 - None.
 
@@ -48,6 +52,10 @@ Evidence:
 - UI test covers visible overdue section.
 - UI test covers empty state.
 - Existing today task rendering test still passes.
+
+Review:
+- Final diff was scoped to dashboard UI and component tests.
+- No generated files, debug code, focused tests, or sensitive data were added.
 
 Risks or gaps:
 - None.

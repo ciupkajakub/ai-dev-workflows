@@ -45,6 +45,11 @@ feedback
 -> work/B###/PROGRESS_STATE.md
 ```
 
+The execution artifacts also define lifecycle gates for `planned`, `active`,
+`blocked`, `failed_validation`, `done`, `superseded`, and `rolled_back` states.
+Treat validation gaps, related failing tests, and unsafe tool access as blockers
+unless the user explicitly accepts an unvalidated state.
+
 ## Generated files
 
 The blueprint is the source of truth. It contains prompts and templates for generating:
