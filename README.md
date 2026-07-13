@@ -17,6 +17,7 @@ Do not use it as a replacement for human review, security review, production cha
 5. Run section 10 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
 6. Use section 11 or 12 for repeated execution, one task at a time.
 7. Use section 13 to audit artifacts before accepting a batch as done.
+8. Use section 14 before changing prompts, models, tools, or harness behavior.
 
 Pasteable setup prompt:
 
@@ -88,7 +89,7 @@ The blueprint-generated workflow files include the detailed security and permiss
 
 Treat agent instruction and automation files as security-sensitive configuration. Review changes to `ai-workflow/**`, `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, MCP/tool configuration, hooks, scripts, and CI workflows before allowing an agent to load or execute them.
 
-Use explicit approval for destructive actions, network access, dependency installs, production or staging access, GitHub mutations, browser automation in authenticated sessions, and MCP/app connector actions.
+Use explicit approval for destructive actions, network access not already authorized by the request or project policy, dependency installs, production or staging access, GitHub mutations, browser automation in authenticated sessions, MCP/app connector actions with side effects, and external transmission of repository or sensitive data.
 
 ## Commit preference
 

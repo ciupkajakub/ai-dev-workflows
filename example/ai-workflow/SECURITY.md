@@ -41,6 +41,8 @@ Distinguish reading local repository files from transmitting data to external se
 
 Reading local files for implementation context is allowed when the files are in scope for the task.
 
+Read-only retrieval from public sources is allowed without a separate approval when the user's request or an approved project policy already authorizes that retrieval, the environment permits it, and no private repository or sensitive data is transmitted. Otherwise ask before network access.
+
 Sending repository content, prompt text, logs, screenshots, workflow files, or extracted data to third-party services requires explicit user approval unless the project already has an approved policy for that destination.
 
 Use content exclusion, ignore rules, or tool-specific allowlists for files that should not be sent to AI providers or external services.
@@ -49,7 +51,7 @@ Use content exclusion, ignore rules, or tool-specific allowlists for files that 
 
 Ask for explicit user approval before:
 
-1. network access
+1. network access not already authorized by the user's request or an approved project policy
 2. dependency installation
 3. destructive actions
 4. production or staging access
@@ -73,7 +75,7 @@ If a task cannot be verified safely without sensitive data, external access, or 
 
 Use the least powerful tool that can complete the task.
 
-Before enabling network access, browser automation, MCP servers, app connectors, package installation, or external CLIs, identify:
+Before enabling new network access, browser automation, MCP servers, app connectors, package installation, or external CLIs, identify:
 
 1. the exact tool or command
 2. the destination or service

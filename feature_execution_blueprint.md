@@ -10,6 +10,13 @@ This blueprint is the source of truth. Generated workflow files are working arti
 
 Rule value test: keep workflow structure only when it reduces a real agent or user failure mode, such as lost context, invented requirements, stale progress state, unsafe tool use, oversized batches, bad handoff, unverified completion, or misleading final reports.
 
+Prompt maintenance rule: for future prompt, policy, tool-guidance, model, or harness
+migrations after adopting this blueprint revision, treat the change as a behavior
+change. Establish representative baseline cases, change one instruction group at a
+time, and keep a change only when it preserves the workflow gates and improves
+measured behavior. If no baseline exists yet, establish it before removing or
+simplifying existing gates. Use section 14 for the evaluation procedure.
+
 This workflow is intentionally complete rather than minimal. Its core value is
 not the number of files; it is the gates those files create. Do not remove a
 gate unless another mechanism still prevents the same failure mode.
@@ -226,12 +233,19 @@ When asking, include:
 
 If a reasonable default is safe and consistent with the contract, proceed and record the assumption in PROGRESS.md.
 
+When enough information exists for reversible, in-scope work already authorized
+by the user, act without requesting another confirmation. Pause only for a real
+blocker, destructive or irreversible action, material scope change, permission
+boundary, or input only the user can provide.
+
 ## Execution discipline
 
 Explore before editing.
 Identify likely files and touchpoints before implementation.
 Prefer the smallest coherent change.
 Avoid unrelated refactors.
+Do not add features, abstractions, compatibility layers, or defensive cleanup that
+the selected task does not require.
 Follow existing repo conventions first.
 Use parallel reading/searching when independent touchpoints need investigation.
 Do not use parallel write workflows unless file ownership boundaries are explicit and low overlap.
@@ -394,8 +408,9 @@ If SECURITY.md and a task prompt conflict, follow the stricter rule and report t
 ## Context hygiene
 
 Read only the files and artifact sections needed for the current task.
-Default to one task per session.
-Continue only when the next task is small, adjacent, and low risk.
+Default to one task at a time, not necessarily one task per session.
+After a task is verified and its artifacts are updated, continue only when the next
+task is small, adjacent, low risk, and the current context remains reliable.
 If exploration becomes noisy, summarize findings in PROGRESS.md and restart from artifacts.
 
 ## Ledger hygiene
@@ -411,7 +426,15 @@ Do not delete historical evidence unless the user explicitly approves an archiva
 
 ## Communication
 
-Be concise and technical.
+Lead with the outcome: what changed, what was found, or what is blocked.
+Include the evidence needed to support that outcome, any material caveat, and the
+next action. Omit secondary detail and repetition before omitting required facts.
+Use complete, readable sentences instead of dense shorthand or unexplained labels.
+Before tool calls for a multi-step task, give a one- or two-sentence update naming
+the first action. During the task, update only at a major phase change or when a
+finding changes the plan; do not narrate routine tool calls.
+Report lifecycle and validation state exactly as supported by current artifacts
+and tool results. Say explicitly when something is not verified.
 Keep commands, file paths, identifiers, and exact error messages unchanged.
 ```
 
@@ -471,6 +494,11 @@ Distinguish reading local repository files from transmitting data to external se
 
 Reading local files for implementation context is allowed when the files are in scope for the task.
 
+Read-only retrieval from public sources is allowed without a separate approval
+when the user's request or an approved project policy already authorizes that
+retrieval, the environment permits it, and no private repository or sensitive data
+is transmitted. Otherwise ask before network access.
+
 Sending repository content, prompt text, logs, screenshots, workflow files, or extracted data to third-party services requires explicit user approval unless the project already has an approved policy for that destination.
 
 Use content exclusion, ignore rules, or tool-specific allowlists for files that should not be sent to AI providers or external services.
@@ -478,7 +506,7 @@ Use content exclusion, ignore rules, or tool-specific allowlists for files that 
 ## 5. Actions requiring explicit approval
 
 Ask for explicit user approval before:
-1. network access
+1. network access not already authorized by the user's request or an approved project policy
 2. dependency installation
 3. destructive actions
 4. production or staging access
@@ -502,7 +530,7 @@ If a task cannot be verified safely without sensitive data, external access, or 
 
 Use the least powerful tool that can complete the task.
 
-Before enabling network access, browser automation, MCP servers, app connectors, package installation, or external CLIs, identify:
+Before enabling new network access, browser automation, MCP servers, app connectors, package installation, or external CLIs, identify:
 1. the exact tool or command
 2. the destination or service
 3. the data that may be sent
@@ -881,13 +909,19 @@ Phase 1, grill the requirements:
 14. offer concrete options for underspecified decisions
 15. recommend defaults where safe
 16. record resolved decisions and assumptions
+17. when no blocking question remains and the feature size gate permits the work,
+    proceed directly to Phase 2 unless I explicitly requested interview-only mode
 
 Do not write FEATURE.md until requirements are stable enough.
 
 Phase 2, synthesize FEATURE.md:
 
-When I say "ready for FEATURE", write Markdown to:
+When requirements are stable enough and the feature size gate permits the work,
+write Markdown to:
 ai-workflow/work/B###-short-name/FEATURE.md
+
+Do not require a separate confirmation phrase before writing FEATURE.md. If a
+blocking decision remains, ask the smallest useful question and stop.
 
 Do not reopen the interview unless the resolved context contradicts the repo, backlog, or selected batch scope.
 
@@ -1174,7 +1208,8 @@ batch status to `active` and selected task status to `in_progress`.
 Rules:
 1. explore before editing
 2. complete one selected task fully
-3. continue only if the next task is tiny, adjacent, safe, and the current task is verified
+3. continue only if the current task is verified, its artifacts are updated, the
+   next task is tiny, adjacent, and safe, and the current context remains reliable
 4. do not invent requirements
 5. keep the diff scoped to the selected task
 6. follow repo conventions
@@ -1220,7 +1255,7 @@ Completion checklist:
 15. before marking the batch done, confirm no required traceability row remains
     `planned` or `blocked`, and the open validation list is empty
 16. before marking the batch done, run the final audit and record the result in PROGRESS.md and PROGRESS_STATE.md
-17. ask for explicit user approval before network access, dependency installation, destructive actions, production or staging access, credential access, GitHub mutations, browser automation in authenticated sessions, MCP/app connector side effects, or transmitting repository data to third-party services
+17. follow SECURITY.md approval boundaries; ask before network access not already authorized by the request or project policy, dependency installation, destructive actions, production or staging access, credential access, GitHub mutations, browser automation in authenticated sessions, MCP/app connector side effects, or transmitting repository data to third-party services
 18. AGENTS.md implementation size, validation failure, traceability, final audit, and review gates are satisfied
 
 After task success, optionally prepare commit packaging using
@@ -1260,7 +1295,9 @@ Batch selection:
 2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `ready` or `active`.
 3. If no eligible batch exists, stop and say implementation tasks must be created first.
 
-Complete only this task unless the next task is tiny, adjacent, and safe to include.
+Complete only this task unless the current task is verified, its artifacts are
+updated, the next task is tiny, adjacent, and safe to include, and the current
+context remains reliable.
 
 Before editing, apply the AGENTS.md implementation size gate if the batch
 artifacts do not already record it.
@@ -1342,8 +1379,8 @@ Audit checks:
 7. every previously failed related validation command was rerun after the fix
 8. PROGRESS_STATE.md open validation list is empty before batch `done`
 9. security-sensitive actions, unsafe tool use, external transmission, and
-   authenticated browser or MCP/app connector actions have recorded approval or
-   are recorded as blockers
+   authenticated browser actions or MCP/app connector actions with side effects
+   have recorded approval or are recorded as blockers
 10. final report would not overclaim validation, completion, files changed, or
     remaining risk
 
@@ -1354,3 +1391,95 @@ Output:
 4. Required artifact updates, if any
 5. Whether the batch may be marked done
 ```
+
+## 14. Evaluate Prompt, Model, And Harness Changes
+
+Use this procedure before simplifying prompts, changing generated policy wording,
+switching models, changing reasoning or effort settings, changing available tools,
+or modifying agent harness behavior.
+
+This section bootstraps the evaluation process. Its introduction and the
+accompanying conservative guidance updates are not a measured prompt migration.
+Establish the baseline below before further behavior changes, prompt reduction, or
+removal of existing gates.
+
+The goal is not to preserve every instruction. The goal is to preserve or improve
+observable workflow behavior while keeping lifecycle, traceability, validation,
+security, recovery, and final-audit gates intact.
+
+### 14.1 Establish representative cases
+
+Use sanitized or synthetic fixtures. Include at least:
+
+1. a clear intake request that should create coherent NMI and batch entries
+2. an ambiguous feature request with one genuinely blocking product decision
+3. a feature request with safe assumptions that should proceed without a question
+4. a repo or artifact conflict that must stop implementation
+5. a task with a related validation failure that must not be reported as done
+6. a request that would require an unauthorized external or destructive action
+7. a completed batch with one traceability or evidence gap that final audit must catch
+8. a normal successful task that should finish without unnecessary approval pauses
+
+For each case, define the expected lifecycle state, required artifact changes,
+required evidence, prohibited actions, allowed assumptions, and expected final
+answer shape.
+
+### 14.2 Record the baseline
+
+Before changing prompts or model settings:
+
+1. record the model and version, reasoning or effort setting, tool set, harness,
+   and exact blueprint revision
+2. run the current configuration on the same representative cases
+3. record correctness, scope adherence, validation behavior, blocker accuracy,
+   unsupported progress or completion claims, and unnecessary user pauses
+4. when available, record input and output tokens, tool calls, turns, retries,
+   latency, and cost
+5. preserve the outputs needed to compare the next run without storing sensitive data
+
+### 14.3 Change one variable group at a time
+
+When migrating:
+
+1. change the model first while preserving the current prompt, tools, and closest
+   equivalent reasoning or effort setting
+2. rerun the baseline cases before changing prompt wording
+3. remove one group of repeated, obsolete, or ineffective instructions at a time
+4. add only the smallest targeted instruction needed to correct a measured regression
+5. rerun the same cases after every prompt, tool, or setting change
+6. do not count lower tokens, latency, cost, calls, or turns as an improvement when
+   required behavior or evidence regresses
+
+Keep duplicated instructions only when a prompt must remain independently
+pasteable and the duplication measurably improves reliability. When duplication is
+intentional, keep one canonical rule and verify that every copy has the same meaning.
+
+### 14.4 Acceptance bar
+
+Accept a prompt, model, or harness change only when:
+
+1. required lifecycle transitions remain correct
+2. feature-contract and traceability coverage does not regress
+3. related validation failures and open validation still block completion
+4. unsafe actions and sensitive-data transmission still require the correct approval
+5. safe, reversible, in-scope work does not acquire unnecessary approval pauses
+6. progress and final reports remain grounded in recorded evidence
+7. the final audit still catches incomplete or inconsistent artifacts
+8. any quality, speed, or cost tradeoff is documented
+
+### 14.5 Provider-specific adapters
+
+Keep the core workflow model-agnostic. Put provider-specific API settings and
+harness behavior in a small adapter or launch configuration, and re-check current
+vendor documentation when changing it.
+
+For OpenAI GPT-5-class models, evaluate verbosity and reasoning effort separately,
+keep reusable prompt prefixes stable when prompt caching matters, expose only
+task-relevant tools, and use programmatic tool orchestration only for bounded,
+deterministic reduction of large structured results.
+
+For Anthropic Claude models, evaluate effort, client timeouts, streaming, and
+long-run progress delivery. For long autonomous runs, consider a separate
+fresh-context verifier and a user-visible progress channel. Do not ask the model to
+reproduce private internal reasoning; request concise decision rationale and
+evidence instead.

@@ -138,12 +138,15 @@ When asking, include:
 
 If a reasonable default is safe and consistent with the contract, proceed and record the assumption in `PROGRESS.md`.
 
+When enough information exists for reversible, in-scope work already authorized by the user, act without requesting another confirmation. Pause only for a real blocker, destructive or irreversible action, material scope change, permission boundary, or input only the user can provide.
+
 ## Execution discipline
 
 Explore before editing.
 Identify likely files and touchpoints before implementation.
 Prefer the smallest coherent change.
 Avoid unrelated refactors.
+Do not add features, abstractions, compatibility layers, or defensive cleanup that the selected task does not require.
 Follow existing repo conventions first.
 Use parallel reading/searching when independent touchpoints need investigation.
 Do not use parallel write workflows unless file ownership boundaries are explicit and low overlap.
@@ -287,8 +290,8 @@ If `SECURITY.md` and a task prompt conflict, follow the stricter rule and report
 ## Context hygiene
 
 Read only the files and artifact sections needed for the current task.
-Default to one task per session.
-Continue only when the next task is small, adjacent, and low risk.
+Default to one task at a time, not necessarily one task per session.
+After a task is verified and its artifacts are updated, continue only when the next task is small, adjacent, low risk, and the current context remains reliable.
 If exploration becomes noisy, summarize findings in `PROGRESS.md` and restart from artifacts.
 
 ## Ledger hygiene
@@ -306,5 +309,9 @@ Do not delete historical evidence unless the user explicitly approves an archiva
 
 ## Communication
 
-Be concise and technical.
+Lead with the outcome: what changed, what was found, or what is blocked.
+Include the evidence needed to support that outcome, any material caveat, and the next action. Omit secondary detail and repetition before omitting required facts.
+Use complete, readable sentences instead of dense shorthand or unexplained labels.
+Before tool calls for a multi-step task, give a one- or two-sentence update naming the first action. During the task, update only at a major phase change or when a finding changes the plan; do not narrate routine tool calls.
+Report lifecycle and validation state exactly as supported by current artifacts and tool results. Say explicitly when something is not verified.
 Keep commands, file paths, identifiers, and exact error messages unchanged.
