@@ -1,0 +1,23 @@
+{
+  "baseline": {
+    "ref": "46786cf9b1bcc1add37fc68a14775dba539afb53",
+    "sources": [
+      { "file": "example/ai-workflow/AGENTS.md" },
+      { "file": "example/ai-workflow/SECURITY.md" },
+      { "file": "example/ai-workflow/TESTING_POLICY.md" },
+      {
+        "file": "feature_execution_blueprint.md",
+        "from_heading": "## 11. Execute The Next Task",
+        "to_heading": "## 12. Execute A Specific Task"
+      }
+    ]
+  },
+  "candidate": {
+    "sources": [
+      { "file": "policies/WORKFLOW.md" },
+      { "file": "policies/SECURITY.md" },
+      { "file": "policies/TESTING.md" },
+      { "file": "prompts/execute.md" }
+    ]
+  }
+}

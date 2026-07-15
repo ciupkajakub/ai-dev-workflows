@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ai-dev-workflows/workflow.schema.json",
+  "title": "AI development workflow invariants",
+  "entity_statuses": {
+    "backlog": ["new", "planned", "spec", "active", "blocked", "done", "superseded"],
+    "batch": ["planned", "spec", "ready", "active", "failed_validation", "blocked", "validated", "done", "superseded", "rolled_back"],
+    "task": ["planned", "in_progress", "failed_validation", "blocked", "validated", "done", "superseded", "rolled_back"],
+    "traceability": ["planned", "verified", "blocked", "accepted_gap"]
+  },
+  "transitions": {
+    "backlog": [
+      "new->planned",
+      "planned->spec",
+      "spec->active",
+      "active->blocked",
+      "blocked->active",
+      "active->done",
+      "new->superseded",
+      "planned->superseded",
+      "spec->superseded",
+      "active->superseded",
+      "blocked->superseded"
+    ],
+    "batch": [
+      "planned->spec",
+      "spec->ready",
+      "ready->active",
+      "active->failed_validation",
+      "failed_validation->active",
+      "failed_validation->blocked",
+      "active->blocked",
+      "blocked->active",
+      "active->validated",
+      "validated->done",
+      "active->superseded",
+      "blocked->superseded",
+      "failed_validation->superseded",
+      "active->rolled_back",
+      "blocked->rolled_back",
+      "failed_validation->rolled_back"
+    ],
+    "task": [
+      "planned->in_progress",
+      "in_progress->failed_validation",
+      "failed_validation->in_progress",
+      "failed_validation->blocked",
+      "in_progress->blocked",
+      "blocked->in_progress",
+      "in_progress->validated",
+      "validated->done",
+      "in_progress->superseded",
+      "blocked->superseded",
+      "failed_validation->superseded",
+      "in_progress->rolled_back",
+      "blocked->rolled_back",
+      "failed_validation->rolled_back"
+    ]
+  },
+  "lifecycle_expectations": {
+    "planned": {
+      "directory_required": false,
+      "required_files": [],
+      "artifact_statuses": {},
+      "backlog_statuses": ["planned"]
+    },
+    "spec": {
+      "directory_required": true,
+      "required_files": ["FEATURE.md"],
+      "artifact_statuses": { "FEATURE.md": "spec" },
+      "backlog_statuses": ["spec"]
+    },
+    "ready": {
+      "directory_required": true,
+      "required_files": ["FEATURE.md", "IMPLEMENTATION.md", "PROGRESS.md", "PROGRESS_STATE.md"],
+      "artifact_statuses": { "FEATURE.md": "spec", "IMPLEMENTATION.md": "ready", "PROGRESS_STATE.md": "ready" },
+      "backlog_statuses": ["spec"]
+    },
+    "active": {
+      "directory_required": true,
+      "required_files": ["FEATURE.md", "IMPLEMENTATION.md", "PROGRESS.md", "PROGRESS_STATE.md"],
+      "artifact_statuses": { "FEATURE.md": "active", "IMPLEMENTATION.md": "active", "PROGRESS_STATE.md": "active" },
+      "backlog_statuses": ["active"]
+    },
+    "failed_validation": {
+      "directory_required": true,
+      "required_files": ["FEATURE.md", "IMPLEMENTATION.md", "PROGRESS.md", "PROGRESS_STATE.md"],
+      "artifact_statuses": { "FEATURE.md": "failed_validation", "IMPLEMENTATION.md": "failed_validation", "PROGRESS_STATE.md": "failed_validation" },
+      "backlog_statuses": ["active", "blocked"]
+    },
+    "blocked": {
+      "directory_required": true,
+      "required_files": ["FEATURE.md", "IMPLEMENTATION.md", "PROGRESS.md", "PROGRESS_STATE.md"],
+      "artifact_statuses": { "FEATURE.md": "blocked", "IMPLEMENTATION.md": "blocked", "PROGRESS_STATE.md": "blocked" },
+      "backlog_statuses": ["blocked"]
+    },
+    "validated": {
+      "directory_required": true,
+      "required_files": ["FEATURE.md", "IMPLEMENTATION.md", "PROGRESS.md", "PROGRESS_STATE.md"],
+      "artifact_statuses": { "FEATURE.md": "validated", "IMPLEMENTATION.md": "validated", "PROGRESS_STATE.md": "validated" },
+      "backlog_statuses": ["active"]
+    },
+    "done": {
+      "directory_required": true,
+      "required_files": ["FEATURE.md", "IMPLEMENTATION.md", "PROGRESS.md", "PROGRESS_STATE.md"],
+      "artifact_statuses": { "FEATURE.md": "done", "IMPLEMENTATION.md": "done", "PROGRESS_STATE.md": "done" },
+      "backlog_statuses": ["done"]
+    },
+    "superseded": {
+      "directory_required": false,
+      "required_files": [],
+      "artifact_statuses": { "FEATURE.md": "superseded", "IMPLEMENTATION.md": "superseded", "PROGRESS_STATE.md": "superseded" },
+      "backlog_statuses": ["superseded"]
+    },
+    "rolled_back": {
+      "directory_required": true,
+      "required_files": ["FEATURE.md", "IMPLEMENTATION.md", "PROGRESS.md", "PROGRESS_STATE.md"],
+      "artifact_statuses": { "FEATURE.md": "rolled_back", "IMPLEMENTATION.md": "rolled_back", "PROGRESS_STATE.md": "rolled_back" },
+      "backlog_statuses": ["blocked", "superseded"]
+    }
+  },
+  "required_base_files": [
+    "AGENTS.md",
+    "SECURITY.md",
+    "TESTING_POLICY.md",
+    "PRODUCT_BACKLOG.md",
+    "WORK_INDEX.md",
+    "COMMIT_MESSAGE.md"
+  ],
+  "required_batch_files": [
+    "FEATURE.md",
+    "IMPLEMENTATION.md",
+    "PROGRESS.md",
+    "PROGRESS_STATE.md"
+  ],
+  "required_task_fields": [
+    "id",
+    "status",
+    "title",
+    "goal",
+    "done_when",
+    "acceptance_criteria",
+    "tests_required",
+    "areas",
+    "risk",
+    "dependencies",
+    "batch_group",
+    "validation_level",
+    "validation_commands",
+    "existing_checks_to_rerun",
+    "likely_files",
+    "context_budget",
+    "stop_conditions",
+    "source_items"
+  ]
+}

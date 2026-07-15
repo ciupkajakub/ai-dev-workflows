@@ -28,6 +28,7 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - `npm test -- dashboard-overdue-section.test.ts` passed.
 - `npm test -- dashboard-today-section.test.ts` passed.
 - Manual smoke check with a synthetic local account confirmed overdue tasks appear above today's tasks.
+- Desktop and mobile renders of populated and empty overdue states had no clipping or spacing regressions and matched existing dashboard patterns.
 - Earlier `npm test -- dashboard-task-query.test.ts` failure for missing due-date sorting was fixed and rerun successfully.
 - Authenticated browser automation was not run; user approved the synthetic local fixture smoke check instead.
 

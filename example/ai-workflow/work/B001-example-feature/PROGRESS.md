@@ -146,3 +146,16 @@ Final audit:
 
 Commit:
 - `feat: show overdue tasks on dashboard`
+
+## 2026-07-15T14:00:00Z — visual-evidence clarification
+
+Task: T002
+
+Validation:
+- The synthetic dashboard was rendered at desktop and mobile widths for populated and empty overdue states.
+
+Evidence:
+- Render inspection found no clipping or spacing regressions and confirmed the section follows existing dashboard patterns.
+
+Final audit clarification:
+- Required desktop/mobile render inspection for populated and empty states is recorded above.
