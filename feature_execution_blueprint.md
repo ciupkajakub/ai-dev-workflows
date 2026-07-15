@@ -155,6 +155,12 @@ Follow the selected batch FEATURE.md and IMPLEMENTATION.md as the feature contra
 
 Do not invent requirements.
 
+FEATURE.md fixes required outcomes and constraints. IMPLEMENTATION.md fixes task
+outcomes, real dependencies, validation, and stop conditions—not the coding path.
+Treat likely files, dependency-free ordering, and proposed techniques as
+hypotheses: adapt them to repo evidence, preserve scope and traceability, and
+update the plan.
+
 Repo behavior, existing tests, schemas, migrations, commands, and conventions are authoritative implementation evidence.
 
 If the feature contract conflicts with repo evidence, stop and report:
