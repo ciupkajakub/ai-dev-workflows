@@ -4,15 +4,15 @@ Batch: `B001`
 Source items: `NMI-001`
 Status: `done`
 
-## Scope decision
+## Implementation scope gate
 
 - Shared completion bar: overdue behavior, user scoping, query performance, and final dashboard states are verified together.
-- Independent deployment or rollback seams: T001 and T002 can be reverted independently but T002 depends on T001.
+- Independent deployment or rollback seams: T001 and T002 can be reverted independently, but T002 depends on T001.
 - Validation and risk areas: query tests, UI tests, today-section regression, query-plan/no-N+1 check, rendered responsive states.
 - Context assessment: small; both tasks use adjacent dashboard touchpoints.
 - Advisory counts: source items `1`; tasks `2`; acceptance criteria `6`; suites/checks `5`.
 - Result: `coherent`.
-- Rationale: the tasks share one contract and an integrated validation story.
+- Reason: both tasks share one contract and one integrated validation story.
 
 ## Traceability closure
 
@@ -96,7 +96,7 @@ Status: `done`
     - overdue section appears above today section
     - empty state appears when no overdue tasks exist
     - existing today task rendering is unchanged
-    - overdue and empty states are rendered and inspected at desktop and mobile widths
+    - populated and empty overdue states are rendered and inspected at desktop and mobile widths
   acceptance_criteria:
     - FEATURE.md AC3
     - FEATURE.md AC4
@@ -118,7 +118,7 @@ Status: `done`
       purpose: proves existing today task rendering remains unchanged
       required: true
     - command: manual smoke check with synthetic local account fixture
-      purpose: renders overdue and empty states at desktop and mobile widths and proves layout, clipping, spacing, and existing-pattern consistency without authenticated browser automation or customer data
+      purpose: renders populated and empty overdue states at desktop and mobile widths and proves layout, clipping, spacing, and existing-pattern consistency without authenticated browser automation or customer data
       required: true
   existing_checks_to_rerun:
     - command: npm test -- dashboard-today-section.test.ts

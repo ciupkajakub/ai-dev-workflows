@@ -1,19 +1,40 @@
-# Commit message prompt
+# Descriptive commit message prompt
 
-Goal: Write a concise commit message grounded in the current diff and selected
-verified task.
+Use this prompt when you want an AI assistant to write a concise commit message for local changes.
 
-Inspect enough evidence to identify what changed, why it was needed, the reason
-for the chosen approach, and the relevant `B###/T###` task.
+Implementation commits should be scoped to one verified `B###/T###` task from a batch `IMPLEMENTATION.md`.
 
-Output:
+Do not use `PRODUCT_BACKLOG.md` or `WORK_INDEX.md` as the commit unit for execution work. Those files may be included in a task commit only when their status/history updates belong to the verified task.
+
+This workflow prefers small verified task commits. If your agent or environment requires approval for git operations, approve the commit step explicitly or ask the assistant to draft the message first.
+
+## Prompt
+
+````md
+Write a descriptive commit message for my current local changes.
+
+First inspect the diff enough to understand:
+
+- what changed
+- why the change was needed
+- why this implementation approach was chosen over obvious alternatives
+- which `B###/T###` task from `IMPLEMENTATION.md` this commit completes, if this is execution work
+
+Use this format:
 
 ```text
 <type>: <short summary>
 
-<what changed, why, and the decision rationale>
+<sentences explaining what changed, why, and the reasoning behind the chosen implementation.>
 ```
 
-Use one of `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, or `perf` when it
-fits. Do not list files mechanically, add unsupported motivation, or include
-irrelevant detail. State a visible assumption when the rationale is uncertain.
+Rules:
+
+- Keep it concise and practical.
+- Use past tense or present tense consistently.
+- Prefer `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, or `perf` as the type.
+- Do not list files mechanically.
+- Do not mention irrelevant implementation details.
+- Do not invent motivation that is not visible from the diff or provided context.
+- If the reasoning is unclear, say what assumption the message is based on.
+````

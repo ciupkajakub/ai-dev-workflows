@@ -1,38 +1,82 @@
 # Testing policy
 
-## Goal
+## 1. Scope and intent
 
-Test observable behavior through the repository's public seams. Tests should
-document business rules and survive internal refactors. Follow established local
-test style before introducing a new convention.
+Test behavior, not implementation details.
 
-For behavior-changing work, select the relevant cases rather than adding them
-mechanically:
+Tests should document business rules.
+Do not test private methods directly unless the repo already has a clear convention and there is no better public boundary.
 
-1. success behavior;
-2. validation, failure, or authorization behavior;
-3. rollback or no-partial-write behavior for write paths;
-4. a nearby branch that must remain unchanged;
-5. side effects the implementation could accidentally introduce.
+## 2. Required coverage for behavior changes
 
-## Tracer-bullet loop
+For every behavior-changing task, include relevant coverage for:
 
-When practical, add or update one behavior-level test, confirm it fails for the
-expected reason, implement the smallest passing change, and repeat. Do not write
-all tests before all implementation. If the repository lacks a useful test seam,
-record why and use the strongest available validation.
+1. success path
+2. failure, validation, or authorization path
+3. rollback or no-partial-write behavior for write paths
+4. nearby branch that must remain unchanged
+5. side effect risk introduced by the implementation
 
-## Test quality
+Do not add every category mechanically. Add the cases that match the touched behavior.
 
-- Prefer clear Arrange, Act, Assert structure and business-behavior names.
-- Assert explicit expected outputs through public interfaces.
-- Include relevant included, excluded, and unchanged records for filtering or
-  scoping behavior.
-- Keep tests deterministic; freeze time or use fixed timestamps when needed.
-- Mock external boundaries where appropriate, not internal domain behavior.
-- For writes, assert the public result, persisted state, and relevant rollback or
-  no-partial-write behavior.
-- Do not leave new tests skipped, pending, or focused.
+## 3. Test structure
 
-For every changed test, record the business rule it proves and the exact command
-and result in `PROGRESS.md`.
+Prefer self-contained tests with clear Arrange, Act, Assert structure.
+Respect established local test style in the touched file or directory.
+Do not rewrite existing test structure solely to satisfy this policy.
+When deviating from this policy because of local conventions, record the reason in `PROGRESS.md`.
+
+## 4. Tracer-bullet TDD loop
+
+For behavior-changing tasks, prefer a tracer-bullet TDD loop:
+
+1. add or update one behavior-level test through the public interface
+2. run it and confirm it fails for the expected reason when practical
+3. implement the smallest change that makes it pass
+4. repeat for the next behavior
+
+If test-first is impractical because the repo lacks a useful seam, record the reason in `PROGRESS.md` and use the strongest available validation signal.
+
+Do not write all tests first and then all implementation. Keep tests and implementation moving one behavior at a time.
+
+## 5. Naming
+
+Test names should describe business behavior.
+Avoid generic names unless the full name still explains the rule.
+
+## 6. Assertions
+
+Prefer explicit expected outputs. Keep assertions minimal and strong.
+Keep assertion order stable.
+If code filters, scopes, or selects records, tests should include included records, excluded records, and proof that excluded records remain unchanged when relevant.
+
+## 7. Determinism
+
+Tests must be deterministic.
+Use fixed timestamps or time-freezing helpers when time matters.
+
+## 8. External boundaries
+
+Mock or stub external boundaries when appropriate:
+
+1. HTTP
+2. queues
+3. external services
+4. clock
+5. file system boundaries
+6. third-party APIs
+
+Avoid stubbing internal domain logic under test.
+
+## 9. Persistence and side effects
+
+For write paths, assert public contract, persisted state, and rollback/no-partial-write behavior when relevant.
+Before finishing a task, ask what the implementation could accidentally update, select, send, expose, enqueue, cache, or delete.
+
+## 10. Reporting
+
+For each task that changes tests, record tests added or changed, the business rule each test proves, and the validation command/result.
+
+## 11. Forbidden final state
+
+Do not leave new tests skipped, pending, or focused.

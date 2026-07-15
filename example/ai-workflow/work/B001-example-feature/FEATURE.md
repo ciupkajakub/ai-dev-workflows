@@ -65,10 +65,7 @@ No schema changes are required.
 
 ## 12. Rollout and verification
 
-Verify with targeted dashboard query tests, dashboard UI tests, a query-plan or
-equivalent no-N+1 check, and local rendering of overdue and empty states at desktop
-and mobile widths. Inspect layout, clipping, spacing, and consistency with existing
-dashboard patterns.
+Verify with targeted dashboard query tests, dashboard UI tests, a query-plan or equivalent no-N+1 check, and a local smoke check.
 
 ## 13. Risks and open questions
 
@@ -79,17 +76,13 @@ dashboard patterns.
 
 1. The app already has a reliable user timezone setting.
 
-## 15. Scope decision
+## 15. Backlog and batch updates
 
-- Coherent user-visible outcome: one overdue dashboard section backed by one query path.
-- Independent deployment or rollback seams: query and UI tasks can be reverted separately but share one acceptance contract.
-- Validation and risk areas: task query behavior, timezone boundary, query shape, dashboard layout.
-- Context assessment: small; query and UI touchpoints are adjacent.
-- Advisory counts: source items `1`; acceptance criteria `6`.
-- Result: `coherent`.
-- Rationale: the work shares one user-visible outcome and one integrated validation story.
+NMI-001 and B001 were marked done after verification.
 
-## 16. Lifecycle updates
-
-NMI-001 and B001 were marked done together after required validation, traceability
-closure, evidence updates, and the final audit.
+Feature scope gate:
+- Source NMI count: 1
+- Estimated acceptance criteria count: 6
+- Risk areas: task query layer, dashboard UI
+- Result: coherent
+- Reason: the query and dashboard presentation share one user-visible outcome, one permission model, related risks, and one integrated validation story.
