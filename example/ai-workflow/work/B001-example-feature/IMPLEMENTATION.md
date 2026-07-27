@@ -82,6 +82,17 @@ Status: `done`
     - app queries or services for dashboard tasks
     - dashboard task query tests
   context_budget: small
+  references:
+    - item: existing user-timezone fixture
+      reason: defines the authoritative local-date boundary
+    - item: existing dashboard task query and query-plan tests
+      reason: define user scoping, sorting, and performance regression behavior
+  applicable_skills:
+    - name: none
+      reason: this backend query task does not need specialized UI or conversion guidance
+      required: false
+      load_when: none
+      required_evidence: none
   stop_conditions:
     - user timezone source is unclear
     - no reliable query-plan or instrumentation check exists for the no-N+1 requirement
@@ -97,6 +108,7 @@ Status: `done`
     - empty state appears when no overdue tasks exist
     - existing today task rendering is unchanged
     - populated and empty overdue states are rendered and inspected at desktop and mobile widths
+    - keyboard access, legibility, and reduced-motion behavior are inspected
   acceptance_criteria:
     - FEATURE.md AC3
     - FEATURE.md AC4
@@ -118,7 +130,7 @@ Status: `done`
       purpose: proves existing today task rendering remains unchanged
       required: true
     - command: manual smoke check with synthetic local account fixture
-      purpose: renders populated and empty overdue states at desktop and mobile widths and proves layout, clipping, spacing, and existing-pattern consistency without authenticated browser automation or customer data
+      purpose: renders populated and empty overdue states at desktop and mobile widths and proves layout, clipping, spacing, keyboard access, legibility, reduced-motion behavior, and existing-pattern consistency without authenticated browser automation or customer data
       required: true
   existing_checks_to_rerun:
     - command: npm test -- dashboard-today-section.test.ts
@@ -127,6 +139,17 @@ Status: `done`
     - dashboard view/component
     - dashboard view/component tests
   context_budget: small
+  references:
+    - item: existing today-section component and dashboard tests
+      reason: define placement, typography, spacing, and behavior that must remain unchanged
+    - item: interactive dashboard fixture with populated and empty overdue states
+      reason: provides the inspectable visual and interaction reference
+  applicable_skills:
+    - name: apple-design
+      reason: the task changes dashboard hierarchy, feedback, responsive states, and visual integration
+      required: true
+      load_when: implementation and visual review
+      required_evidence: desktop/mobile populated/empty renders plus keyboard, legibility, reduced-motion, and existing-pattern findings in PROGRESS.md
   stop_conditions:
     - dashboard layout has competing pending changes
   source_items:

@@ -159,3 +159,21 @@ Evidence:
 
 Final audit clarification:
 - Required desktop/mobile render inspection for populated and empty states is recorded above.
+
+## 2026-07-27 — context-routing clarification
+
+Task: T002
+
+Validation:
+- `apple-design` was scoped to T002 implementation and visual review; it was not
+  loaded for the backend query task.
+
+Evidence:
+- Keyboard access and text legibility remained intact in populated and empty
+  desktop/mobile states.
+- The section introduced no gesture or momentum interaction; reduced-motion mode
+  preserved the same feedback and hierarchy without unnecessary movement.
+
+Final audit clarification:
+- Required skill evidence is recorded without changing the historical T002
+  implementation entry.

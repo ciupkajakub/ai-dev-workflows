@@ -49,17 +49,25 @@ Use content exclusion, ignore rules, or tool-specific allowlists for files that 
 
 ## 5. Actions requiring explicit approval
 
-Ask for explicit user approval before:
+Follow the active environment's sandbox, approval, and action-confirmation
+controls. Never weaken them. Ask for explicit user approval when the exact action
+is not already authorized by the user's request, an approved project policy, or
+an environment confirmation surface.
 
-1. network access not already authorized by the user's request or an approved project policy
-2. dependency installation
-3. destructive actions
-4. production or staging access
-5. credential or secret access
-6. GitHub mutations
-7. browser automation in authenticated sessions
-8. MCP, app connector, or external tool actions with side effects
-9. sending repository, prompt, log, screenshot, or workflow data to third-party services
+Approval-sensitive actions include:
+
+1. new network access or dependency installation
+2. destructive or difficult-to-recover actions
+3. production or staging access
+4. credential or secret access
+5. GitHub or other remote mutations
+6. authenticated browser, MCP, app connector, or external tool actions with side effects
+7. sending repository, prompt, log, screenshot, or workflow data to third-party services
+
+Do not ask twice for an action already authorized at the required scope.
+Read-only local inspection and public retrieval already requested by the user do
+not need a second workflow-level confirmation. Still pause at any mandatory
+action-time confirmation or newly discovered permission/data boundary.
 
 ## 6. Evidence and logging
 
@@ -81,7 +89,7 @@ Before enabling new network access, browser automation, MCP servers, app connect
 2. the destination or service
 3. the data that may be sent
 4. the expected side effects
-5. the approval needed
+5. the approval or existing authorization that applies
 
 Prefer allowlisted domains, read-only scopes, local fixtures, and sandboxed execution.
 Do not access local/private network services, cloud metadata endpoints, production systems, or staging systems unless the user explicitly approves that target.
@@ -105,7 +113,10 @@ Do not let MCP or connector tools use unreviewed workflow artifacts, issue comme
 
 ## 10. GitHub and CI safety
 
-Ask before mutating GitHub state, including creating branches, pushing commits, opening or editing pull requests, changing issues, labels, comments, releases, repository settings, or workflow files.
+Mutate GitHub state only when the user's request, approved project policy, or
+active confirmation surface authorizes the exact action. Otherwise ask before
+creating branches, pushing commits, opening or editing pull requests, changing
+issues, labels, comments, releases, repository settings, or workflow files.
 
 For agent-created GitHub Actions or CI changes, prefer least-privilege permissions, avoid exposing secrets to pull requests from untrusted branches, and protect agent configuration files with review when the project supports it.
 
@@ -113,4 +124,7 @@ Do not expose repository secrets to workflows triggered from forks or untrusted 
 
 ## 11. Commits
 
-This workflow prefers small verified task commits. If the environment requires approval for git operations, ask for approval before staging or committing. If approval is not available, draft the commit message using `COMMIT_MESSAGE.md` and stop.
+This workflow prefers small verified task commits. Stage or commit only when the
+user's request or repo policy includes commit packaging and the active environment
+permits it. If authorization is absent, draft the message using
+`COMMIT_MESSAGE.md` and stop.

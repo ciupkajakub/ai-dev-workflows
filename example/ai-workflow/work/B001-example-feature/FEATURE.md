@@ -65,7 +65,10 @@ No schema changes are required.
 
 ## 12. Rollout and verification
 
-Verify with targeted dashboard query tests, dashboard UI tests, a query-plan or equivalent no-N+1 check, and a local smoke check.
+Verify with targeted dashboard query tests, dashboard UI tests, a query-plan or
+equivalent no-N+1 check, and a local smoke check of the affected responsive,
+populated, and empty states. The UI review must also check keyboard access,
+legibility, and reduced-motion behavior.
 
 ## 13. Risks and open questions
 
@@ -76,7 +79,33 @@ Verify with targeted dashboard query tests, dashboard UI tests, a query-plan or 
 
 1. The app already has a reliable user timezone setting.
 
-## 15. Backlog and batch updates
+## 15. References and applicable skills
+
+References:
+
+1. Existing today-section component and its dashboard tests define placement,
+   typography, spacing, and unchanged behavior.
+2. Existing user-timezone fixture defines the local-date boundary.
+3. A small interactive dashboard fixture with populated and empty overdue states
+   is the preferred visual reference; screenshots are supporting evidence only.
+
+Applicable skills:
+
+1. `apple-design`
+   - Reason: the batch changes dashboard hierarchy, feedback, responsive states,
+     and visual integration with an existing surface.
+   - Required: yes.
+   - Phases: feature contract, T002 implementation, visual review.
+   - Required evidence: affected desktop/mobile and populated/empty states,
+     keyboard access, legibility, reduced motion, and consistency with existing
+     dashboard patterns.
+
+Not applicable:
+
+- `conversion-optimization`: this batch improves operational clarity and does not
+  define a conversion funnel, conversion goal, experiment, or uplift claim.
+
+## 16. Backlog and batch updates
 
 NMI-001 and B001 were marked done after verification.
 
