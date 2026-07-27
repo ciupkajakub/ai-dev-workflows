@@ -24,5 +24,5 @@
 | 2026-06-23 | Moved B001 from active to blocked while authenticated browser smoke validation required explicit approval. |
 | 2026-06-23 | Returned B001 to active after the user approved a synthetic local fixture smoke check. |
 | 2026-06-23 | Kept B001 active after T002 finished; separate section 13 batch validation remained pending. |
-| 2026-06-23 | Moved B001 from active to validated after declared batch validation passed, then marked it done after the artifact audit passed. |
+| 2026-06-23 | Moved B001 through validated to done after the final batch check passed. |
 | 2026-06-23 | Created B002 from NMI-002. |

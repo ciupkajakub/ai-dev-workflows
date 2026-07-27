@@ -33,11 +33,6 @@ task_execution_policy:
 ## Batch validation
 
 ```yaml
-execution_budget:
-  max_elapsed_minutes: 15
-  max_validation_commands: 6
-  max_command_seconds: 300
-  state_finalization_reserve_seconds: 60
 validation_commands:
   - command: npm test
     purpose: proves the integrated dashboard change does not regress the wider application suite

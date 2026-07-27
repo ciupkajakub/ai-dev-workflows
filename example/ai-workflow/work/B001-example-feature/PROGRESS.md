@@ -66,8 +66,6 @@ Validation:
 - `npm test -- dashboard-query-plan.test.ts` passed.
 - Two unique task-scoped checks and the task-local workflow updates completed in
   8 minutes, before T001's 10-minute progress checkpoint.
-- Covered-file fingerprint: `synthetic-t001-query-v1` for the dashboard query and
-  its query tests; those files were unchanged by T002.
 
 Evidence:
 - Query test covers included overdue tasks.
@@ -119,8 +117,6 @@ Validation:
 - Three unique task-scoped checks and the task-local workflow updates completed
   in 7 minutes, before T002's 10-minute progress checkpoint; no batch- or
   CI-scoped command ran during the task.
-- Covered-file fingerprint: `synthetic-t002-ui-v1` for the dashboard UI and
-  component tests.
 
 Evidence:
 - UI test covers visible overdue section.
@@ -140,33 +136,28 @@ Workflow updates:
 - Marked T002 traceability rows verified in `IMPLEMENTATION.md`.
 - Kept B001 and NMI-001 active.
 - Left `npm test` in the batch-scoped open validation list.
-- Stopped the task turn with section 13 `Mode: validate_and_audit` pending.
+- Stopped the task turn with section 13 pending.
 
 ## 2026-06-23
 
-Batch validation and final audit: B001
-
-Mode: `validate_and_audit`
+Final batch check: B001
 
 State path:
-- B001 `active -> validated` after the declared batch validation passed.
-- B001 `validated -> done` after the separate artifact audit passed.
+- B001 `active -> validated -> done` after the declared batch validation and
+  compact final-state check passed.
 
 Batch validation:
-- `npm test` passed once in 4 minutes after all T* tasks were done and within the
-  declared batch-validation budget.
-- Batch evidence revision: `synthetic-example-tree-v1`.
+- `npm test` passed once in 4 minutes after all T* tasks were done.
 - No CI-scoped validation was required.
 - Passing task-scoped commands were not rerun.
 
-Final audit:
+Final state check:
 - Lifecycle statuses agree across `FEATURE.md`, `IMPLEMENTATION.md`, `WORK_INDEX.md`, `PRODUCT_BACKLOG.md`, and `PROGRESS_STATE.md`.
 - All required traceability rows are verified.
 - No `accepted_gap` rows remain.
 - Task, batch, and CI open validation lists are empty.
 - Earlier failed query validation was rerun successfully after the fix.
 - Authenticated browser automation was blocked until the user approved the synthetic local fixture smoke check.
-- Workflow ledger mergeability was checked against `origin/main`; no `PRODUCT_BACKLOG.md` or `WORK_INDEX.md` conflicts were found.
 - No sensitive data, customer data, or untrusted-content instruction was accepted silently.
 - Final report may claim B001 done with no remaining risks.
 
@@ -187,7 +178,7 @@ Validation:
 Evidence:
 - Render inspection found no clipping or spacing regressions and confirmed the section follows existing dashboard patterns.
 
-Final audit clarification:
+Final batch check clarification:
 - Required desktop/mobile render inspection for populated and empty states is recorded above.
 
 ## 2026-07-27 — context-routing clarification
@@ -204,6 +195,6 @@ Evidence:
 - The section introduced no gesture or momentum interaction; reduced-motion mode
   preserved the same feedback and hierarchy without unnecessary movement.
 
-Final audit clarification:
+Final batch check clarification:
 - Required skill evidence is recorded without changing the historical T002
   implementation entry.

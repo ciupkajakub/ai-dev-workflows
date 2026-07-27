@@ -51,14 +51,6 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - Earlier `npm test -- dashboard-task-query.test.ts` failure for missing due-date sorting was fixed and rerun successfully.
 - Authenticated browser automation was not run; user approved the synthetic local fixture smoke check instead.
 
-## Validation revision
-
-- Current implementation revision: `synthetic-example-tree-v1`.
-- T001 covered-file fingerprint: `synthetic-t001-query-v1`; its query files were
-  unchanged after T001 validation.
-- T002 covered-file fingerprint: `synthetic-t002-ui-v1`.
-- Batch evidence is bound to the integrated `synthetic-example-tree-v1` revision.
-
 ## Open validation list
 
 - Task: none.
@@ -74,13 +66,12 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - All required rows in `IMPLEMENTATION.md` traceability closure are verified.
 - No `planned`, `blocked`, or `accepted_gap` traceability rows remain for B001.
 
-## Final audit
+## Final batch check
 
 - Passed.
-- Declared batch validation passed within budget; no CI check was required.
+- Declared batch validation passed once; no CI check was required.
 - Lifecycle statuses agree across workflow artifacts.
 - Task, batch, and CI open validation lists are empty.
-- Workflow ledger mergeability was checked against `origin/main`; no ledger conflicts were found.
 - No remaining risks or blockers.
 
 ## Dirty repo and recovery state

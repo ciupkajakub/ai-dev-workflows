@@ -58,7 +58,7 @@ management app. Paths and commands are illustrative.
     traceability rows, `PROGRESS.md`, and `PROGRESS_STATE.md` unless the batch
     itself changes state
   - final completion updates every owner only after validation, traceability
-    closure, evidence, and final audit pass
+    closure, evidence, and the final batch check pass
 - Source NMI rows never use task/batch-only `failed_validation`, `validated`, or
   `rolled_back`; keep them `active` or `blocked` until final `done`, unless scope
   is explicitly `superseded`.
@@ -101,9 +101,9 @@ Batch- and CI-scoped validation does not run during task execution; it remains
 open and blocks the batch, not a completed task. If task validation is missing,
 times out, or fails, use `blocked` or `failed_validation`. `accepted_gap`
 requires explicit user acceptance recorded in `PROGRESS.md`. Before a batch
-becomes `done`, section 13 with `Mode: validate_and_audit` must pass, all scoped
-open validation lists must be empty, and every required traceability row must be
-`verified` or an approved `accepted_gap`.
+becomes `done`, section 13 must run declared batch validation once and pass the
+final state check; all scoped open validation lists must be empty, and every
+required traceability row must be `verified` or an approved `accepted_gap`.
 
 ## Context and communication
 

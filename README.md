@@ -20,9 +20,8 @@ Do not use it as a replacement for human review, security review, production cha
 4. Run section 9 to turn one selected batch into `FEATURE.md`.
 5. Run section 10 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
 6. Use section 11 or 12 for repeated execution, one task at a time.
-7. Use section 13 in a separate turn with `Mode: validate_and_audit` to run
-   declared batch validation and audit artifacts before accepting a batch as
-   done. Omitting the mode preserves the audit-only behavior.
+7. Use section 13 in a separate turn to run declared batch validation once,
+   check the final workflow state, and accept or block the batch.
 8. Use section 14 before changing prompts, models, tools, or harness behavior.
 
 The numbered sections are a stable interface designed for short remote or mobile
@@ -78,10 +77,10 @@ risk, edge case, and failure mode must map to a task plus validation evidence, a
 blocker, or an explicitly accepted gap. This is the main guard against a batch
 being marked done while part of the contract was never verified.
 
-Before accepting a completed batch, run the blueprint's separate batch-validation
-and final-audit prompt. It runs declared broader local checks once, then checks
-lifecycle consistency, traceability closure, scoped open validation, security
-approvals, and final-report accuracy without implementing code.
+Before accepting a completed batch, run the blueprint's final batch check. It
+runs declared broader local checks once, then checks lifecycle consistency,
+traceability closure, scoped open validation, security approvals, and
+final-report accuracy without implementing code.
 
 ## Bounded task execution
 
@@ -107,9 +106,10 @@ task.
 Loading a security policy, testing policy, skill, or reference does not add a
 validation command. A task executor may propose broader proof for replanning, but
 cannot invent or run it. The last task leaves the batch active and stops with
-section 13 `Mode: validate_and_audit` pending; it never folds the final audit
-into the same turn. Task evidence remains valid while its covered files are
-unchanged; batch and CI evidence must match the exact integrated revision.
+section 13 pending; it never folds the final batch check into the same turn.
+Section 13 runs each declared batch command once, trusts recorded task results,
+checks required CI evidence, and closes the lifecycle only when no blocker
+remains.
 
 ## Context strategy
 
