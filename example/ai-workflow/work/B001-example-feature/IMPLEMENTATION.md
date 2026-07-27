@@ -11,21 +11,22 @@ Status: `done`
 - Validation and risk areas: task-scoped query/UI checks and rendered states;
   batch-scoped full suite; no CI-only check.
 - Context assessment: small; both tasks use adjacent dashboard touchpoints.
-- Execution-budget assessment: T001 has two unique task checks; T002 has three;
-  both fit the declared Execution policy.
+- Throughput assessment: T001 has two unique task checks; T002 has three; broad
+  validation runs once at batch scope and neither task boundary is time-driven.
 - Advisory counts: source items `1`; tasks `2`; acceptance criteria `6`;
-  task-scoped checks `5`; batch-scoped checks `1`; CI-scoped checks `0`.
+  task-scoped checks `5`; batch-scoped checks `1`; CI-scoped checks `0`;
+  estimated total task minutes `16`.
 - Result: `coherent`.
 - Reason: both tasks share one contract and one integrated validation story.
 
 ## Execution policy
 
 ```yaml
-task_execution_ceiling:
-  max_elapsed_minutes: 10
-  max_validation_commands: 4
+task_execution_policy:
+  target_elapsed_minutes: 10
   max_command_seconds: 120
-  state_finalization_reserve_seconds: 30
+  no_progress_cycle_limit: 2
+  max_same_check_retries_without_change: 0
   allow_repo_wide_commands: false
 ```
 
@@ -109,7 +110,7 @@ validation_commands:
   dependencies: []
   batch_group: query
   validation_level: targeted_tests
-  execution_budget:
+  execution_guidance:
     estimated_minutes: 8
   validation_commands:
     - command: npm test -- dashboard-task-query.test.ts
@@ -171,7 +172,7 @@ validation_commands:
     - T001
   batch_group: ui
   validation_level: targeted_tests, manual_check
-  execution_budget:
+  execution_guidance:
     estimated_minutes: 8
   validation_commands:
     - command: npm test -- dashboard-overdue-section.test.ts

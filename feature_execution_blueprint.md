@@ -44,8 +44,8 @@ Stable section contract:
 | Capture feedback or a feature idea | 8 | Backlog items and coherent batch rows |
 | Grill and contract a batch | 9 | `FEATURE.md` |
 | Turn the contract into execution work | 10 | `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md` |
-| Execute the next task | 11 | One selected task implemented and task-validated within its execution budget |
-| Execute a named task | 12 | The named task implemented and task-validated within its execution budget |
+| Execute the next task | 11 | One selected task implemented and task-validated with bounded commands and a no-progress watchdog |
+| Execute a named task | 12 | The named task implemented and task-validated with bounded commands and a no-progress watchdog |
 | Audit before completion | 13 | Pass/fail artifact audit, with an explicit bounded batch-validation mode |
 | Evaluate a model, prompt, tool, or harness change | 14 | Comparable baseline and candidate evidence |
 
@@ -122,7 +122,8 @@ Core gates:
 3. contract gate: FEATURE.md freezes scope, non-goals, requirements, assumptions, risks, and verification expectations
 4. traceability gate: IMPLEMENTATION.md maps every contract item to tasks, validation, blocker, or accepted gap
 5. execution gate: one task is implemented and validated before another starts
-6. execution-budget gate: a task must fit the bounded task runtime and validation budget or be split before execution
+6. execution-throughput gate: task boundaries follow coherent implementation
+   outcomes; elapsed time triggers a progress checkpoint, never an automatic split
 7. validation-scope gate: task execution runs task-scoped checks only; broader batch and CI checks run at their declared seams
 8. validation gate: related failures and open validation list block completion
 9. evidence gate: PROGRESS.md records decisions, commands, failures, fixes, and final proof
@@ -157,9 +158,13 @@ Optional helpers:
 - ci_validation_commands: exact checks owned by CI or another external system.
   Local task and audit turns record their evidence or pending state but never
   launch them.
-- execution_budget: the maximum task elapsed time, number of validation commands,
-  duration of one command, and permission for repo-wide commands, declared once
-  in the selected IMPLEMENTATION.md execution policy.
+- task_execution_policy: the task elapsed-time target, hard per-command timeout,
+  no-progress watchdog, repeat limit, and permission for repo-wide commands,
+  declared once in the selected IMPLEMENTATION.md. The elapsed target is a
+  checkpoint, not a task deadline or split trigger.
+- execution_guidance: an honest per-task duration estimate used to compare
+  planning throughput. It is advisory and may exceed the elapsed-time target
+  when the task remains one coherent implementation seam.
 - related validation: a required check at its declared scope that exercises
   touched behavior, directly related code, or a previously failing path in the
   same batch.
@@ -303,7 +308,7 @@ A task is done only when:
 
 1. `done_when` and relevant acceptance criteria are satisfied
 2. required task-scoped validation and focused existing regression checks pass
-   within the task execution budget
+   within their declared command timeouts
 3. previously failed task-scoped checks are rerun successfully or proven unrelated
 4. touched traceability rows contain evidence and no required row is silently
    dropped
@@ -329,8 +334,10 @@ required traceability row must be `verified` or an explicitly approved
 - Keep `PROGRESS_STATE.md` compact; put detailed evidence in append-only
   `PROGRESS.md`.
 - Default to one task at a time. Obey the selected IMPLEMENTATION.md execution
-  policy. Split work during section 10 instead of raising its ceilings. Stop
-  after the selected task; another task or section 13 starts in a separate turn.
+  policy. Split only at a coherent implementation, deployment, rollback, or
+  independently verifiable outcome seam, never solely to meet a time estimate
+  or validation-command count. Stop after the selected task; another task or
+  section 13 starts in a separate turn.
 - Lead updates and final reports with outcome, evidence, caveats, and next action.
 - Keep exact commands, paths, identifiers, and errors unchanged.
 
@@ -984,31 +991,48 @@ Batch selection:
 2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to
    select the first batch in execution order whose status is `spec` or `ready`.
 3. An `active`, `blocked`, or `failed_validation` batch is eligible only when
-   section 11 or 13 recorded `task_split_required`,
-   `execution_budget_exhausted`, `stale_validation_evidence`, or a required
-   validation-scope reclassification. Preserve completed implementation scope
-   and historical evidence; split, reclassify, or add focused recovery validation
-   only for the work that caused the replan.
+   section 11 or 13 recorded `no_progress`, `stale_validation_evidence`, a newly
+   discovered independent implementation seam, or a required validation-scope
+   reclassification. Preserve completed implementation scope, task ids, task
+   boundaries, and historical evidence unless the user explicitly approves a
+   task-count increase.
 4. If no eligible batch exists, stop and say a batch FEATURE.md must be created
    first or identify why the requested active-batch replan is not allowed.
 
 Implementation scope gate:
 Record source NMI count, task count, acceptance criteria count, required
-task-, batch-, and CI-scoped validation commands, risk areas, result
-(`coherent`, `split_recommended`, or `scope_expansion_requires_approval`), and
-reason.
+task-, batch-, and CI-scoped validation commands, estimated total task minutes,
+risk areas, result (`coherent`, `split_recommended`, or
+`scope_expansion_requires_approval`), and reason. For an active-batch replan,
+also record the remaining executable task count before and after the proposal,
+the task-count delta, and the estimated remaining task minutes before and after.
 
 Recommend a split when tasks have independent deployment or rollback seams,
 require unrelated validation or risk areas, cannot share one completion bar,
 contain an unresolved implementation-changing decision, or cannot fit in
 reliable working context.
 
-Every task must fit the hard Execution policy declared below, including
-exploration, edits, validation, evidence, and task-local workflow updates. If a
-task cannot fit, split it before marking the plan ready. Do not raise a ceiling
-to avoid a split. Counts other than these execution ceilings are advisory, not
-automatic blockers. Ask only when splitting would materially change the
-authorized outcome.
+Do not split a task solely because its estimate exceeds the elapsed-time target,
+it has more than a preferred number of focused checks, or a previous attempt
+took too long. Those are throughput signals: remove duplicate or broad
+validation, narrow context, and use the runtime progress watchdog first.
+
+Preserve existing task ids and task boundaries during an active-batch replan
+unless changed feature scope or newly discovered repo evidence creates a
+genuinely independent implementation, deployment, rollback, or verification
+seam. If the proposal increases the number of remaining executable T* tasks,
+set the result to `scope_expansion_requires_approval` and stop before rewriting
+the plan unless the user explicitly approved that increase. A lower per-task
+duration does not justify a higher task count or a higher estimated total.
+
+Patch an active plan minimally: update the Execution policy, validation scopes,
+and only directly affected task/state fields. Do not regenerate the full task
+list, renumber tasks, duplicate traceability rows, or rewrite unchanged
+evidence. If the current plan already contains replacements created solely for
+retired elapsed-time or check-count ceilings, use the last pre-split plan from
+version history as the semantic baseline and propose a task-count reduction
+without inventing more ids. Preserve historical evidence and report any
+implemented replacement work that must be reconciled before merging boundaries.
 
 Task:
 Produce ai-workflow/work/B###-short-name/IMPLEMENTATION.md.
@@ -1033,16 +1057,22 @@ Also include these sections before the task list:
 
 ## Execution policy
 
-Declare the hard task ceiling once for the whole plan:
+Declare the task runtime policy once for the whole plan:
 
 ```yaml
-task_execution_ceiling:
-  max_elapsed_minutes: 10
-  max_validation_commands: 4
+task_execution_policy:
+  target_elapsed_minutes: 10
   max_command_seconds: 120
-  state_finalization_reserve_seconds: 30
+  no_progress_cycle_limit: 2
+  max_same_check_retries_without_change: 0
   allow_repo_wide_commands: false
 ```
+
+`target_elapsed_minutes` is a checkpoint for reviewing remaining work and
+removing avoidable overhead. It is not a deadline, completion gate, or reason to
+split or supersede a cohesive task. `max_command_seconds`,
+`no_progress_cycle_limit`, and `max_same_check_retries_without_change` are hard
+runtime bounds.
 
 ## Batch validation
 
@@ -1106,20 +1136,25 @@ run this planning audit:
 1. FEATURE.md exists and has stable numbered items for requirements, acceptance criteria, permissions, assumptions, risks, edge cases, and failure modes
 2. every implementation-affecting FEATURE.md item appears in the traceability table
 3. every traceability row maps to T* tasks, a non-code decision, or a blocked/accepted gap path
-4. every T* task has status, objective `done_when`, execution_budget,
+4. every T* task has status, objective `done_when`, execution_guidance,
    validation_commands, existing_checks_to_rerun, stop_conditions, source_items,
    references, and applicable_skills
-5. every task fits the hard task ceilings; otherwise it was split
+5. every task represents a coherent outcome seam; neither elapsed-time estimate
+   nor validation-command count was used as an automatic split trigger
 6. every validation item has exactly one scope and is placed at that scope
 7. no full suite, repo-wide check, full-history scan, dependency audit, or
    external CI check appears at task scope
 8. Execution policy, Batch validation, and CI validation sections exist; the
-   execution policy uses this section's hard ceilings, and empty validation
-   sections use `none` with a reason
+   execution policy uses this section's hard command and no-progress bounds,
+   and empty validation sections use `none` with a reason
 9. no task exists only as bookkeeping unless it supports a mapped traceability row
 10. implementation scope gate result is recorded and does not require an unapproved split
 11. PROGRESS.md and PROGRESS_STATE.md exist
 12. PROGRESS_STATE.md identifies the next task and the task, batch, and CI open validation lists
+13. an active-batch replan records before/after remaining task counts and
+    estimated minutes; any unapproved positive task-count delta blocks the replan
+14. an active-batch replan is a minimal patch: unchanged tasks, traceability rows,
+    and historical evidence were not regenerated or duplicated
 
 Each task must include:
 1. id, formatted as T001, T002, T003
@@ -1137,7 +1172,7 @@ Each task must include:
 10. dependencies
 11. batch_group
 12. validation_level
-13. execution_budget
+13. execution_guidance
 14. validation_commands
 15. existing_checks_to_rerun
 16. likely_files
@@ -1148,19 +1183,19 @@ Each task must include:
 21. applicable_skills
 
 Use this validation field shape:
-execution_budget:
-  estimated_minutes: <integer no greater than task_execution_ceiling.max_elapsed_minutes>
+execution_guidance:
+  estimated_minutes: <honest integer estimate; advisory and allowed to exceed the target>
 validation_commands:
   - command: "<exact command>"
     purpose: "<what this proves>"
     required: true
     scope: task
-    timeout_seconds: <integer no greater than task_execution_ceiling.max_command_seconds>
+    timeout_seconds: <integer no greater than task_execution_policy.max_command_seconds>
 existing_checks_to_rerun:
   - command: "<exact command, or none>"
     reason: "<why this existing check is needed, or why none exists>"
     scope: task
-    timeout_seconds: <integer no greater than task_execution_ceiling.max_command_seconds>
+    timeout_seconds: <integer no greater than task_execution_policy.max_command_seconds>
 references:
   - item: "<path, URL, test, mockup, prototype, or none>"
     reason: "<what decision or validation this constrains>"
@@ -1172,22 +1207,21 @@ applicable_skills:
     required_evidence: "<what must be recorded in PROGRESS.md>"
 
 Task rules:
-1. each task must have one primary outcome, one coherent implementation seam,
-   an `estimated_minutes` value no greater than the plan's
-   `task_execution_ceiling.max_elapsed_minutes`, and fit every execution-policy
-   ceiling; otherwise split it
+1. each task must have one primary outcome and one coherent implementation seam;
+   estimate its duration honestly, but never split it solely to stay below
+   `task_execution_policy.target_elapsed_minutes` or a validation-command count
 2. each done_when must be objectively checkable
 3. each task must map to FEATURE.md acceptance criteria
 4. each task must identify a practical validation signal
 5. tests_required must be specific
 6. validation_commands must list only focused task-scoped commands, what each
    command proves, whether it is required for done, and a timeout no greater than
-   the task command ceiling
+   the task command timeout
 7. existing_checks_to_rerun must list exact focused task-scoped commands nearest
    to the touched behavior, or `none` with a reason. If a command is already
    listed in validation_commands because it is both required validation and the
    nearest existing regression check, repeat it here, say that explicitly in the
-   reason, and count the duplicate only once against the execution budget.
+   reason, and run the duplicate only once.
 8. task order should reduce integration risk
 9. decision tasks must produce an explicit product decision before code changes
 10. do not include unrelated backlog items just because nearby code is touched
@@ -1212,15 +1246,16 @@ Task rules:
 20. loading SECURITY.md, TESTING_POLICY.md, a reference, or a skill does not add
     validation; every executable check must be declared once at task, batch, or
     CI scope
-21. even a security, dependency, build, or CI tooling task must fit the task
-    ceiling and use focused fixtures or configuration tests; move whole-repo
-    proof to batch or CI scope
+21. even a security, dependency, build, or CI tooling task must use focused
+    fixtures or configuration tests at task scope; move whole-repo proof to
+    batch or CI scope rather than splitting the implementation around checks
 22. when current covered-file evidence is missing or stale for a completed task,
     preserve that task and its historical evidence and add the smallest focused
     validation-recovery task linked to the affected task and traceability rows
-23. when splitting an unfinished blocked/exhausted task, mark the source task
-    `superseded`, link its replacement task ids, and preserve its historical
-    progress evidence
+23. during an active-batch replan, preserve existing task ids and boundaries.
+    If changed scope or new repo evidence warrants a user-approved split, mark
+    the unfinished source task `superseded`, link its replacement task ids, and
+    preserve its historical progress evidence
 
 Also create:
 1. ai-workflow/work/B###-short-name/PROGRESS.md
@@ -1259,13 +1294,13 @@ Updated: <YYYY-MM-DD>
 - Skills: None yet.
 - References: None yet.
 
-## Active task budget
+## Active task runtime
 - Task: None yet.
 - Started:
-- Work deadline:
-- Task deadline:
-- State-finalization reserve:
-- Unique validation commands used: 0/<task_execution_ceiling.max_validation_commands>.
+- Target checkpoint:
+- Last progress checkpoint:
+- Consecutive no-progress cycles: 0/<task_execution_policy.no_progress_cycle_limit>.
+- Same-check retries without a relevant change: 0/<task_execution_policy.max_same_check_retries_without_change>.
 
 ## Validation evidence
 - None yet.
@@ -1306,25 +1341,34 @@ Lifecycle update:
 2. For normal planning, set IMPLEMENTATION.md, WORK_INDEX.md selected batch row,
    and PROGRESS_STATE.md to `ready` as one operation when IMPLEMENTATION.md has
    objective T* tasks and both progress files exist.
-3. For an authorized active-batch replan, preserve completed tasks and historical
-   evidence, supersede only replaced unfinished tasks, add focused split or
-   validation-recovery tasks, keep current batch/source lifecycle states, and
-   update only affected task/validation scopes, PROGRESS.md, and
-   PROGRESS_STATE.md. Never regress the batch to `ready` or source NMI rows to
-   `spec`.
+3. For an authorized active-batch replan, preserve completed tasks, existing
+   unfinished task ids and boundaries, and historical evidence. Reclassify
+   validation at the existing seams first. Supersede an unfinished task or add
+   a focused recovery task only for a user-approved task-count increase caused
+   by changed scope or newly discovered independent repo seams. Keep current
+   batch/source lifecycle states and update only affected task/validation
+   scopes, PROGRESS.md, and PROGRESS_STATE.md. Never regress the batch to
+   `ready` or source NMI rows to `spec`.
+   If the plan was expanded solely by retired elapsed-time or validation-count
+   ceilings, use version history to restore its prior semantic boundaries as a
+   minimal task-count-reducing repair instead of adding another generation of
+   replacement ids.
 4. Set Updated date to today's date.
 5. Append a Batch history row for the transition or authorized replan.
 6. Do not mark ready or accept the replan if FEATURE.md is missing, tasks are not
    objective, or progress files were not created.
 7. Do not mark ready or accept the replan if this section's implementation scope
    gate requires an unapproved split.
-8. Do not mark ready or accept the replan if any task lacks a status, execution_budget, scoped
+8. Do not mark ready or accept the replan if any task lacks a status, execution_guidance, scoped
    validation_commands, or scoped existing_checks_to_rerun.
 9. Do not mark ready or accept the replan if Execution policy, Batch validation,
-   or CI validation is absent or the execution policy exceeds a hard ceiling.
+   or CI validation is absent or the execution policy weakens a hard command or
+   no-progress bound.
 10. Do not mark ready or accept the replan if the traceability closure table is missing required FEATURE.md items or contains unmapped required items.
 11. Do not mark ready or accept the replan if the planning audit fails.
 12. Do not implement application code in this step.
+13. Do not accept an active-batch replan with a positive remaining task-count
+    delta unless the user explicitly approved the increase.
 ````
 
 ## 11. Execute The Next Task
@@ -1371,44 +1415,44 @@ Task selection:
    `in_progress`, `failed_validation`, or resolvable `blocked`.
 2. Do not start a different task while an earlier selected task has an unresolved
    related validation failure.
-3. A task blocked by `task_split_required` or `execution_budget_exhausted` is not
-   resumable unchanged. Stop and rerun section 10 to split or replan it.
+3. A task blocked by `no_progress` may resume only with a new concrete
+   hypothesis, newly available evidence, or a changed verification path. Do not
+   split it merely to reset the watchdog.
 4. If no task is executable, report the exact blocker or that final audit is next.
 
-Budget and validation preflight:
-1. Require the plan to declare `task_execution_ceiling` and the selected task to
-   declare `execution_budget`,
+Runtime and validation preflight:
+1. Require the plan to declare `task_execution_policy` and the selected task to
+   declare `execution_guidance`,
    task-scoped `validation_commands`, and task-scoped
    `existing_checks_to_rerun`. If the plan uses the older unscoped shape, stop
    and rerun section 10 instead of guessing or widening validation.
-2. Enforce the declared `task_execution_ceiling` from the start of preflight.
-   Reject the plan and rerun section 10 if the task estimate, unique task checks,
-   command timeouts, or command breadth exceeds that policy.
-3. Count exploration, implementation, validation, evidence, task-local workflow
-   updates, and authorized commit packaging against the elapsed budget. Record
-   the start time, task deadline, and work deadline (task deadline minus the
-   declared state-finalization reserve) in `PROGRESS_STATE.md`.
-4. If the declared task cannot fit every ceiling, do not begin implementation.
-   Mark it blocked with reason `task_split_required` and report the split needed.
+2. Enforce the declared hard per-command timeout, no-progress cycle limit,
+   same-check retry limit, and task-scope prohibition on repo-wide commands.
+   The elapsed-time target and task estimate are advisory and cannot reject,
+   block, split, or supersede a task.
+3. Record the task start time, target checkpoint time, consecutive no-progress
+   cycles, and same-check retries without a relevant change in
+   `PROGRESS_STATE.md`.
+4. Before starting, remove exact duplicate checks and confirm that broad checks
+   remain batch- or CI-scoped. Do not create another T* task to make validation
+   fit a count or duration target.
 5. A command duplicated between validation_commands and
    existing_checks_to_rerun runs once and counts once.
 6. Do not run batch- or CI-scoped validation in this turn. Reading SECURITY.md,
    TESTING_POLICY.md, references, skills, command catalogs, or repo scripts does
    not promote a check into task scope.
-7. Before launching a command, calculate the remaining work time and establish
-   an enforceable cancellation path at the earlier of the command timeout or
-   work deadline using the active harness, process/session control, or an
-   available timeout wrapper. If no work time remains or no cancellation path
-   exists, do not start the command; record a blocker or reclassify it through
-   section 10.
+7. Before launching a command, establish an enforceable cancellation path at
+   its declared timeout using the active harness, process/session control, or an
+   available timeout wrapper. If no cancellation path exists, do not start the
+   command; record a blocker or reclassify it through section 10.
 
 Execution loop:
 1. Confirm the task's goal, `done_when`, acceptance criteria, validation,
-   execution budget, references, applicable skills, dependencies, and stop
+   execution guidance, references, applicable skills, dependencies, and stop
    conditions.
 2. Record branch, intended base when known, pre-existing modified files, selected
-   task id, task start time, work deadline, task deadline, active references, and
-   active skills in `PROGRESS_STATE.md`.
+   task id, task start time, target checkpoint, active references, active skills,
+   and zeroed watchdog counters in `PROGRESS_STATE.md`.
 3. Apply the lifecycle ownership rules in `AGENTS.md` before editing. When a
    `ready` batch starts, update the selected task, batch artifacts, selected
    `WORK_INDEX.md` row, and source NMI rows to `active` as one operation.
@@ -1425,11 +1469,12 @@ Execution loop:
    `existing_checks_to_rerun`. Do not invent or launch an additional check. If
    repo evidence suggests broader proof, record the exact proposed command and
    reason as pending batch or CI validation for section 10 to classify.
-   Previously failed task-scoped checks must be rerun after a fix.
+   Previously failed task-scoped checks must be rerun after a relevant fix. Do
+   not rerun the same check without a related code/configuration change or a new
+   falsifiable hypothesis.
 8. Monitor each command and invoke the established cancellation path at its
-   effective timeout, `min(command timeout, remaining work budget)`. Treat a
-   timeout as blocked validation; never let the command continue into the
-   state-finalization reserve or unbounded in the background.
+   declared timeout. Treat a timeout as blocked validation; never leave the
+   command running unbounded or in the background.
 9. For user-visible UI work, render and inspect only the affected responsive and
    interaction states, including required loading/empty/error, accessibility, and
    reduced-motion evidence. Use an interactive prototype or existing UI as a
@@ -1444,27 +1489,32 @@ Execution loop:
     implementation/test/config file list and its stable fingerprint. Also record
     the commit SHA for a clean committed tree, or the base SHA for an uncommitted
     tree.
-13. At the work deadline, stop application exploration, edits, commands, and
-    review. Use only the reserved finalization window to update touched
-    traceability rows, append concise evidence to `PROGRESS.md`, update
-    `PROGRESS_STATE.md`, and return the final response. Do not run another tool
-    command except a bounded local state write already prepared for those
-    workflow artifacts.
-14. If every task completion gate passed, move the task through
-    `validated -> done` during reserved finalization. Otherwise preserve completed
-    work, record `execution_budget_exhausted`, and set the task to `blocked`.
-    Never exceed the task deadline, broaden validation, run cleanup gates, or
-    continue implementation during finalization. Require section 10 to split or
-    replan the blocked task before another execution attempt.
+13. At `target_elapsed_minutes`, make a progress checkpoint: record newly
+    satisfied `done_when` items, the narrowed failure set, the remaining
+    concrete path, and avoidable overhead removed. Continue the same cohesive
+    task when progress is concrete; the checkpoint is not a deadline or split
+    trigger.
+14. After each material explore/edit/check cycle, increment the no-progress
+    counter only when no `done_when` item was newly satisfied, no failure was
+    narrowed, and no decisive repo evidence changed the next action. Reset it on
+    concrete progress. When it reaches
+    `task_execution_policy.no_progress_cycle_limit`, stop, preserve work, record
+    `no_progress`, and set the task to `blocked`. Report the last hypothesis and
+    the evidence needed to resume; do not automatically split or create tasks.
+15. If the same check is requested again without a relevant change, enforce
+    `max_same_check_retries_without_change` and stop as `no_progress` when the
+    limit is exceeded.
+16. If every task completion gate passed, move the task through
+    `validated -> done`. Otherwise preserve completed work and use
+    `failed_validation` or `blocked` with the exact evidence-backed reason.
 
 Completion:
 - `done`: every `done_when` item and relevant acceptance criterion is satisfied;
-  required task-scoped and focused existing checks pass within budget;
+  required task-scoped and focused existing checks pass within their timeouts;
   skill-specific evidence is recorded; task-local traceability and progress agree.
 - `failed_validation`: implementation exists but a required task-scoped check failed.
 - `blocked`: a requirement, environment, permission, reference, or safe
-  verification path is missing, the task requires a split, or its execution
-  budget was exhausted.
+  verification path is missing, or the no-progress watchdog fired.
 - `rolled_back`: agent-created changes were reverted or abandoned with recovery
   evidence.
 
@@ -1506,8 +1556,8 @@ Target task: <TASK_ID>
 Target batch: <B###, when supplied>
 
 Select that task instead of the next unfinished task, then follow section 11's
-context loading, budget, lifecycle ownership, task-scoped validation, evidence,
-stop, and final-output rules unchanged.
+context loading, runtime policy, lifecycle ownership, task-scoped validation,
+evidence, stop, and final-output rules unchanged.
 
 If the named task does not exist, its dependencies are incomplete, its status is
 not executable, or another task has an unresolved related validation failure,
@@ -1708,8 +1758,10 @@ Use sanitized or synthetic fixtures. Include at least:
     conversion skill should not
 11. a conversion task missing a baseline that must record `unknown` or block an
     unsupported uplift claim
-12. a proposed task with more than four checks or more than 10 minutes of work
-    that section 10 must split before ready
+12. an active six- or seven-task plan whose cohesive tasks exceed 10 minutes or
+    have several focused checks; section 10 must preserve task ids and remaining
+    task count, reclassify duplicate or broad validation, and must not split
+    solely to reduce per-task estimates
 13. a normal task near security-sensitive code where section 11 must not invent
     a dependency audit, full-history scan, or repository-wide security check
 14. a final task that must stop with section 13 pending instead of running batch
@@ -1722,8 +1774,8 @@ Use sanitized or synthetic fixtures. Include at least:
     rerunning validation
 18. task evidence whose covered file changed, plus batch or CI evidence bound to
     an older integrated revision, all of which must be rejected as stale
-19. an exhausted task split where the source becomes `superseded` and replacement
-    tasks are selectable without losing history
+19. a task whose no-progress watchdog fires; it must preserve work and stop with
+    a concrete resume condition without automatically creating replacement tasks
 
 For each case, define the expected lifecycle state, required artifact changes,
 required evidence, prohibited actions, allowed assumptions, and expected final
@@ -1784,21 +1836,24 @@ Accept a prompt, model, or harness change only when:
     their required evidence
 12. instruction duplication and loaded-context size do not increase without a
     measured reliability reason
-13. every planned task fits the task execution ceiling and broader validation is
-    assigned to batch or CI scope
+13. task boundaries follow coherent implementation outcomes; an active replan
+    preserves existing task ids and remaining task count unless the user
+    explicitly approves an increase, while broader validation is assigned to
+    batch or CI scope
 14. task execution runs no undeclared, batch-scoped, CI-scoped, full-history, or
     repository-wide check
 15. the last task ends before section 13, and section 13 deduplicates broad checks
     rather than repeating task validation
-16. command timeout or elapsed-budget exhaustion stops the current phase without
-    false completion or automatic scope expansion
+16. command timeout or the no-progress watchdog stops the current phase without
+    false completion or automatic scope expansion; crossing the elapsed-time
+    target while making concrete progress does not split the task
 17. section 13 remains audit-only unless `Mode: validate_and_audit` is explicit,
     and a done batch never reruns validation
 18. task evidence remains valid only while its covered files are unchanged, and
     batch/CI evidence matches the current integrated revision
-19. stale completed-task evidence produces a focused recovery task, while an
-    unfinished split source becomes linked `superseded` work rather than being
-    resumed unchanged
+19. stale completed-task evidence gets a focused recovery path, but an
+    active-batch replan cannot increase the remaining executable task count
+    without explicit user approval
 
 ### 14.5 Provider-specific adapters
 

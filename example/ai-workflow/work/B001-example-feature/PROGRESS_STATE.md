@@ -26,14 +26,14 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - Skills: none active; `apple-design` was scoped to T002 implementation and visual review.
 - References: existing today-section behavior, user-timezone fixture, and the interactive populated/empty dashboard fixture.
 
-## Active task budget
+## Active task runtime
 
 - Task: none; B001 task execution is complete.
 - Started: not active.
-- Work deadline: not active.
-- Task deadline: not active.
-- State-finalization reserve: 30 seconds when a task is active.
-- Unique validation commands used: 0/4.
+- Target checkpoint: not active.
+- Last progress checkpoint: T002 completed before its target checkpoint.
+- Consecutive no-progress cycles: 0/2.
+- Same-check retries without a relevant change: 0/0.
 
 ## Validation evidence
 

@@ -85,11 +85,18 @@ approvals, and final-report accuracy without implementing code.
 
 ## Bounded task execution
 
-Section 10 is the canonical source for the hard task ceiling and copies it once
-into the generated `IMPLEMENTATION.md` Execution policy. It must split work
-until every task fits that policy. Full suites, repo-wide
-build/lint/typecheck, full-history or repository security scans, dependency
-audits, and CI commands cannot be task-scoped.
+Section 10 is the canonical source for the task execution policy copied into
+generated `IMPLEMENTATION.md` files. Task boundaries follow coherent
+implementation outcomes, not a stopwatch: the elapsed-time target is a progress
+checkpoint and never an automatic reason to multiply tasks. Hard bounds apply
+to individual commands and repeated no-progress cycles. During an active-batch
+replan, increasing the number of remaining tasks requires explicit user
+approval.
+
+Full suites, repo-wide build/lint/typecheck, full-history or repository security
+scans, dependency audits, and CI commands cannot be task-scoped. This reduces
+total batch time by running broad proof once instead of repeating it for each
+task.
 
 `IMPLEMENTATION.md` assigns every check to exactly one scope:
 

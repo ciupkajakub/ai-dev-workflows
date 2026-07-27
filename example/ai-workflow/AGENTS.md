@@ -90,7 +90,7 @@ A task is done only when:
 
 1. `done_when` and relevant acceptance criteria are satisfied
 2. required task-scoped validation and focused existing regression checks pass
-   within the task execution budget
+   within their declared command timeouts
 3. previously failed task-scoped checks pass after the fix or are proven unrelated
 4. touched traceability rows contain evidence
 5. final diff review finds no unrelated changes, temporary code, focused/skipped
@@ -109,7 +109,8 @@ open validation lists must be empty, and every required traceability row must be
 
 - Keep `PROGRESS_STATE.md` compact; put detailed evidence in append-only
   `PROGRESS.md`.
-- One task per turn. Obey the selected `IMPLEMENTATION.md` Execution policy;
-  section 10 must split work that cannot fit.
+- One task per turn. Obey the selected `IMPLEMENTATION.md` Execution policy.
+  Split only at a coherent implementation or independently verifiable outcome
+  seam, never solely because of elapsed time or validation-command count.
 - Lead updates and final reports with outcome, evidence, caveats, and next action.
 - Keep exact commands, paths, identifiers, and errors unchanged.

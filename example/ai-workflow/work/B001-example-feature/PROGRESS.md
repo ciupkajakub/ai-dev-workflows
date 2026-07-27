@@ -65,7 +65,7 @@ Validation:
 - `npm test -- dashboard-task-query.test.ts` passed.
 - `npm test -- dashboard-query-plan.test.ts` passed.
 - Two unique task-scoped checks and the task-local workflow updates completed in
-  8 minutes, within T001's 10-minute budget.
+  8 minutes, before T001's 10-minute progress checkpoint.
 - Covered-file fingerprint: `synthetic-t001-query-v1` for the dashboard query and
   its query tests; those files were unchanged by T002.
 
@@ -117,7 +117,7 @@ Validation:
 - User approved a synthetic local fixture smoke check.
 - Manual smoke check with the synthetic local account showed overdue tasks above today's tasks.
 - Three unique task-scoped checks and the task-local workflow updates completed
-  in 7 minutes, within T002's 10-minute execution budget; no batch- or
+  in 7 minutes, before T002's 10-minute progress checkpoint; no batch- or
   CI-scoped command ran during the task.
 - Covered-file fingerprint: `synthetic-t002-ui-v1` for the dashboard UI and
   component tests.
