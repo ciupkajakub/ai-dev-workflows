@@ -64,6 +64,10 @@ Changed:
 Validation:
 - `npm test -- dashboard-task-query.test.ts` passed.
 - `npm test -- dashboard-query-plan.test.ts` passed.
+- Two unique task-scoped checks and the task-local workflow updates completed in
+  8 minutes, within T001's 10-minute budget.
+- Covered-file fingerprint: `synthetic-t001-query-v1` for the dashboard query and
+  its query tests; those files were unchanged by T002.
 
 Evidence:
 - Query test covers included overdue tasks.
@@ -100,7 +104,7 @@ State path:
 - B001 `blocked -> active` after the validation path was safe again.
 - T002 `in_progress -> validated` after required validation passed.
 - T002 `validated -> done` after evidence and lifecycle updates were recorded.
-- B001 `active -> validated -> done` after all tasks and validation were complete.
+- B001 remained `active` with section 13 batch validation pending.
 
 Changed:
 - Rendered the overdue section above today's tasks.
@@ -112,6 +116,11 @@ Validation:
 - Authenticated browser automation was not run because it required explicit approval.
 - User approved a synthetic local fixture smoke check.
 - Manual smoke check with the synthetic local account showed overdue tasks above today's tasks.
+- Three unique task-scoped checks and the task-local workflow updates completed
+  in 7 minutes, within T002's 10-minute execution budget; no batch- or
+  CI-scoped command ran during the task.
+- Covered-file fingerprint: `synthetic-t002-ui-v1` for the dashboard UI and
+  component tests.
 
 Evidence:
 - UI test covers visible overdue section.
@@ -129,20 +138,41 @@ Risks or gaps:
 Workflow updates:
 - Marked T002 done in `IMPLEMENTATION.md`.
 - Marked T002 traceability rows verified in `IMPLEMENTATION.md`.
-- Marked B001 done in `WORK_INDEX.md`.
-- Marked NMI-001 done in `PRODUCT_BACKLOG.md`.
-- Confirmed all traceability rows were verified and `PROGRESS_STATE.md` open validation list was empty before marking B001 done.
+- Kept B001 and NMI-001 active.
+- Left `npm test` in the batch-scoped open validation list.
+- Stopped the task turn with section 13 `Mode: validate_and_audit` pending.
+
+## 2026-06-23
+
+Batch validation and final audit: B001
+
+Mode: `validate_and_audit`
+
+State path:
+- B001 `active -> validated` after the declared batch validation passed.
+- B001 `validated -> done` after the separate artifact audit passed.
+
+Batch validation:
+- `npm test` passed once in 4 minutes after all T* tasks were done and within the
+  declared batch-validation budget.
+- Batch evidence revision: `synthetic-example-tree-v1`.
+- No CI-scoped validation was required.
+- Passing task-scoped commands were not rerun.
 
 Final audit:
 - Lifecycle statuses agree across `FEATURE.md`, `IMPLEMENTATION.md`, `WORK_INDEX.md`, `PRODUCT_BACKLOG.md`, and `PROGRESS_STATE.md`.
 - All required traceability rows are verified.
 - No `accepted_gap` rows remain.
-- Open validation list is empty.
+- Task, batch, and CI open validation lists are empty.
 - Earlier failed query validation was rerun successfully after the fix.
 - Authenticated browser automation was blocked until the user approved the synthetic local fixture smoke check.
 - Workflow ledger mergeability was checked against `origin/main`; no `PRODUCT_BACKLOG.md` or `WORK_INDEX.md` conflicts were found.
 - No sensitive data, customer data, or untrusted-content instruction was accepted silently.
 - Final report may claim B001 done with no remaining risks.
+
+Workflow updates:
+- Marked B001 done in `IMPLEMENTATION.md` and `WORK_INDEX.md`.
+- Marked NMI-001 done in `PRODUCT_BACKLOG.md`.
 
 Commit:
 - `feat: show overdue tasks on dashboard`

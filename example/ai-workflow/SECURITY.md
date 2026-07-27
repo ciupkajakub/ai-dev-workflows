@@ -128,3 +128,15 @@ This workflow prefers small verified task commits. Stage or commit only when the
 user's request or repo policy includes commit packaging and the active environment
 permits it. If authorization is absent, draft the message using
 `COMMIT_MESSAGE.md` and stop.
+
+## 12. Validation scope
+
+Reading this policy does not authorize or require a new security scan. Security
+validation must already be declared in `IMPLEMENTATION.md` with task, batch, or
+CI scope.
+
+During task execution, do not add a repository-wide secrets scan, full-history
+scan, dependency audit, full test suite, full build, or other broad check merely
+because the task touches a security-sensitive area. A security-tooling task may
+use a focused synthetic fixture or targeted configuration test at task scope;
+validate the whole repository only at the separately declared batch or CI seam.

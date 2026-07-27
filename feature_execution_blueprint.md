@@ -44,9 +44,9 @@ Stable section contract:
 | Capture feedback or a feature idea | 8 | Backlog items and coherent batch rows |
 | Grill and contract a batch | 9 | `FEATURE.md` |
 | Turn the contract into execution work | 10 | `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md` |
-| Execute the next task | 11 | One selected task implemented and verified |
-| Execute a named task | 12 | The named task implemented and verified |
-| Audit before completion | 13 | Pass/fail audit with required corrections |
+| Execute the next task | 11 | One selected task implemented and task-validated within its execution budget |
+| Execute a named task | 12 | The named task implemented and task-validated within its execution budget |
+| Audit before completion | 13 | Pass/fail artifact audit, with an explicit bounded batch-validation mode |
 | Evaluate a model, prompt, tool, or harness change | 14 | Comparable baseline and candidate evidence |
 
 Examples of sufficient requests:
@@ -122,11 +122,13 @@ Core gates:
 3. contract gate: FEATURE.md freezes scope, non-goals, requirements, assumptions, risks, and verification expectations
 4. traceability gate: IMPLEMENTATION.md maps every contract item to tasks, validation, blocker, or accepted gap
 5. execution gate: one task is implemented and validated before another starts
-6. validation gate: related failures and open validation list block completion
-7. evidence gate: PROGRESS.md records decisions, commands, failures, fixes, and final proof
-8. restart gate: PROGRESS_STATE.md stays compact enough for a new session or agent
-9. security gate: unsafe tool use, sensitive data, and untrusted instructions block or require approval
-10. final audit gate: before done, artifacts are checked for consistency, open validation, and misleading status
+6. execution-budget gate: a task must fit the bounded task runtime and validation budget or be split before execution
+7. validation-scope gate: task execution runs task-scoped checks only; broader batch and CI checks run at their declared seams
+8. validation gate: related failures and open validation list block completion
+9. evidence gate: PROGRESS.md records decisions, commands, failures, fixes, and final proof
+10. restart gate: PROGRESS_STATE.md stays compact enough for a new session or agent
+11. security gate: unsafe tool use, sensitive data, and untrusted instructions block or require approval
+12. final audit gate: before done, artifacts are checked for consistency, open validation, and misleading status
 
 Optional helpers:
 1. COMMIT_MESSAGE.md is useful for packaging verified work, but commits are not required for task completion.
@@ -140,10 +142,35 @@ Optional helpers:
 - Feature contract: the selected batch `FEATURE.md`; it defines scope, non-goals, requirements, acceptance criteria, assumptions, risks, and verification expectations.
 - Task plan: the selected batch `IMPLEMENTATION.md`; it maps the feature contract to small implementation tasks and validation.
 - done_when: objective task-level facts that must be true before the task can be considered implemented.
-- validation_commands: exact commands or checks that must be run, with purpose and required/optional status.
-- existing_checks_to_rerun: existing repo checks nearest to the touched behavior, rerun to prove regression safety; use `none` only with a reason.
-- related validation: any required command or existing check that exercises touched behavior, directly related code, or a previously failing path in the same batch.
-- open validation list: commands, checks, proofs, or user decisions still needed before a task or batch can be called done.
+- validation scope: the seam where a check may run. `task` is a focused check
+  required to complete one T* task, `batch` is a broader local check run once by
+  section 13 after all tasks, and `ci` is an externally enforced check that local
+  task and audit turns must not launch.
+- validation_commands: exact task-scoped commands or checks that must be run,
+  with purpose, required/optional status, and timeout.
+- existing_checks_to_rerun: focused existing task-scoped checks nearest to the
+  touched behavior, rerun to prove regression safety; use `none` only with a
+  reason.
+- batch_validation_commands: exact broader local commands run once by section 13,
+  such as a full suite, repo-wide build, dependency audit, or repository security
+  scan.
+- ci_validation_commands: exact checks owned by CI or another external system.
+  Local task and audit turns record their evidence or pending state but never
+  launch them.
+- execution_budget: the maximum task elapsed time, number of validation commands,
+  duration of one command, and permission for repo-wide commands, declared once
+  in the selected IMPLEMENTATION.md execution policy.
+- related validation: a required check at its declared scope that exercises
+  touched behavior, directly related code, or a previously failing path in the
+  same batch.
+- open validation list: task, batch, or CI commands, checks, proofs, or user
+  decisions still needed before the owning task or batch can be called done.
+- validation revision: the code/configuration state covered by evidence. Task
+  evidence always records a stable fingerprint and file list for its validated
+  implementation/test/config files, plus the commit SHA when available, and
+  remains current while those files are unchanged. Batch and CI evidence binds
+  to the exact integrated commit or base-plus-diff revision. Later progress or
+  ledger-only edits do not stale evidence.
 - validation_level: the strength of the planned validation, such as targeted_tests, typecheck, lint, build, migration_check, smoke_test, visual_check, manual_check, or accepted_gap.
 - context_budget: expected context size for one task. Use small when the task can be executed from compact artifacts plus a few files, medium when several touchpoints are needed, and large only when the task likely needs broad repo exploration.
 - references: the smallest set of code, tests, contracts, mockups, prototypes,
@@ -154,7 +181,10 @@ Optional helpers:
   what evidence it should produce. Do not load a skill merely because it is
   available.
 - traceability closure: proof that every feature requirement, acceptance criterion, non-functional requirement, permission or visibility rule, assumption, risk, and failure mode is either mapped to tasks and validation, explicitly blocked, or explicitly accepted by the user as a gap.
-- final audit: a compact consistency check run before marking a batch done or reporting completion; it verifies lifecycle statuses, traceability rows, open validation, evidence, security gaps, and final report accuracy.
+- final audit: section 13's bounded batch-validation and consistency pass run
+  separately from task execution before marking a batch done; it verifies
+  lifecycle statuses, traceability rows, open validation, evidence, security
+  gaps, and final report accuracy.
 
 ## 2. Create `AGENTS.md`
 
@@ -228,8 +258,11 @@ the first task that needs it.
   - contract lock updates `FEATURE.md`, `WORK_INDEX.md`, and source NMI rows
   - valid planning updates `IMPLEMENTATION.md`, `WORK_INDEX.md`, and
     `PROGRESS_STATE.md`
-  - task start and later batch state changes update the task, batch artifacts,
-    `WORK_INDEX.md`, and source NMI rows that own that state
+  - the first task start updates the task, batch artifacts, `WORK_INDEX.md`, and
+    source NMI rows from `ready/spec` to `active`
+  - later task starts and task completions update only the task, touched
+    traceability rows, `PROGRESS.md`, and `PROGRESS_STATE.md` unless the batch
+    itself changes state
   - final completion updates every lifecycle owner only after validation,
     traceability closure, evidence, and final audit pass
 - Source NMI rows never use task/batch-only `failed_validation`, `validated`, or
@@ -246,6 +279,9 @@ the first task that needs it.
   already authorized the exact action; still pause at any required action-time
   confirmation or real permission boundary.
 - Read `TESTING_POLICY.md` when behavior or tests change.
+- Reading `SECURITY.md`, `TESTING_POLICY.md`, a skill, or a reference does not
+  add validation commands. Section 10 assigns every check to `task`, `batch`, or
+  `ci`; sections 11 and 13 may run checks only at their declared scope.
 - Load only skills listed for the selected batch/task or whose description
   clearly matches the work. Follow their instructions for that scope and record
   material evidence in `PROGRESS.md`. If a required skill is unavailable, stop
@@ -266,28 +302,35 @@ the first task that needs it.
 A task is done only when:
 
 1. `done_when` and relevant acceptance criteria are satisfied
-2. required validation and nearest existing regression checks pass
-3. previously failed related checks are rerun successfully or proven unrelated
+2. required task-scoped validation and focused existing regression checks pass
+   within the task execution budget
+3. previously failed task-scoped checks are rerun successfully or proven unrelated
 4. touched traceability rows contain evidence and no required row is silently
    dropped
 5. the final diff has no unrelated files, generated-file mistakes, temporary
    debug code, focused/skipped tests, or sensitive data
 6. `PROGRESS.md`, `PROGRESS_STATE.md`, the task, and lifecycle owners agree
 
-If required validation cannot run or a related check fails, use `blocked` or
-`failed_validation`; an unvalidated completion requires explicit user acceptance
-recorded as `accepted_gap`.
+Batch- and CI-scoped validation does not run during task execution and does not
+block an otherwise complete task from becoming `done`; it remains visible in the
+scoped open validation list and blocks the batch from becoming `done`.
 
-Before the batch becomes `done`, run section 13's final audit. The open validation
-list must be empty and every required traceability row must be `verified` or an
-explicitly approved `accepted_gap`.
+If required task validation cannot run within its declared timeout or a related
+task check fails, use `blocked` or `failed_validation`; an unvalidated completion
+requires explicit user acceptance recorded as `accepted_gap`.
+
+Before the batch becomes `done`, run section 13 with
+`Mode: validate_and_audit`. The open validation list must be empty and every
+required traceability row must be `verified` or an explicitly approved
+`accepted_gap`.
 
 ## Context and communication
 
 - Keep `PROGRESS_STATE.md` compact; put detailed evidence in append-only
   `PROGRESS.md`.
-- Default to one task at a time. Continue only when the next task is tiny,
-  adjacent, low risk, and the current context remains reliable.
+- Default to one task at a time. Obey the selected IMPLEMENTATION.md execution
+  policy. Split work during section 10 instead of raising its ceilings. Stop
+  after the selected task; another task or section 13 starts in a separate turn.
 - Lead updates and final reports with outcome, evidence, caveats, and next action.
 - Keep exact commands, paths, identifiers, and errors unchanged.
 
@@ -447,6 +490,19 @@ This workflow prefers small verified task commits. Stage or commit only when the
 user's request or repo policy includes commit packaging and the active environment
 permits it. If authorization is absent, draft the message using
 COMMIT_MESSAGE.md and stop.
+
+## 12. Validation scope
+
+Reading this policy does not authorize or require a new security scan. Security
+validation must already be declared in IMPLEMENTATION.md with task, batch, or CI
+scope.
+
+During task execution, do not add a repository-wide secrets scan, full-history
+scan, dependency audit, full test suite, full build, or other broad check merely
+because the task touches a security-sensitive area. Section 10 must place broad
+checks under batch or CI validation. A security-tooling task may use a focused
+synthetic fixture or targeted configuration test at task scope; validate the
+whole repository only at the separately declared batch or CI seam.
 ```
 
 ## 4. Create `TESTING_POLICY.md`
@@ -639,12 +695,13 @@ Status values:
 - superseded
 - rolled_back
 
-Use `done` only when all batch tasks are done, required validation passed, and
-the open validation list is empty. Use `failed_validation` when a required
-related validation command failed. Use `validated` only as the short-lived state
-between passing final validation and completing ledger updates. Use
-`rolled_back` when agent-created implementation was reverted or abandoned and
-recovery evidence was recorded.
+Use `done` only when all batch tasks are done, required task and batch validation
+passed, required CI success evidence exists, and every scoped open validation
+list is empty. Use `failed_validation` when a required check fails at its
+declared scope. Use `validated` only as the short-lived state between passing
+section 13 validation and completing ledger updates. Use `rolled_back` when
+agent-created implementation was reverted or abandoned and recovery evidence
+was recorded.
 
 ## Dependency and history notes
 
@@ -924,19 +981,34 @@ Inputs:
 
 Batch selection:
 1. If I provide `Target batch: B###`, use that batch.
-2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `spec` or `ready`.
-3. If no eligible batch exists, stop and say a batch FEATURE.md must be created first.
+2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to
+   select the first batch in execution order whose status is `spec` or `ready`.
+3. An `active`, `blocked`, or `failed_validation` batch is eligible only when
+   section 11 or 13 recorded `task_split_required`,
+   `execution_budget_exhausted`, `stale_validation_evidence`, or a required
+   validation-scope reclassification. Preserve completed implementation scope
+   and historical evidence; split, reclassify, or add focused recovery validation
+   only for the work that caused the replan.
+4. If no eligible batch exists, stop and say a batch FEATURE.md must be created
+   first or identify why the requested active-batch replan is not allowed.
 
 Implementation scope gate:
 Record source NMI count, task count, acceptance criteria count, required
-validation commands or suites, risk areas, result (`coherent`,
-`split_recommended`, or `scope_expansion_requires_approval`), and reason.
+task-, batch-, and CI-scoped validation commands, risk areas, result
+(`coherent`, `split_recommended`, or `scope_expansion_requires_approval`), and
+reason.
 
 Recommend a split when tasks have independent deployment or rollback seams,
 require unrelated validation or risk areas, cannot share one completion bar,
 contain an unresolved implementation-changing decision, or cannot fit in
-reliable working context. Counts are advisory, not automatic blockers. Ask only
-when continuing would materially expand the authorized outcome.
+reliable working context.
+
+Every task must fit the hard Execution policy declared below, including
+exploration, edits, validation, evidence, and task-local workflow updates. If a
+task cannot fit, split it before marking the plan ready. Do not raise a ceiling
+to avoid a split. Counts other than these execution ceilings are advisory, not
+automatic blockers. Ask only when splitting would materially change the
+authorized outcome.
 
 Task:
 Produce ai-workflow/work/B###-short-name/IMPLEMENTATION.md.
@@ -947,7 +1019,8 @@ IMPLEMENTATION.md must begin with:
 
 Batch: `B###`
 Source items: `NMI-###`
-Status: `ready`
+Status: `ready` for normal planning; preserve the current batch status during an
+authorized active-batch replan
 
 Before writing the plan, apply the implementation scope gate defined in this
 section. If the gate requires a split and the user has not approved the larger
@@ -956,7 +1029,59 @@ scope, stop and propose the split instead of planning implementation.
 Include the exact implementation scope gate result in IMPLEMENTATION.md so
 execution agents do not need to recalculate it unless artifacts change.
 
-Also include a traceability closure table before the task list:
+Also include these sections before the task list:
+
+## Execution policy
+
+Declare the hard task ceiling once for the whole plan:
+
+```yaml
+task_execution_ceiling:
+  max_elapsed_minutes: 10
+  max_validation_commands: 4
+  max_command_seconds: 120
+  state_finalization_reserve_seconds: 30
+  allow_repo_wide_commands: false
+```
+
+## Batch validation
+
+Use this YAML shape:
+
+```yaml
+execution_budget:
+  max_elapsed_minutes: 15
+  max_validation_commands: 6
+  max_command_seconds: 300
+  state_finalization_reserve_seconds: 60
+validation_commands:
+  - command: "<exact broader local command, or none>"
+    purpose: "<what batch-level risk this proves, or why none is needed>"
+    required: <true or false>
+    scope: batch
+    timeout_seconds: <integer no greater than execution_budget.max_command_seconds>
+```
+
+## CI validation
+
+Use this YAML shape:
+
+```yaml
+validation_commands:
+  - command: "<exact CI check name/command, or none>"
+    purpose: "<what externally enforced risk this proves, or why none is needed>"
+    required: <true or false>
+    scope: ci
+```
+
+Broad checks belong in one of those two sections, not inside T* tasks. Full test
+suites, repo-wide lint/typecheck/build, repository or full-history security
+scans, dependency audits, and checks requiring remote CI, credentials, or a
+long-lived environment are never task-scoped. Prefer `ci` when the check is
+already enforced there, requires external infrastructure, or cannot fit the
+batch-validation budget.
+
+Then include a traceability closure table:
 
 ```md
 ## Traceability closure
@@ -976,21 +1101,32 @@ Traceability table rules:
 7. use `accepted_gap` only when the user explicitly accepts an unvalidated or partially validated state
 8. do not mark the batch `ready` if any required feature-contract item is missing from the table
 
-Before marking the batch `ready`, run this planning audit:
+Before marking the batch `ready` or accepting an authorized active-batch replan,
+run this planning audit:
 1. FEATURE.md exists and has stable numbered items for requirements, acceptance criteria, permissions, assumptions, risks, edge cases, and failure modes
 2. every implementation-affecting FEATURE.md item appears in the traceability table
 3. every traceability row maps to T* tasks, a non-code decision, or a blocked/accepted gap path
-4. every T* task has status, objective `done_when`, validation_commands,
-   existing_checks_to_rerun, stop_conditions, source_items, references, and
-   applicable_skills
-5. no task exists only as bookkeeping unless it supports a mapped traceability row
-6. implementation scope gate result is recorded and does not require an unapproved split
-7. PROGRESS.md and PROGRESS_STATE.md exist
-8. PROGRESS_STATE.md identifies the next task and open validation list
+4. every T* task has status, objective `done_when`, execution_budget,
+   validation_commands, existing_checks_to_rerun, stop_conditions, source_items,
+   references, and applicable_skills
+5. every task fits the hard task ceilings; otherwise it was split
+6. every validation item has exactly one scope and is placed at that scope
+7. no full suite, repo-wide check, full-history scan, dependency audit, or
+   external CI check appears at task scope
+8. Execution policy, Batch validation, and CI validation sections exist; the
+   execution policy uses this section's hard ceilings, and empty validation
+   sections use `none` with a reason
+9. no task exists only as bookkeeping unless it supports a mapped traceability row
+10. implementation scope gate result is recorded and does not require an unapproved split
+11. PROGRESS.md and PROGRESS_STATE.md exist
+12. PROGRESS_STATE.md identifies the next task and the task, batch, and CI open validation lists
 
 Each task must include:
 1. id, formatted as T001, T002, T003
-2. status, initially `planned`
+2. status: `planned` for a new task; during an active-batch replan preserve
+   completed task statuses, mark a replaced unfinished source task `superseded`
+   with its replacement task ids, and use `planned` for new split or focused
+   validation-recovery tasks
 3. title
 4. goal
 5. done_when
@@ -1001,23 +1137,30 @@ Each task must include:
 10. dependencies
 11. batch_group
 12. validation_level
-13. validation_commands
-14. existing_checks_to_rerun
-15. likely_files
-16. context_budget
-17. stop_conditions
-18. source_items
-19. references
-20. applicable_skills
+13. execution_budget
+14. validation_commands
+15. existing_checks_to_rerun
+16. likely_files
+17. context_budget
+18. stop_conditions
+19. source_items
+20. references
+21. applicable_skills
 
 Use this validation field shape:
+execution_budget:
+  estimated_minutes: <integer no greater than task_execution_ceiling.max_elapsed_minutes>
 validation_commands:
   - command: "<exact command>"
     purpose: "<what this proves>"
     required: true
+    scope: task
+    timeout_seconds: <integer no greater than task_execution_ceiling.max_command_seconds>
 existing_checks_to_rerun:
   - command: "<exact command, or none>"
     reason: "<why this existing check is needed, or why none exists>"
+    scope: task
+    timeout_seconds: <integer no greater than task_execution_ceiling.max_command_seconds>
 references:
   - item: "<path, URL, test, mockup, prototype, or none>"
     reason: "<what decision or validation this constrains>"
@@ -1029,17 +1172,22 @@ applicable_skills:
     required_evidence: "<what must be recorded in PROGRESS.md>"
 
 Task rules:
-1. tasks must be small
+1. each task must have one primary outcome, one coherent implementation seam,
+   an `estimated_minutes` value no greater than the plan's
+   `task_execution_ceiling.max_elapsed_minutes`, and fit every execution-policy
+   ceiling; otherwise split it
 2. each done_when must be objectively checkable
 3. each task must map to FEATURE.md acceptance criteria
 4. each task must identify a practical validation signal
 5. tests_required must be specific
-6. validation_commands must list exact commands, what each command proves, and
-   whether it is required for done
-7. existing_checks_to_rerun must list exact existing touched-area commands, or
-   `none` with a reason. If a command is already listed in validation_commands
-   because it is both required validation and the nearest existing regression
-   check, repeat it here and say that explicitly in the reason.
+6. validation_commands must list only focused task-scoped commands, what each
+   command proves, whether it is required for done, and a timeout no greater than
+   the task command ceiling
+7. existing_checks_to_rerun must list exact focused task-scoped commands nearest
+   to the touched behavior, or `none` with a reason. If a command is already
+   listed in validation_commands because it is both required validation and the
+   nearest existing regression check, repeat it here, say that explicitly in the
+   reason, and count the duplicate only once against the execution budget.
 8. task order should reduce integration risk
 9. decision tasks must produce an explicit product decision before code changes
 10. do not include unrelated backlog items just because nearby code is touched
@@ -1061,6 +1209,18 @@ Task rules:
     evidence; when a conversion skill applies, include baseline/hypothesis/metric
     evidence and, for experiments, sample-size/duration evidence or an explicit
     blocker
+20. loading SECURITY.md, TESTING_POLICY.md, a reference, or a skill does not add
+    validation; every executable check must be declared once at task, batch, or
+    CI scope
+21. even a security, dependency, build, or CI tooling task must fit the task
+    ceiling and use focused fixtures or configuration tests; move whole-repo
+    proof to batch or CI scope
+22. when current covered-file evidence is missing or stale for a completed task,
+    preserve that task and its historical evidence and add the smallest focused
+    validation-recovery task linked to the affected task and traceability rows
+23. when splitting an unfinished blocked/exhausted task, mark the source task
+    `superseded`, link its replacement task ids, and preserve its historical
+    progress evidence
 
 Also create:
 1. ai-workflow/work/B###-short-name/PROGRESS.md
@@ -1099,11 +1259,27 @@ Updated: <YYYY-MM-DD>
 - Skills: None yet.
 - References: None yet.
 
+## Active task budget
+- Task: None yet.
+- Started:
+- Work deadline:
+- Task deadline:
+- State-finalization reserve:
+- Unique validation commands used: 0/<task_execution_ceiling.max_validation_commands>.
+
 ## Validation evidence
 - None yet.
 
+## Validation revision
+- Current implementation revision: not recorded yet.
+- Task covered-file fingerprints: none yet.
+- Always record each task's covered file list and stable fingerprint; add the
+  commit SHA for a clean tree or base SHA for an uncommitted tree.
+
 ## Open validation list
-- None yet.
+- Task: T001 task-scoped validation.
+- Batch: declared batch validation.
+- CI: declared required CI evidence, or none.
 
 ## Open risks or blockers
 - None yet.
@@ -1126,16 +1302,29 @@ Updated: <YYYY-MM-DD>
 - Read PROGRESS.md only when prior blockers, validation evidence, or history are needed.
 
 Lifecycle update:
-1. Keep FEATURE.md and every source NMI row at `spec`.
-2. Set IMPLEMENTATION.md, WORK_INDEX.md selected batch row, and PROGRESS_STATE.md to `ready` as one operation when IMPLEMENTATION.md has objective T* tasks and both progress files exist.
-3. Set Updated date to today's date.
-4. Append a Batch history row for the transition.
-5. Do not mark ready if FEATURE.md is missing, tasks are not objective, or progress files were not created.
-6. Do not mark ready if this section's implementation scope gate requires an unapproved split.
-7. Do not mark ready if any task lacks a status or validation_commands.
-8. Do not mark ready if the traceability closure table is missing required FEATURE.md items or contains unmapped required items.
-9. Do not mark ready if the planning audit fails.
-10. Do not implement application code in this step.
+1. For normal planning, keep FEATURE.md and every source NMI row at `spec`.
+2. For normal planning, set IMPLEMENTATION.md, WORK_INDEX.md selected batch row,
+   and PROGRESS_STATE.md to `ready` as one operation when IMPLEMENTATION.md has
+   objective T* tasks and both progress files exist.
+3. For an authorized active-batch replan, preserve completed tasks and historical
+   evidence, supersede only replaced unfinished tasks, add focused split or
+   validation-recovery tasks, keep current batch/source lifecycle states, and
+   update only affected task/validation scopes, PROGRESS.md, and
+   PROGRESS_STATE.md. Never regress the batch to `ready` or source NMI rows to
+   `spec`.
+4. Set Updated date to today's date.
+5. Append a Batch history row for the transition or authorized replan.
+6. Do not mark ready or accept the replan if FEATURE.md is missing, tasks are not
+   objective, or progress files were not created.
+7. Do not mark ready or accept the replan if this section's implementation scope
+   gate requires an unapproved split.
+8. Do not mark ready or accept the replan if any task lacks a status, execution_budget, scoped
+   validation_commands, or scoped existing_checks_to_rerun.
+9. Do not mark ready or accept the replan if Execution policy, Batch validation,
+   or CI validation is absent or the execution policy exceeds a hard ceiling.
+10. Do not mark ready or accept the replan if the traceability closure table is missing required FEATURE.md items or contains unmapped required items.
+11. Do not mark ready or accept the replan if the planning audit fails.
+12. Do not implement application code in this step.
 ````
 
 ## 11. Execute The Next Task
@@ -1147,11 +1336,12 @@ Execute the next unfinished task from the selected `ai-workflow` batch.
 
 Outcome:
 Complete one task with the smallest coherent change, objective validation,
-traceability evidence, and synchronized workflow state.
+traceability evidence, and task-local workflow state. Stop before batch
+validation, final audit, or another task.
 
 Start with only:
 1. batch `PROGRESS_STATE.md`
-2. the selected task from batch `IMPLEMENTATION.md`
+2. batch `IMPLEMENTATION.md` Execution policy and the selected task
 3. the FEATURE.md items referenced by that task
 4. `ai-workflow/AGENTS.md`
 
@@ -1181,13 +1371,44 @@ Task selection:
    `in_progress`, `failed_validation`, or resolvable `blocked`.
 2. Do not start a different task while an earlier selected task has an unresolved
    related validation failure.
-3. If no task is executable, report the exact blocker or that final audit is next.
+3. A task blocked by `task_split_required` or `execution_budget_exhausted` is not
+   resumable unchanged. Stop and rerun section 10 to split or replan it.
+4. If no task is executable, report the exact blocker or that final audit is next.
+
+Budget and validation preflight:
+1. Require the plan to declare `task_execution_ceiling` and the selected task to
+   declare `execution_budget`,
+   task-scoped `validation_commands`, and task-scoped
+   `existing_checks_to_rerun`. If the plan uses the older unscoped shape, stop
+   and rerun section 10 instead of guessing or widening validation.
+2. Enforce the declared `task_execution_ceiling` from the start of preflight.
+   Reject the plan and rerun section 10 if the task estimate, unique task checks,
+   command timeouts, or command breadth exceeds that policy.
+3. Count exploration, implementation, validation, evidence, task-local workflow
+   updates, and authorized commit packaging against the elapsed budget. Record
+   the start time, task deadline, and work deadline (task deadline minus the
+   declared state-finalization reserve) in `PROGRESS_STATE.md`.
+4. If the declared task cannot fit every ceiling, do not begin implementation.
+   Mark it blocked with reason `task_split_required` and report the split needed.
+5. A command duplicated between validation_commands and
+   existing_checks_to_rerun runs once and counts once.
+6. Do not run batch- or CI-scoped validation in this turn. Reading SECURITY.md,
+   TESTING_POLICY.md, references, skills, command catalogs, or repo scripts does
+   not promote a check into task scope.
+7. Before launching a command, calculate the remaining work time and establish
+   an enforceable cancellation path at the earlier of the command timeout or
+   work deadline using the active harness, process/session control, or an
+   available timeout wrapper. If no work time remains or no cancellation path
+   exists, do not start the command; record a blocker or reclassify it through
+   section 10.
 
 Execution loop:
 1. Confirm the task's goal, `done_when`, acceptance criteria, validation,
-   references, applicable skills, dependencies, and stop conditions.
+   execution budget, references, applicable skills, dependencies, and stop
+   conditions.
 2. Record branch, intended base when known, pre-existing modified files, selected
-   task id, active references, and active skills in `PROGRESS_STATE.md`.
+   task id, task start time, work deadline, task deadline, active references, and
+   active skills in `PROGRESS_STATE.md`.
 3. Apply the lifecycle ownership rules in `AGENTS.md` before editing. When a
    `ready` batch starts, update the selected task, batch artifacts, selected
    `WORK_INDEX.md` row, and source NMI rows to `active` as one operation.
@@ -1200,30 +1421,50 @@ Execution loop:
 6. Implement the smallest change that satisfies the task. If repo evidence
    contradicts the contract, a stop condition occurs, or authorization is
    missing, stop instead of expanding scope.
-7. Run required `validation_commands`, `existing_checks_to_rerun`, and any
-   touched-area check needed to prove the behavior. Previously failed related
-   checks must be rerun after a fix.
-8. For user-visible UI work, render and inspect only the affected responsive and
+7. Run only declared task-scoped `validation_commands` and
+   `existing_checks_to_rerun`. Do not invent or launch an additional check. If
+   repo evidence suggests broader proof, record the exact proposed command and
+   reason as pending batch or CI validation for section 10 to classify.
+   Previously failed task-scoped checks must be rerun after a fix.
+8. Monitor each command and invoke the established cancellation path at its
+   effective timeout, `min(command timeout, remaining work budget)`. Treat a
+   timeout as blocked validation; never let the command continue into the
+   state-finalization reserve or unbounded in the background.
+9. For user-visible UI work, render and inspect only the affected responsive and
    interaction states, including required loading/empty/error, accessibility, and
    reduced-motion evidence. Use an interactive prototype or existing UI as a
    reference when one is listed.
-9. For conversion work, report the tested hypothesis, primary metric, guardrails,
-   and baseline or explicit unknown. For experiments, preserve the planned
-   sample-size method and duration. Do not report estimated uplift as observed
-   evidence.
-10. Review the final diff for scope, regression risk, generated-file mistakes,
+10. For conversion work, report the tested hypothesis, primary metric, guardrails,
+    and baseline or explicit unknown. For experiments, preserve the planned
+    sample-size method and duration. Do not report estimated uplift as observed
+    evidence.
+11. Review the final diff for scope, regression risk, generated-file mistakes,
     temporary code, focused/skipped tests, and sensitive data.
-11. Update touched traceability rows with exact evidence, append concise detail to
-    `PROGRESS.md`, keep `PROGRESS_STATE.md` compact, move a passing task through
-    `validated -> done`, and synchronize every lifecycle owner.
+12. After validation and before evidence-file updates, always record the covered
+    implementation/test/config file list and its stable fingerprint. Also record
+    the commit SHA for a clean committed tree, or the base SHA for an uncommitted
+    tree.
+13. At the work deadline, stop application exploration, edits, commands, and
+    review. Use only the reserved finalization window to update touched
+    traceability rows, append concise evidence to `PROGRESS.md`, update
+    `PROGRESS_STATE.md`, and return the final response. Do not run another tool
+    command except a bounded local state write already prepared for those
+    workflow artifacts.
+14. If every task completion gate passed, move the task through
+    `validated -> done` during reserved finalization. Otherwise preserve completed
+    work, record `execution_budget_exhausted`, and set the task to `blocked`.
+    Never exceed the task deadline, broaden validation, run cleanup gates, or
+    continue implementation during finalization. Require section 10 to split or
+    replan the blocked task before another execution attempt.
 
 Completion:
 - `done`: every `done_when` item and relevant acceptance criterion is satisfied;
-  required and existing related checks pass; skill-specific evidence is recorded;
-  traceability and lifecycle owners agree.
-- `failed_validation`: implementation exists but a required related check failed.
+  required task-scoped and focused existing checks pass within budget;
+  skill-specific evidence is recorded; task-local traceability and progress agree.
+- `failed_validation`: implementation exists but a required task-scoped check failed.
 - `blocked`: a requirement, environment, permission, reference, or safe
-  verification path is missing.
+  verification path is missing, the task requires a split, or its execution
+  budget was exhausted.
 - `rolled_back`: agent-created changes were reverted or abandoned with recovery
   evidence.
 
@@ -1231,13 +1472,12 @@ Do not convert a validation gap into completion. Use `accepted_gap` only after
 explicit user acceptance recorded in `PROGRESS.md`.
 
 If this was the last task:
-1. move the batch to `validated` only when every task is done, required
-   traceability rows are closed, and the open validation list is empty
-2. run section 13's final audit
-3. move all lifecycle owners to `done` only after the audit passes
+1. keep the batch `active`
+2. leave declared batch and CI items in the scoped open validation list
+3. report `task done; section 13 Mode: validate_and_audit pending`
+4. do not run section 13 or move batch lifecycle owners in this turn
 
-Continue to another task only when the current task is done, artifacts are
-synchronized, the next task is tiny and adjacent, and context remains reliable.
+Never continue to another task in the same turn.
 
 Final output:
 1. task and resulting status
@@ -1266,8 +1506,8 @@ Target task: <TASK_ID>
 Target batch: <B###, when supplied>
 
 Select that task instead of the next unfinished task, then follow section 11's
-context loading, lifecycle ownership, execution, validation, evidence, audit, and
-final-output rules unchanged.
+context loading, budget, lifecycle ownership, task-scoped validation, evidence,
+stop, and final-output rules unchanged.
 
 If the named task does not exist, its dependencies are incomplete, its status is
 not executable, or another task has an unresolved related validation failure,
@@ -1276,20 +1516,37 @@ stop and report the exact conflict. Do not silently substitute another task.
 
 ## 13. Audit Workflow Artifacts Before Done
 
-Use this prompt when you want an agent to inspect the workflow artifacts without
-implementing code:
+The default section 13 invocation remains audit-only for compatibility with
+saved prompts. To run declared batch validation immediately before the audit,
+use the explicit blueprint-owned adapter:
 
 ```text
-Audit the selected ai-workflow batch before it is marked done.
+Use section 13 of feature_execution_blueprint.md for batch B###.
+Mode: validate_and_audit
+```
+
+Use section 13 in a separate turn after every task in the batch is `done`.
+Section 11 never invokes it automatically.
+
+```text
+Audit the selected ai-workflow batch before marking it done.
+
+Mode:
+1. `audit_only` is the default when no mode is provided. Inspect existing
+   evidence and run no validation command.
+2. `validate_and_audit` first runs only declared batch validation within its
+   budget, then performs the same artifact audit.
 
 Do not edit application code.
-Do not mark anything done unless the audit passes.
+Do not execute another T* task.
+Do not run CI-scoped commands locally.
+Do not mark anything done unless batch validation and the audit pass.
 
 Inputs:
 1. ai-workflow/WORK_INDEX.md selected batch row
 2. ai-workflow/PRODUCT_BACKLOG.md source NMI rows
 3. selected batch FEATURE.md
-4. selected batch IMPLEMENTATION.md
+4. selected batch IMPLEMENTATION.md, including Batch validation and CI validation
 5. selected batch PROGRESS_STATE.md
 6. selected batch PROGRESS.md only when evidence or history is needed
 7. ai-workflow/AGENTS.md
@@ -1298,8 +1555,71 @@ Inputs:
 
 Batch selection:
 1. If I provide `Target batch: B###`, use that batch.
-2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch whose status is `active`, `failed_validation`, `blocked`, `validated`, or `done`.
+2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select
+   the first batch whose status is `active`, `failed_validation`, `blocked`,
+   or `validated`.
 3. If no eligible batch exists, stop and say there is no batch to audit.
+4. If any T* task is neither `done` nor a justified `superseded` task linked to
+   replacement task ids, stop and report it. Do not implement it here.
+5. If an explicitly selected batch is already `done`, return its recorded audit
+   result without running commands or changing artifacts.
+
+Revision preflight:
+1. Establish the current validation revision: a clean commit SHA, or the base SHA
+   plus a stable fingerprint and file list for the implementation/test/config
+   files covered by validation.
+2. For each task, compare the recorded covered-file fingerprints with the
+   current versions of those same files. Do not reject earlier task evidence
+   merely because a later task changed other files or advanced HEAD.
+3. Reject task evidence when any file it covered changed after validation.
+   Progress- or ledger-only edits made after validation do not stale it.
+4. Batch and CI evidence covers the integrated result and must match the current
+   validation revision exactly.
+5. In `audit_only`, stale or missing batch/CI evidence is a blocker; do not
+   refresh it by running commands.
+6. In `validate_and_audit`, require current covered-file evidence for every
+   required completed outcome, supplied by its task, replacement, or explicitly
+   linked validation-recovery task, before batch validation. Then bind new batch
+   evidence to the current integrated revision. Required CI success evidence
+   must identify that revision explicitly.
+7. When completed-task evidence is missing or stale, record
+   `stale_validation_evidence` with the affected task, files, and traceability
+   rows. Stop and use section 10 to add a focused validation-recovery task; do
+   not reopen or erase the completed task's historical evidence.
+
+Validation preflight:
+1. In `audit_only`, skip this preflight and run no command.
+2. In `validate_and_audit`, require explicit Batch validation and CI validation
+   sections. If either is absent or uses the older unscoped shape, stop and rerun
+   section 10.
+3. Run only exact required commands declared with `scope: batch`.
+4. Do not invent broader checks, promote CI checks, or rerun any task-scoped
+   command. Missing, stale, or failed task evidence blocks the audit and must be
+   repaired by the focused section 10/11 validation-recovery flow.
+5. Deduplicate identical batch commands and run each once.
+6. Enforce the Batch validation execution_budget exactly as declared. Record its
+   batch deadline and work deadline (batch deadline minus its declared
+   state-finalization reserve). Do not raise it during this turn.
+7. Before launching a batch command, calculate the remaining batch work time and
+   establish an enforceable cancellation path at the earlier of its declared
+   timeout or batch work deadline. If no work time remains or no such path
+   exists, do not start it.
+8. Monitor each batch command and invoke the established cancellation path at
+   its effective timeout, `min(command timeout, remaining batch work budget)`.
+   If the batch cannot fit, stop, preserve evidence, and move the excess check
+   to CI through a future section 10 replan; do not silently skip it or leave it
+   running into the finalization reserve or in the background.
+9. Never launch `scope: ci` commands. Required CI checks need existing recorded
+   success evidence for the current validation revision. If that evidence is
+   absent, keep the batch active or blocked and report the exact pending check.
+10. After validation and before the batch work deadline, evaluate the audit
+    checks below and prepare the result and state update.
+11. At the batch work deadline, stop commands and inspection. Use only the
+    reserved finalization window to record results, durations, validation
+    revision, and the prepared audit result in PROGRESS.md and
+    PROGRESS_STATE.md; clear passing batch and CI items from their scoped open
+    lists and update only traceability/lifecycle rows whose declared evidence now
+    exists. Never exceed the batch deadline.
 
 Audit checks:
 1. lifecycle statuses agree across FEATURE.md, IMPLEMENTATION.md, WORK_INDEX.md,
@@ -1310,28 +1630,45 @@ Audit checks:
 3. every required traceability row is `verified` or explicitly `accepted_gap`
 4. every `accepted_gap` has user approval recorded in PROGRESS.md
 5. no traceability row remains `planned` or `blocked`
-6. every task marked `done` has done_when evidence and required validation evidence
-7. every previously failed related validation command was rerun after the fix
-8. PROGRESS_STATE.md open validation list is empty before batch `done`
-9. security-sensitive actions, unsafe tool use, external transmission, and
-   authenticated browser actions or MCP/app connector actions with side effects
-   have recorded approval or are recorded as blockers
-10. every task-level applicable skill was loaded only in its declared phase and
+6. every task marked `done` has done_when evidence plus current covered-file
+   evidence from itself or an explicitly linked validation-recovery task, and
+   every `superseded` task names its reason and replacement task ids
+7. every required batch command passed within budget and every required CI check
+   has recorded external success evidence bound to the current validation revision
+8. every previously failed related validation command was rerun after the fix
+9. the task, batch, and CI open validation lists are empty before batch `done`
+10. security-sensitive actions, unsafe tool use, external transmission, and
+    authenticated browser actions or MCP/app connector actions with side effects
+    have recorded approval or are recorded as blockers
+11. every task-level applicable skill was loaded only in its declared phase and
     its required evidence is present, or the omission is recorded as a blocker
-11. reference-dependent decisions point to the actual reference and do not rely
+12. reference-dependent decisions point to the actual reference and do not rely
     on a repeated or stale prose substitute
-12. conversion work has a recorded baseline or explicit unknown, hypothesis,
+13. conversion work has a recorded baseline or explicit unknown, hypothesis,
     primary metric, guardrails, and observed evidence before claiming
     improvement; experiments also record their sample-size method and duration
-13. final report would not overclaim validation, completion, files changed, or
+14. final report would not overclaim validation, completion, files changed, or
     remaining risk
 
+Lifecycle:
+1. Move the batch `active -> validated` only after required batch validation
+   passes and required CI success evidence exists.
+2. Run the artifact audit while the batch is `validated`.
+3. Move all lifecycle owners to `done` only after the audit passes.
+4. On failure or budget exhaustion, record exact evidence and keep the batch
+   `active`, `failed_validation`, or `blocked`. Never reopen completed tasks;
+   route missing or stale completed-task evidence exclusively through section
+   10's linked validation-recovery task.
+
 Output:
-1. Audit result: pass | fail
-2. Blocking findings with file references
-3. Non-blocking cleanup notes
-4. Required artifact updates, if any
-5. Whether the batch may be marked done
+1. Mode: audit_only | validate_and_audit
+2. Batch validation result: pass | fail | blocked | not_run
+3. Audit result: pass | fail | not_run
+4. Commands run, duration or timeout, and evidence
+5. Pending CI checks
+6. Blocking findings with file references
+7. Required artifact updates, if any
+8. Whether the batch may be marked done
 ```
 
 ## 14. Evaluate Prompt, Model, And Harness Changes
@@ -1371,6 +1708,22 @@ Use sanitized or synthetic fixtures. Include at least:
     conversion skill should not
 11. a conversion task missing a baseline that must record `unknown` or block an
     unsupported uplift claim
+12. a proposed task with more than four checks or more than 10 minutes of work
+    that section 10 must split before ready
+13. a normal task near security-sensitive code where section 11 must not invent
+    a dependency audit, full-history scan, or repository-wide security check
+14. a final task that must stop with section 13 pending instead of running batch
+    validation or final audit in the same turn
+15. a task command that reaches its timeout and must stop without launching the
+    remaining checks
+16. a default section 13 call that must remain audit-only, plus an explicit
+    `validate_and_audit` call that may run batch checks
+17. a done batch passed to section 13 that must return recorded evidence without
+    rerunning validation
+18. task evidence whose covered file changed, plus batch or CI evidence bound to
+    an older integrated revision, all of which must be rejected as stale
+19. an exhausted task split where the source becomes `superseded` and replacement
+    tasks are selectable without losing history
 
 For each case, define the expected lifecycle state, required artifact changes,
 required evidence, prohibited actions, allowed assumptions, and expected final
@@ -1431,6 +1784,21 @@ Accept a prompt, model, or harness change only when:
     their required evidence
 12. instruction duplication and loaded-context size do not increase without a
     measured reliability reason
+13. every planned task fits the task execution ceiling and broader validation is
+    assigned to batch or CI scope
+14. task execution runs no undeclared, batch-scoped, CI-scoped, full-history, or
+    repository-wide check
+15. the last task ends before section 13, and section 13 deduplicates broad checks
+    rather than repeating task validation
+16. command timeout or elapsed-budget exhaustion stops the current phase without
+    false completion or automatic scope expansion
+17. section 13 remains audit-only unless `Mode: validate_and_audit` is explicit,
+    and a done batch never reruns validation
+18. task evidence remains valid only while its covered files are unchanged, and
+    batch/CI evidence matches the current integrated revision
+19. stale completed-task evidence produces a focused recovery task, while an
+    unfinished split source becomes linked `superseded` work rather than being
+    resumed unchanged
 
 ### 14.5 Provider-specific adapters
 

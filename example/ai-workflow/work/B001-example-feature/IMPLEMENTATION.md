@@ -8,11 +8,52 @@ Status: `done`
 
 - Shared completion bar: overdue behavior, user scoping, query performance, and final dashboard states are verified together.
 - Independent deployment or rollback seams: T001 and T002 can be reverted independently, but T002 depends on T001.
-- Validation and risk areas: query tests, UI tests, today-section regression, query-plan/no-N+1 check, rendered responsive states.
+- Validation and risk areas: task-scoped query/UI checks and rendered states;
+  batch-scoped full suite; no CI-only check.
 - Context assessment: small; both tasks use adjacent dashboard touchpoints.
-- Advisory counts: source items `1`; tasks `2`; acceptance criteria `6`; suites/checks `5`.
+- Execution-budget assessment: T001 has two unique task checks; T002 has three;
+  both fit the declared Execution policy.
+- Advisory counts: source items `1`; tasks `2`; acceptance criteria `6`;
+  task-scoped checks `5`; batch-scoped checks `1`; CI-scoped checks `0`.
 - Result: `coherent`.
 - Reason: both tasks share one contract and one integrated validation story.
+
+## Execution policy
+
+```yaml
+task_execution_ceiling:
+  max_elapsed_minutes: 10
+  max_validation_commands: 4
+  max_command_seconds: 120
+  state_finalization_reserve_seconds: 30
+  allow_repo_wide_commands: false
+```
+
+## Batch validation
+
+```yaml
+execution_budget:
+  max_elapsed_minutes: 15
+  max_validation_commands: 6
+  max_command_seconds: 300
+  state_finalization_reserve_seconds: 60
+validation_commands:
+  - command: npm test
+    purpose: proves the integrated dashboard change does not regress the wider application suite
+    required: true
+    scope: batch
+    timeout_seconds: 300
+```
+
+## CI validation
+
+```yaml
+validation_commands:
+  - command: none
+    purpose: this fictional batch has no required external-only validation
+    required: false
+    scope: ci
+```
 
 ## Traceability closure
 
@@ -68,16 +109,24 @@ Status: `done`
   dependencies: []
   batch_group: query
   validation_level: targeted_tests
+  execution_budget:
+    estimated_minutes: 8
   validation_commands:
     - command: npm test -- dashboard-task-query.test.ts
       purpose: proves overdue query includes overdue tasks, excludes completed/undated/other-user tasks, applies user-local date boundary, and sorts by due date
       required: true
+      scope: task
+      timeout_seconds: 120
     - command: npm test -- dashboard-query-plan.test.ts
       purpose: proves overdue rendering uses the indexed user/due-date query path or equivalent no-N+1 guard
       required: true
+      scope: task
+      timeout_seconds: 120
   existing_checks_to_rerun:
     - command: npm test -- dashboard-task-query.test.ts
       reason: same command as required validation because the query test file is also the nearest existing behavior coverage for the touched query layer
+      scope: task
+      timeout_seconds: 120
   likely_files:
     - app queries or services for dashboard tasks
     - dashboard task query tests
@@ -122,19 +171,29 @@ Status: `done`
     - T001
   batch_group: ui
   validation_level: targeted_tests, manual_check
+  execution_budget:
+    estimated_minutes: 8
   validation_commands:
     - command: npm test -- dashboard-overdue-section.test.ts
       purpose: proves overdue section visibility and empty state behavior
       required: true
+      scope: task
+      timeout_seconds: 120
     - command: npm test -- dashboard-today-section.test.ts
       purpose: proves existing today task rendering remains unchanged
       required: true
+      scope: task
+      timeout_seconds: 120
     - command: manual smoke check with synthetic local account fixture
       purpose: renders populated and empty overdue states at desktop and mobile widths and proves layout, clipping, spacing, keyboard access, legibility, reduced-motion behavior, and existing-pattern consistency without authenticated browser automation or customer data
       required: true
+      scope: task
+      timeout_seconds: 120
   existing_checks_to_rerun:
     - command: npm test -- dashboard-today-section.test.ts
       reason: same command as required validation because it is the existing UI regression check for unchanged today task rendering
+      scope: task
+      timeout_seconds: 120
   likely_files:
     - dashboard view/component
     - dashboard view/component tests

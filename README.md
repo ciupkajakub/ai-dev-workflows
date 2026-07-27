@@ -20,7 +20,9 @@ Do not use it as a replacement for human review, security review, production cha
 4. Run section 9 to turn one selected batch into `FEATURE.md`.
 5. Run section 10 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
 6. Use section 11 or 12 for repeated execution, one task at a time.
-7. Use section 13 to audit artifacts before accepting a batch as done.
+7. Use section 13 in a separate turn with `Mode: validate_and_audit` to run
+   declared batch validation and audit artifacts before accepting a batch as
+   done. Omitting the mode preserves the audit-only behavior.
 8. Use section 14 before changing prompts, models, tools, or harness behavior.
 
 The numbered sections are a stable interface designed for short remote or mobile
@@ -76,9 +78,31 @@ risk, edge case, and failure mode must map to a task plus validation evidence, a
 blocker, or an explicitly accepted gap. This is the main guard against a batch
 being marked done while part of the contract was never verified.
 
-Before accepting a completed batch, run the blueprint's final audit prompt. The
-audit checks lifecycle consistency, traceability closure, open validation,
-security approvals, and final-report accuracy without implementing code.
+Before accepting a completed batch, run the blueprint's separate batch-validation
+and final-audit prompt. It runs declared broader local checks once, then checks
+lifecycle consistency, traceability closure, scoped open validation, security
+approvals, and final-report accuracy without implementing code.
+
+## Bounded task execution
+
+Section 10 is the canonical source for the hard task ceiling and copies it once
+into the generated `IMPLEMENTATION.md` Execution policy. It must split work
+until every task fits that policy. Full suites, repo-wide
+build/lint/typecheck, full-history or repository security scans, dependency
+audits, and CI commands cannot be task-scoped.
+
+`IMPLEMENTATION.md` assigns every check to exactly one scope:
+
+- `task`: focused checks run by section 11 or 12
+- `batch`: broader local checks run once by section 13 after all tasks
+- `ci`: external checks that local task and audit turns record but never launch
+
+Loading a security policy, testing policy, skill, or reference does not add a
+validation command. A task executor may propose broader proof for replanning, but
+cannot invent or run it. The last task leaves the batch active and stops with
+section 13 `Mode: validate_and_audit` pending; it never folds the final audit
+into the same turn. Task evidence remains valid while its covered files are
+unchanged; batch and CI evidence must match the exact integrated revision.
 
 ## Context strategy
 
