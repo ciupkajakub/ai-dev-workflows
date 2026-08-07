@@ -1,7 +1,7 @@
 # Feature Execution Blueprint
 
 Blueprint id: `feature-execution-blueprint`
-Blueprint revision: `2.1.0`
+Blueprint revision: `2.1.1`
 Workflow schema: `2`
 Revision date: `2026-08-07`
 
@@ -274,7 +274,7 @@ Use this structure:
 
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.1.0`
+Blueprint revision: `2.1.1`
 Blueprint digest: `<sha256>`
 
 ## Repository map
@@ -1033,7 +1033,7 @@ Completion level: `feature` or `release_ready`
 Delivery lane: `fast` or `standard`
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.1.0`
+Blueprint revision: `2.1.1`
 Blueprint digest: `<sha256>`
 
 ## 1. Problem / Context
@@ -1202,7 +1202,7 @@ Completion level: `<copy from FEATURE.md>`
 Delivery lane: `<copy from FEATURE.md>`
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.1.0`
+Blueprint revision: `2.1.1`
 Blueprint digest: `<sha256>`
 
 Before writing the plan, apply the implementation scope gate defined in this
@@ -1476,7 +1476,7 @@ evidence.
 
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.1.0`
+Blueprint revision: `2.1.1`
 Blueprint digest: `<sha256>`
 
 ## <YYYY-MM-DD>
@@ -1492,7 +1492,7 @@ Updated: <YYYY-MM-DD>
 ## Workflow provenance
 - Workflow schema: 2
 - Blueprint source: <exact path or URL used>
-- Blueprint revision: 2.1.0
+- Blueprint revision: 2.1.1
 - Blueprint digest: <sha256>
 - Agent surface/model/harness: <known values, otherwise unknown>
 
@@ -1961,6 +1961,21 @@ referenced evidence so report links survive workspace cleanup. The comparison
 step must reject incomplete reports, modified candidate copies, and runs where
 more than one declared variable group changed.
 
+Treat verifier commands in a case catalog as executable input: inspect the catalog
+and require an explicit operator authorization before running them with local user
+permissions. A model judge record is complete only when it names the exact judge
+model and calibration revision, hashes a retained calibration set containing
+human ratings paired with judge predictions, demonstrates mean absolute error no
+greater than 1.0 and no greater than its declared threshold, and retains a
+decodable independently produced visual. Record and compare the evaluated adapter
+source digest plus the resolved provider executable digest, version, sandbox, and
+hashed effective arguments. Anchor provider identity to an operator-supplied
+expected digest; PATH lookup, provider overrides, and self-declared scripted
+metadata alone are not behavioral evidence. Before acceptance, reopen retained
+evidence, verify every recorded hash, require exactly the declared numbered trials
+for every case, and recompute aggregates, variance, observed tradeoffs,
+dimensions, gates, and the absolute bar from trial records.
+
 The goal is to preserve or improve observable workflow behavior, not every word
 of the prompt. Measure context delivery as part of that behavior: a candidate
 should load fewer irrelevant or duplicated instructions without losing lifecycle,
@@ -2112,7 +2127,7 @@ reasoning, streaming, timeout, sandbox, approval, MCP, hook, and other
 provider-specific settings in the client or launch configuration. Re-check current
 official documentation before changing those settings.
 
-Official guidance reviewed for revision 2.1.0 on 2026-08-07:
+Official guidance reviewed for revision 2.1.1 on 2026-08-07:
 
 - [OpenAI ExecPlans](https://developers.openai.com/cookbook/articles/codex_exec_plans),
   [long-running work](https://learn.chatgpt.com/docs/long-running-work), and

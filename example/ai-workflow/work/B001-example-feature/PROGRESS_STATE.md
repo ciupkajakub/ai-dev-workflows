@@ -5,8 +5,8 @@ Example note: this file is fictional sanitized output for a sample task manageme
 ## Workflow provenance
 - Workflow schema: 2
 - Blueprint source: `feature_execution_blueprint.md`
-- Blueprint revision: 2.1.0
-- Blueprint digest: `c82265d1ec86e45039f2cbbd4b664e2ce908e34ccde4dd860a048506b27ebed0`
+- Blueprint revision: 2.1.1
+- Blueprint digest: `710e0fa0523beee315e3918496de503df648c79b11063a35aaf3e518ad5821ac`
 - Agent surface/model/harness: fictional example / unknown / manual fixture
 
 ## Current batch

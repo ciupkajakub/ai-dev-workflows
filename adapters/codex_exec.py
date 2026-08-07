@@ -7,9 +7,12 @@ settings stay outside the reusable blueprint.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
+import shutil
 import subprocess
 import sys
 
@@ -33,7 +36,74 @@ def _extra_args() -> list[str]:
         isinstance(part, str) and part for part in value
     ):
         raise ValueError("FEATURE_EXECUTION_CODEX_ARGS must be a JSON string array")
+    reserved = {
+        "--ask-for-approval",
+        "--cd",
+        "--config",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--full-auto",
+        "--json",
+        "--model",
+        "--output-schema",
+        "--sandbox",
+        "--yolo",
+        "-C",
+        "-a",
+        "-c",
+        "-m",
+        "-o",
+        "-s",
+    }
+    if any(
+        part in reserved
+        or part.startswith("--cd=")
+        or part.startswith("--config=")
+        or part.startswith("--model=")
+        or part.startswith("--output-schema=")
+        or part.startswith("--sandbox=")
+        for part in value
+    ):
+        raise ValueError(
+            "FEATURE_EXECUTION_CODEX_ARGS contains a reserved provider setting"
+        )
     return value
+
+
+def _codex_binary() -> tuple[str, dict]:
+    """Resolve Codex and mark overrides as non-behavioral test providers."""
+    override = os.environ.get("FEATURE_EXECUTION_CODEX_BIN")
+    requested = override or "codex"
+    resolved_raw = shutil.which(requested)
+    if not resolved_raw:
+        raise ValueError(f"Codex executable not found: {requested}")
+    resolved = Path(resolved_raw).resolve()
+    executable_digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
+    expected_digest = os.environ.get("FEATURE_EXECUTION_CODEX_EXPECTED_SHA256", "")
+    version = "unknown"
+    verified = False
+    if override is None:
+        completed = subprocess.run(
+            [str(resolved), "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        version = completed.stdout.strip()
+        verified = (
+            completed.returncode == 0
+            and bool(re.fullmatch(r"codex-cli\s+\d+\.\d+\.\d+[^\s]*", version))
+            and bool(re.fullmatch(r"[0-9a-f]{64}", expected_digest))
+            and executable_digest == expected_digest
+        )
+    return str(resolved), {
+        "codex_binary_verified": verified,
+        "codex_executable": str(resolved),
+        "codex_executable_sha256": executable_digest,
+        "codex_expected_sha256": expected_digest or "unknown",
+        "codex_version": version,
+        "codex_binary_override": override is not None,
+    }
 
 
 def _agent_prompt(prompt: str, blueprint: Path | None) -> str:
@@ -116,11 +186,15 @@ def main() -> int:
         blueprint_raw = os.environ.get("FEATURE_EXECUTION_BLUEPRINT")
         blueprint = Path(blueprint_raw).resolve() if blueprint_raw else None
         resume_token = os.environ.get("FEATURE_EXECUTION_RESUME_TOKEN", "")
-        codex_bin = os.environ.get("FEATURE_EXECUTION_CODEX_BIN", "codex")
+        codex_bin, codex_provenance = _codex_binary()
         model = os.environ.get("FEATURE_EXECUTION_CODEX_MODEL", "")
         effort = os.environ.get("FEATURE_EXECUTION_CODEX_EFFORT", "")
         tools_label = os.environ.get("FEATURE_EXECUTION_CODEX_TOOLS_LABEL", "")
         extra_args = _extra_args()
+        extra_args_sha256 = hashlib.sha256(
+            json.dumps(extra_args, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        sandbox = os.environ.get("FEATURE_EXECUTION_CODEX_SANDBOX", "workspace-write")
         prompt = _agent_prompt(prompt_path.read_text(encoding="utf-8"), blueprint)
 
         shared = ["--json"]
@@ -136,9 +210,6 @@ def main() -> int:
         if resume_token:
             command = [codex_bin, "exec", "resume", *shared, resume_token, "-"]
         else:
-            sandbox = os.environ.get(
-                "FEATURE_EXECUTION_CODEX_SANDBOX", "workspace-write"
-            )
             command = [
                 codex_bin,
                 "exec",
@@ -175,11 +246,14 @@ def main() -> int:
         result["commands_run"] = _jsonl_commands(completed.stdout)
         result["adapter_metadata"] = {
             "adapter": ADAPTER_VERSION,
-            "behavioral_agent": True,
+            "behavioral_agent": codex_provenance["codex_binary_verified"],
             "command_evidence_source": "codex_jsonl_events",
             "model": model or "unknown",
             "effort": effort or "unknown",
             "tools": tools_label or "unknown",
+            "sandbox": sandbox,
+            "codex_args_sha256": extra_args_sha256,
+            **codex_provenance,
         }
         result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
         return 0

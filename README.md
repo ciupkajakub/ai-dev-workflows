@@ -77,6 +77,7 @@ its absolute path because evaluation workspaces are temporary:
 export FEATURE_EXECUTION_CODEX_MODEL='<model and version>'
 export FEATURE_EXECUTION_CODEX_EFFORT='<effort setting>'
 export FEATURE_EXECUTION_CODEX_TOOLS_LABEL='<tool set>'
+export FEATURE_EXECUTION_CODEX_EXPECTED_SHA256='<sha256 of the resolved codex executable>'
 
 bin/feature-execution eval \
   --suite eval/cases/v1/catalog.json \
@@ -85,18 +86,28 @@ bin/feature-execution eval \
   --configuration-label baseline \
   --trials 3 \
   --report-dir eval/reports \
+  --allow-verifier-commands \
   --behavioral-agent \
   --model '<model and version>' \
   --effort '<effort setting>' \
   --tools '<tool set>'
 ```
 
+The canonical suite contains executable verifier commands. Review the suite
+first: `--allow-verifier-commands` explicitly authorizes those commands to run
+with the current user's permissions. The runner refuses them without that flag.
+
 The material UI case also requires an independent calibrated judge. Supply it as
-`--judge-command '["python3","/absolute/path/to/judge-adapter.py"]'` with a
-non-`unknown` `--judge-label`. The judge runs after the evaluated agent while the
-temporary workspace is still available. It returns rubric scores and evidence
-references through `FEATURE_EXECUTION_JUDGE_RESULT_FILE`; it must not be the
-evaluated adapter itself.
+`--judge-command '["python3","/absolute/path/to/judge-adapter.py"]'`, together
+with a non-`unknown` `--judge-label`, `--judge-model`, and
+`--judge-calibration-file`. The calibration JSON records a revision, the exact
+judge model, at least three human-rated examples with the judge's predictions,
+and a maximum mean absolute error no greater than 1.0. The measured error must
+satisfy that threshold. The judge runs after the evaluated agent while the
+temporary workspace is still available. It returns rubric scores plus at least
+one decodable PNG evidence reference
+through `FEATURE_EXECUTION_JUDGE_RESULT_FILE`; it must not be the evaluated
+adapter itself. The runner retains and hashes the calibration and visual evidence.
 
 Repeat with the candidate blueprint and a different label, then compare the two
 saved JSON reports:
@@ -116,10 +127,22 @@ are useful for testing the runner, but their reports remain unaccepted. A
 standalone behavioral report can only say that it meets the absolute bar;
 acceptance additionally requires the comparable baseline step.
 
+`FEATURE_EXECUTION_CODEX_BIN` is a test hook. Runs that override the Codex binary
+are marked non-behavioral. A behavioral run also requires
+`FEATURE_EXECUTION_CODEX_EXPECTED_SHA256` to match the resolved executable.
+Behavioral provenance records that executable, digest, version, sandbox, hashed
+extra arguments, and the included adapter's digest. Reserved extra arguments
+cannot override the attested model, effort, sandbox, workspace, or output schema.
+Comparison treats a provider-runtime or adapter digest change as a separate
+variable group.
+
 Every trial retains a workspace hash manifest, Git patch/status, full structured
 trajectory, independent verifier results, and safe explicitly referenced files
 under the report directory before the temporary workspace is removed. Use only
 sanitized fixtures; retained evidence must not contain secrets or production data.
+Comparison reopens those files, verifies their hashes, and recomputes balanced
+trial coverage, aggregate metrics, variance, tradeoffs, dimensions, gates, and the
+absolute bar instead of trusting report claims.
 
 Provider configuration stays outside the blueprint. The reference Codex adapter
 reads `FEATURE_EXECUTION_CODEX_MODEL`, `FEATURE_EXECUTION_CODEX_EFFORT`,

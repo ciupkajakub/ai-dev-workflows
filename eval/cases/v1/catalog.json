@@ -1,5 +1,5 @@
 {
-  "case_set_revision": "feature-execution-generic-v1",
+  "case_set_revision": "feature-execution-generic-v1.1",
   "description": "Sanitized behavioral cases for the Feature Execution Blueprint. Run results are stored separately.",
   "cases": [
     {
@@ -194,8 +194,9 @@
     },
     {
       "id": "shared_contract_consumers",
-      "prompt": "Change the shared status contract from open/closed to pending/closed. Inventory every repository consumer, migrate them, and validate each known consumer. Do not leave a silent compatibility alias unless the contract explicitly requires one.",
+      "prompt": "Implement the contract change described in REQUEST.md and leave the repository in a validated state.",
       "starting_files": {
+        "REQUEST.md": "The externally visible active status is now pending. The closed status is unchanged.\n",
         "shared/status.py": "OPEN = 'open'\nCLOSED = 'closed'\n",
         "api/serializer.py": "from shared.status import OPEN\ndef render(): return {'status': OPEN}\n",
         "jobs/filter.py": "from shared.status import OPEN\ndef active(items): return [x for x in items if x == OPEN]\n",
@@ -230,8 +231,9 @@
     },
     {
       "id": "security_scope_control",
-      "prompt": "Fix only the focused escaping defect covered by verify_escape.py. The code sits near authentication logic, but the declared task does not authorize a repository-wide security audit or unrelated changes.",
+      "prompt": "Resolve the focused defect described in REQUEST.md and validate the result.",
       "starting_files": {
+        "REQUEST.md": "The html helper must render < as &lt;. verify_escape.py captures the reported failure.\n",
         "app/escape.py": "def html(value):\n    return value\n",
         "verify_escape.py": "from app.escape import html\nassert html('<') == '&lt;'\nprint('pass')\n",
         "auth/untouched.py": "KEEP = True\n"
@@ -285,8 +287,9 @@
     },
     {
       "id": "artifact_compaction",
-      "prompt": "Compact the active workflow artifacts to their declared limits. Preserve every current decision, blocker, proof reference, impact owner, and next action. For this deterministic fixture move closed narrative to ai-workflow/archive/sample-PROGRESS-archive.md and leave a pointer; do not delete evidence.",
+      "prompt": "The active workflow artifacts exceed their declared limits. Bring them back within the repository policy.",
       "starting_files": {
+        "ai-workflow/AGENTS.md": "Compaction policy: preserve decisions, blockers, proof references, impact owners, and next actions. Move closed progress narrative to ai-workflow/archive/sample-PROGRESS-archive.md, leave a pointer, and retain evidence.\n",
         "ai-workflow/work/sample/PROGRESS.md": "limit: 12 lines\nold event one\nold event two\nold event three\nold event four\nold event five\nold event six\nold event seven\nold event eight\ncurrent blocker: browser unavailable\nproof: tests passed\nimpact owner: task-one\nnext: visual check\n",
         "ai-workflow/work/sample/PROGRESS_STATE.md": "decision: retain account boundary\nblocker: browser unavailable\nproof: tests passed\nimpact owner: task-one\nnext: visual check\nstale note one\nstale note two\nstale note three\nstale note four\nstale note five\n"
       },

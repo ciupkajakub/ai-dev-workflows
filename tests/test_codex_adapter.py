@@ -67,7 +67,10 @@ class CodexAdapterContractTests(unittest.TestCase):
             self.assertEqual(
                 first_result["commands_run"][0]["command"], "python3 verify.py"
             )
-            self.assertTrue(first_result["adapter_metadata"]["behavioral_agent"])
+            self.assertFalse(first_result["adapter_metadata"]["behavioral_agent"])
+            self.assertFalse(
+                first_result["adapter_metadata"]["codex_binary_verified"]
+            )
             self.assertEqual(first_result["adapter_metadata"]["model"], "test-model")
             self.assertEqual(first_result["adapter_metadata"]["effort"], "high")
             first_call = json.loads(invocation_log.read_text(encoding="utf-8").splitlines()[0])
@@ -136,6 +139,33 @@ class CodexAdapterContractTests(unittest.TestCase):
 
             self.assertEqual(completed.returncode, 1)
             self.assertIn("invalid_json_schema", completed.stderr)
+
+    def test_extra_args_cannot_override_attested_provider_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            prompt = root / "prompt.txt"
+            prompt.write_text("Run.", encoding="utf-8")
+            completed = subprocess.run(
+                ["python3", str(ADAPTER)],
+                cwd=workspace,
+                env={
+                    **os.environ,
+                    "FEATURE_EXECUTION_WORKSPACE": str(workspace),
+                    "FEATURE_EXECUTION_PROMPT_FILE": str(prompt),
+                    "FEATURE_EXECUTION_RESULT_FILE": str(root / "result.json"),
+                    "FEATURE_EXECUTION_CODEX_ARGS": json.dumps(
+                        ["--model", "forged-model"]
+                    ),
+                },
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 64)
+            self.assertIn("reserved provider setting", completed.stderr)
 
 
 if __name__ == "__main__":

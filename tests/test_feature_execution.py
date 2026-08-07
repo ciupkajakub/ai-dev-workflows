@@ -606,6 +606,20 @@ class EvalCliTest(unittest.TestCase):
                 },
             )
             plan = root / "plan.json"
+            calibration = root / "judge-calibration.json"
+            write_json(
+                calibration,
+                {
+                    "calibration_revision": "fixture-ui-v1",
+                    "judge_model": "fixture-judge-v1",
+                    "maximum_mean_absolute_error": 1.0,
+                    "human_rated_examples": [
+                        {"id": "example-1", "human_score": 8, "judge_score": 8},
+                        {"id": "example-2", "human_score": 9, "judge_score": 9},
+                        {"id": "example-3", "human_score": 10, "judge_score": 9},
+                    ],
+                },
+            )
             write_json(
                 plan,
                 {
@@ -631,6 +645,10 @@ class EvalCliTest(unittest.TestCase):
                 json.dumps(["python3", str(SCRIPTED_JUDGE)]),
                 "--judge-label",
                 "independent-scripted-judge",
+                "--judge-model",
+                "fixture-judge-v1",
+                "--judge-calibration-file",
+                calibration,
                 "--blueprint",
                 BLUEPRINT,
                 "--configuration-label",
@@ -650,6 +668,91 @@ class EvalCliTest(unittest.TestCase):
                 report["trials"][0]["external_judgment"]["label"],
                 "independent-scripted-judge",
             )
+            judgment = report["trials"][0]["external_judgment"]
+            self.assertEqual(
+                judgment["provenance"]["calibration_revision"], "fixture-ui-v1"
+            )
+            self.assertTrue(judgment["evidence_refs"])
+            evidence = Path(
+                report["trials"][0]["retained_evidence"]["referenced_files"][0][
+                    "path"
+                ]
+            )
+            self.assertEqual(evidence.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+
+    def test_verifier_commands_require_explicit_authorization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            write_json(
+                suite,
+                {
+                    "case_set_revision": "verifier-v1",
+                    "cases": [
+                        {
+                            "id": "verification",
+                            "prompt": "Complete the supplied task.",
+                            "starting_files": {
+                                "verify.py": "print('verified')\n",
+                            },
+                            "dimensions": ["regression_evaluability"],
+                            "hard_gates": ["validation_blocks_completion"],
+                            "expected": {
+                                "terminal_state": "verified_outcome",
+                                "verifier_commands": [["python3", "verify.py"]],
+                            },
+                        }
+                    ],
+                },
+            )
+            plan = root / "plan.json"
+            write_json(
+                plan,
+                {
+                    "verification": [
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "done",
+                            "progress_made": True,
+                            "progress_fingerprint": "done",
+                        }
+                    ]
+                },
+            )
+            base_args = (
+                "eval",
+                "--suite",
+                suite,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--blueprint",
+                BLUEPRINT,
+                "--configuration-label",
+                "verifier-self-test",
+                "--trials",
+                "1",
+                "--report-dir",
+                root / "reports",
+            )
+
+            refused = run_cli(
+                *base_args,
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(refused.returncode, 64)
+            self.assertIn("--allow-verifier-commands", refused.stderr)
+
+            allowed = run_cli(
+                *base_args,
+                "--allow-verifier-commands",
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+            self.assertEqual(allowed.returncode, 0, allowed.stderr)
+            report_path = json.loads(allowed.stdout)["report_json"]
+            report = json.loads(Path(report_path).read_text(encoding="utf-8"))
+            self.assertEqual(report["trials"][0]["verifier_results"][0]["exit_code"], 0)
+            self.assertTrue(report["configuration"]["verifier_commands_authorized"])
 
 
 if __name__ == "__main__":

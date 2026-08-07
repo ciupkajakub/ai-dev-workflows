@@ -24,7 +24,7 @@ reject_text() {
   fi
 }
 
-require_text 'Blueprint revision: `2.1.0`'
+require_text 'Blueprint revision: `2.1.1`'
 require_text 'Workflow schema: `2`'
 require_text 'Blueprint digest: `<sha256>`'
 require_text 'continuation_mode: batch_to_verified_outcome'
@@ -45,6 +45,10 @@ require_text 'they are not behavioral agent evidence'
 require_text 'usability without steering, and regression evaluability'
 require_text 'the agent under evaluation cannot be its own judge'
 require_text 'more than one declared variable group changed'
+require_text 'Anchor provider identity to an operator-supplied'
+require_text 'mean absolute error no'
+require_text 'Before acceptance, reopen retained'
+require_text 'evidence, verify every recorded hash'
 require_text 'avoidable user-intervention rate is at most 10%'
 require_text 'target 220 lines or fewer for FEATURE.md'
 require_text 'IMPLEMENTATION.md targets 360 lines or fewer'

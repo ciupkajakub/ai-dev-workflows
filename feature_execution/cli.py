@@ -45,8 +45,11 @@ def _parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--effort", default="unknown")
     evaluate.add_argument("--tools", default="unknown")
     evaluate.add_argument("--harness-label", default="feature-execution-v1")
+    evaluate.add_argument("--allow-verifier-commands", action="store_true")
     evaluate.add_argument("--judge-command")
     evaluate.add_argument("--judge-label", default="unknown")
+    evaluate.add_argument("--judge-model", default="unknown")
+    evaluate.add_argument("--judge-calibration-file", type=Path)
 
     compare = subparsers.add_parser("compare", help="compare baseline and candidate reports")
     compare.add_argument("--baseline", type=Path, required=True)
@@ -92,12 +95,15 @@ def main(argv=None) -> int:
                 effort=args.effort,
                 tools=args.tools,
                 harness_label=args.harness_label,
+                allow_verifier_commands=args.allow_verifier_commands,
                 judge_command=(
                     parse_adapter_command(args.judge_command)
                     if args.judge_command
                     else None
                 ),
                 judge_label=args.judge_label,
+                judge_model=args.judge_model,
+                judge_calibration_file=args.judge_calibration_file,
             )
             print(
                 json.dumps(

@@ -7,8 +7,10 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import struct
 import subprocess
 import tempfile
+import zlib
 
 from .harness import run_outcome_loop
 
@@ -51,6 +53,8 @@ EXPECTED_TERMINAL_STATES = {
     "no_progress",
 }
 
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
 
 def _safe_relative_path(raw: str) -> PurePosixPath:
     value = PurePosixPath(raw)
@@ -88,6 +92,146 @@ def _validate_verifier_commands(case: dict) -> None:
                 f"case {case.get('id', 'unknown')} verifier_commands must contain "
                 "non-empty string arrays"
             )
+
+
+def _load_judge_calibration(path: Path, judge_model: str) -> dict:
+    try:
+        calibration = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid judge calibration file: {error}") from error
+    revision = calibration.get("calibration_revision")
+    examples = calibration.get("human_rated_examples")
+    calibrated_model = calibration.get("judge_model")
+    maximum_error = calibration.get("maximum_mean_absolute_error")
+    if not isinstance(revision, str) or not revision.strip():
+        raise ValueError("judge calibration requires calibration_revision")
+    if calibrated_model != judge_model or judge_model in {"", "unknown"}:
+        raise ValueError("judge model must match the calibrated judge_model")
+    if not isinstance(examples, list) or len(examples) < 3:
+        raise ValueError("judge calibration requires at least 3 human-rated examples")
+    if (
+        isinstance(maximum_error, bool)
+        or not isinstance(maximum_error, (int, float))
+        or not 0 <= maximum_error <= 1
+    ):
+        raise ValueError(
+            "judge calibration requires maximum_mean_absolute_error between 0 and 1"
+        )
+    example_ids = [example.get("id") for example in examples if isinstance(example, dict)]
+    if (
+        len(example_ids) != len(examples)
+        or any(not isinstance(example_id, str) or not example_id for example_id in example_ids)
+        or len(set(example_ids)) != len(example_ids)
+    ):
+        raise ValueError("judge calibration requires unique example ids")
+
+    score_pairs = []
+    for example in examples:
+        human_scores = example.get("human_scores")
+        judge_scores = example.get("judge_scores")
+        if isinstance(human_scores, dict) and isinstance(judge_scores, dict):
+            if not human_scores or set(human_scores) != set(judge_scores):
+                raise ValueError("judge predictions must match human-rated criteria")
+            score_pairs.extend(
+                (human_scores[name], judge_scores[name]) for name in human_scores
+            )
+        elif "human_score" in example and "judge_score" in example:
+            score_pairs.append((example["human_score"], example["judge_score"]))
+        else:
+            raise ValueError("judge predictions are required for human-rated examples")
+    if not all(
+        not isinstance(score, bool)
+        and isinstance(score, (int, float))
+        and 0 <= score <= 10
+        for pair in score_pairs
+        for score in pair
+    ):
+        raise ValueError("human and judge calibration scores must be between 0 and 10")
+    mean_absolute_error = sum(
+        abs(float(human) - float(predicted)) for human, predicted in score_pairs
+    ) / len(score_pairs)
+    if mean_absolute_error > maximum_error:
+        raise ValueError(
+            "judge calibration exceeds maximum_mean_absolute_error: "
+            f"{mean_absolute_error:.4f}>{maximum_error:.4f}"
+        )
+    return {
+        "calibration_revision": revision,
+        "calibration_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "calibration_file": str(path.resolve()),
+        "human_rated_examples": len(examples),
+        "calibration_rating_pairs": len(score_pairs),
+        "calibration_mean_absolute_error": round(mean_absolute_error, 4),
+        "calibration_maximum_mean_absolute_error": maximum_error,
+        "judge_model": judge_model,
+    }
+
+
+def _valid_png_evidence(path: Path) -> bool:
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return False
+    if not data.startswith(PNG_SIGNATURE):
+        return False
+    offset = len(PNG_SIGNATURE)
+    width = height = channels = None
+    compressed = bytearray()
+    saw_header = False
+    saw_end = False
+    while offset + 12 <= len(data):
+        length = struct.unpack(">I", data[offset : offset + 4])[0]
+        kind = data[offset + 4 : offset + 8]
+        chunk_end = offset + 12 + length
+        if chunk_end > len(data):
+            return False
+        payload = data[offset + 8 : offset + 8 + length]
+        expected_crc = struct.unpack(">I", data[offset + 8 + length : chunk_end])[0]
+        if zlib.crc32(kind + payload) & 0xFFFFFFFF != expected_crc:
+            return False
+        if kind == b"IHDR":
+            if saw_header or offset != len(PNG_SIGNATURE) or length != 13:
+                return False
+            width, height, bit_depth, color_type, compression, filtering, interlace = (
+                struct.unpack(">IIBBBBB", payload)
+            )
+            if (
+                width < 1
+                or height < 1
+                or bit_depth != 8
+                or color_type not in {2, 6}
+                or compression != 0
+                or filtering != 0
+                or interlace != 0
+            ):
+                return False
+            channels = 3 if color_type == 2 else 4
+            saw_header = True
+        elif kind == b"IDAT":
+            if not saw_header or saw_end:
+                return False
+            compressed.extend(payload)
+        elif kind == b"IEND":
+            if length != 0 or not saw_header or not compressed:
+                return False
+            saw_end = True
+            offset = chunk_end
+            break
+        offset = chunk_end
+    if not saw_end or offset != len(data) or None in {width, height, channels}:
+        return False
+    row_bytes = int(width) * int(channels)
+    expected_size = int(height) * (row_bytes + 1)
+    if expected_size > 100 * 1024 * 1024:
+        return False
+    try:
+        decoder = zlib.decompressobj()
+        pixels = decoder.decompress(bytes(compressed), expected_size + 1)
+    except zlib.error:
+        return False
+    if len(pixels) != expected_size or not decoder.eof or decoder.unused_data:
+        return False
+    return all(pixels[row * (row_bytes + 1)] <= 4 for row in range(int(height)))
 
 
 def load_eval_suite(
@@ -249,7 +393,12 @@ def _retain_trial_evidence(
         prefix = hashlib.sha256(str(resolved).encode("utf-8")).hexdigest()[:10]
         destination = files_root / f"{prefix}-{resolved.name}"
         shutil.copy2(resolved, destination)
-        copied.append(str(destination.resolve()))
+        copied.append(
+            {
+                "path": str(destination.resolve()),
+                "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+            }
+        )
 
     return {
         "manifest": str(manifest_path.resolve()),
@@ -257,6 +406,7 @@ def _retain_trial_evidence(
         "patch": str(patch_path.resolve()),
         "patch_sha256": hashlib.sha256(patch_path.read_bytes()).hexdigest(),
         "git_status": str(status_path.resolve()),
+        "git_status_sha256": hashlib.sha256(status_path.read_bytes()).hexdigest(),
         "referenced_files": copied,
     }
 
@@ -302,11 +452,12 @@ def _run_external_judge(
     workspace: Path,
     judge_command: list[str] | None,
     judge_label: str,
+    judge_provenance: dict | None,
     trial_number: int,
 ) -> tuple[dict | None, list[str]]:
     if not case.get("external_judgment_required"):
         return None, []
-    if not judge_command:
+    if not judge_command or not judge_provenance:
         return None, ["external_judge_not_configured"]
     with tempfile.TemporaryDirectory(prefix="feature-execution-judge-") as directory:
         root = Path(directory)
@@ -323,6 +474,15 @@ def _run_external_judge(
             "FEATURE_EXECUTION_JUDGE_RESULT_FILE": str(result_path),
             "FEATURE_EXECUTION_CASE_ID": case["id"],
             "FEATURE_EXECUTION_TRIAL": str(trial_number),
+            "FEATURE_EXECUTION_JUDGE_MODEL": str(
+                judge_provenance["judge_model"]
+            ),
+            "FEATURE_EXECUTION_JUDGE_CALIBRATION_FILE": str(
+                judge_provenance["calibration_file"]
+            ),
+            "FEATURE_EXECUTION_JUDGE_CALIBRATION_SHA256": str(
+                judge_provenance["calibration_sha256"]
+            ),
         }
         try:
             completed = subprocess.run(
@@ -348,7 +508,33 @@ def _run_external_judge(
             for name, score in scores.items()
         ):
             return None, ["external_judge_invalid_scores"]
+        if (
+            judgment.get("judge_model") != judge_provenance["judge_model"]
+            or judgment.get("calibration_sha256")
+            != judge_provenance["calibration_sha256"]
+        ):
+            return None, ["external_judge_provenance_mismatch"]
+        evidence_refs = judgment.get("evidence_refs")
+        if not isinstance(evidence_refs, list) or not evidence_refs:
+            return None, ["external_judge_missing_visual_evidence"]
+        for raw_reference in evidence_refs:
+            reference = Path(str(raw_reference))
+            if not reference.is_absolute():
+                reference = workspace / reference
+            try:
+                resolved = reference.resolve()
+                resolved.relative_to(workspace.resolve())
+            except (OSError, ValueError):
+                return None, ["external_judge_unsafe_visual_evidence"]
+            if (
+                not resolved.is_file()
+                or resolved.suffix.lower() != ".png"
+                or resolved.stat().st_size > 10 * 1024 * 1024
+                or not _valid_png_evidence(resolved)
+            ):
+                return None, ["external_judge_invalid_visual_evidence"]
         judgment["label"] = judge_label
+        judgment["provenance"] = judge_provenance
         return judgment, []
 
 
@@ -554,8 +740,36 @@ def _acceptance_failures(
             failures.append("external_judge_not_configured")
         elif judge.get("label") in {None, "", "unknown"}:
             failures.append("configuration_unknown:judge")
-        elif judge.get("command_sha256") == configuration.get("adapter", {}).get(
-            "command_sha256"
+        elif judge.get("judge_model") in {None, "", "unknown"}:
+            failures.append("configuration_unknown:judge_model")
+        elif (
+            not judge.get("calibration_revision")
+            or not judge.get("calibration_sha256")
+            or not isinstance(judge.get("human_rated_examples"), int)
+            or judge.get("human_rated_examples") < 3
+            or not isinstance(judge.get("calibration_rating_pairs"), int)
+            or judge.get("calibration_rating_pairs") < 3
+            or not isinstance(
+                judge.get("calibration_mean_absolute_error"), (int, float)
+            )
+            or not isinstance(
+                judge.get("calibration_maximum_mean_absolute_error"), (int, float)
+            )
+            or not 0
+            <= judge.get("calibration_mean_absolute_error")
+            <= judge.get("calibration_maximum_mean_absolute_error")
+            <= 1
+        ):
+            failures.append("external_judge_not_calibrated")
+        elif judge.get("entrypoint") in {None, "", "unknown"} or judge.get(
+            "entrypoint_sha256"
+        ) in {None, "", "unknown"}:
+            failures.append("external_judge_identity_unverified")
+        elif (
+            judge.get("command_sha256")
+            == configuration.get("adapter", {}).get("command_sha256")
+            or judge.get("entrypoint_sha256")
+            == configuration.get("adapter", {}).get("entrypoint_sha256")
         ):
             failures.append("external_judge_not_independent")
     for name, result in dimensions.items():
@@ -582,6 +796,8 @@ def _case_variance(trials: list[dict]) -> dict:
             "internal_turns": {
                 "minimum": min(turns),
                 "maximum": max(turns),
+                "sum": sum(turns),
+                "denominator": len(turns),
                 "mean": round(sum(turns) / len(turns), 2),
             },
             "visible_user_interventions": sum(
@@ -592,6 +808,99 @@ def _case_variance(trials: list[dict]) -> dict:
     return results
 
 
+def _aggregate_results(trials: list[dict], case_ids: list[str]) -> dict:
+    trials_total = len(trials)
+    trials_passed = sum(1 for trial in trials if trial["passed"])
+    cases_passed = sum(
+        1
+        for case_id in case_ids
+        if all(trial["passed"] for trial in trials if trial["case_id"] == case_id)
+    )
+    zero_intervention_trials = sum(
+        1
+        for trial in trials
+        if trial["outcome"]["visible_user_interventions"] == 0
+    )
+    trials_with_user_steering = trials_total - zero_intervention_trials
+    avoidable_interventions = sum(
+        trial["outcome"]["visible_user_interventions"] for trial in trials
+    )
+    internal_turns_total = sum(
+        trial["outcome"]["internal_turns"] for trial in trials
+    )
+    return {
+        "cases_passed": cases_passed,
+        "cases_total": len(case_ids),
+        "trials_passed": trials_passed,
+        "trials_total": trials_total,
+        "avoidable_user_interventions": avoidable_interventions,
+        "trials_with_no_user_steering": zero_intervention_trials,
+        "trials_with_user_steering": trials_with_user_steering,
+        "trials_with_no_user_steering_rate": round(
+            zero_intervention_trials / trials_total, 4
+        ),
+        "avoidable_user_intervention_rate": round(
+            trials_with_user_steering / trials_total, 4
+        ),
+        "internal_turns_total": internal_turns_total,
+        "internal_turns_denominator": trials_total,
+        "mean_internal_turns": round(internal_turns_total / trials_total, 2),
+    }
+
+
+def _observed_tradeoffs(trials: list[dict]) -> list[dict]:
+    tradeoffs = []
+    for case_id, result in _case_variance(trials).items():
+        if result["passed"] < result["total"]:
+            tradeoffs.append(
+                {
+                    "case_id": case_id,
+                    "type": "reliability",
+                    "passed_trials": result["passed"],
+                    "total_trials": result["total"],
+                }
+            )
+        if result["internal_turns"]["minimum"] != result["internal_turns"]["maximum"]:
+            tradeoffs.append(
+                {
+                    "case_id": case_id,
+                    "type": "turn_variance",
+                    "minimum": result["internal_turns"]["minimum"],
+                    "maximum": result["internal_turns"]["maximum"],
+                }
+            )
+    return tradeoffs
+
+
+def _command_entrypoint(command: list[str]) -> Path | None:
+    if len(command) == 1:
+        candidate = Path(command[0]).expanduser()
+    elif (
+        len(command) == 2
+        and re.fullmatch(r"python(?:3(?:\.\d+)?)?", Path(command[0]).name)
+    ):
+        candidate = Path(command[1]).expanduser()
+    else:
+        return None
+    try:
+        resolved = candidate.resolve()
+    except OSError:
+        return None
+    return resolved if resolved.is_file() else None
+
+
+def _command_entrypoint_metadata(command: list[str]) -> dict:
+    entrypoint = _command_entrypoint(command)
+    return {
+        "entrypoint": str(entrypoint) if entrypoint else "unknown",
+        "entrypoint_sha256": (
+            hashlib.sha256(entrypoint.read_bytes()).hexdigest()
+            if entrypoint
+            else "unknown"
+        ),
+    }
+
+
 def _reference_adapter_verified(
     adapter_command: list[str],
     trials: list[dict],
@@ -600,17 +909,24 @@ def _reference_adapter_verified(
     tools: str,
 ) -> tuple[bool, dict]:
     reference = Path(__file__).resolve().parents[1] / "adapters" / "codex_exec.py"
-    command_paths = []
-    for part in adapter_command:
-        path = Path(part).expanduser()
-        if path.exists():
-            command_paths.append(path.resolve())
-    reference_selected = reference.resolve() in command_paths
+    reference_selected = _command_entrypoint(adapter_command) == reference.resolve()
     turns = [
         turn
         for trial in trials
         for turn in trial.get("outcome", {}).get("trajectory", [])
     ]
+    provider_fields = (
+        "codex_executable",
+        "codex_executable_sha256",
+        "codex_version",
+        "codex_args_sha256",
+        "sandbox",
+    )
+    provider_fingerprints = {
+        tuple(turn.get("adapter_metadata", {}).get(field) for field in provider_fields)
+        for turn in turns
+    }
+    runtime_consistent = len(provider_fingerprints) == 1
     attested = bool(turns) and all(
         turn.get("adapter_metadata", {}).get("behavioral_agent") is True
         and turn.get("adapter_metadata", {}).get("command_evidence_source")
@@ -618,12 +934,37 @@ def _reference_adapter_verified(
         and turn.get("adapter_metadata", {}).get("model") == model
         and turn.get("adapter_metadata", {}).get("effort") == effort
         and turn.get("adapter_metadata", {}).get("tools") == tools
+        and turn.get("adapter_metadata", {}).get("codex_binary_verified") is True
+        and turn.get("adapter_metadata", {}).get("codex_binary_override") is False
+        and re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(
+                turn.get("adapter_metadata", {}).get(
+                    "codex_executable_sha256", ""
+                )
+            ),
+        )
+        and turn.get("adapter_metadata", {}).get("codex_expected_sha256")
+        == turn.get("adapter_metadata", {}).get("codex_executable_sha256")
+        and re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(turn.get("adapter_metadata", {}).get("codex_args_sha256", "")),
+        )
+        and turn.get("adapter_metadata", {}).get("codex_version")
+        not in {None, "", "unknown"}
+        and turn.get("adapter_metadata", {}).get("sandbox")
+        not in {None, "", "unknown"}
         for turn in turns
-    )
+    ) and runtime_consistent
+    first_metadata = turns[0].get("adapter_metadata", {}) if turns else {}
     return reference_selected and attested, {
         "reference_adapter_selected": reference_selected,
         "all_turns_attested": attested,
         "reference_adapter_sha256": hashlib.sha256(reference.read_bytes()).hexdigest(),
+        "provider_runtime_consistent": runtime_consistent,
+        "provider_runtime": {
+            field: first_metadata.get(field, "unknown") for field in provider_fields
+        },
     }
 
 
@@ -640,8 +981,11 @@ def run_eval_suite(
     effort: str,
     tools: str,
     harness_label: str,
+    allow_verifier_commands: bool,
     judge_command: list[str] | None,
     judge_label: str,
+    judge_model: str,
+    judge_calibration_file: Path | None,
 ) -> dict:
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", configuration_label):
         raise ValueError(
@@ -656,10 +1000,33 @@ def run_eval_suite(
     cases = suite["cases"]
     if trials_per_case < 1:
         raise ValueError("trials must be at least 1")
+    verifier_commands_declared = sum(
+        len(case.get("expected", {}).get("verifier_commands", [])) for case in cases
+    )
+    if verifier_commands_declared and not allow_verifier_commands:
+        raise ValueError(
+            "suite contains verifier commands; review the suite and pass "
+            "--allow-verifier-commands to authorize them with current user permissions"
+        )
+    external_judgment_required = any(
+        case.get("external_judgment_required") for case in cases
+    )
+    judge_provenance = None
+    if judge_command and external_judgment_required:
+        if judge_calibration_file is None:
+            raise ValueError("an external judge requires --judge-calibration-file")
+        judge_provenance = _load_judge_calibration(
+            judge_calibration_file, judge_model
+        )
 
     report_dir.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     evidence_root = report_dir / f"{configuration_label}-{run_id}-evidence"
+    if judge_provenance and judge_calibration_file:
+        evidence_root.mkdir(parents=True, exist_ok=True)
+        retained_calibration = evidence_root / "judge-calibration.json"
+        shutil.copy2(judge_calibration_file, retained_calibration)
+        judge_provenance["calibration_file"] = str(retained_calibration.resolve())
     trial_results = []
     expected_blueprint_digest = hashlib.sha256(blueprint.read_bytes()).hexdigest()
     for case in cases:
@@ -690,6 +1057,7 @@ def run_eval_suite(
                     workspace=workspace,
                     judge_command=judge_command,
                     judge_label=judge_label,
+                    judge_provenance=judge_provenance,
                     trial_number=trial_number,
                 )
                 passed, failures = _evaluate_case(
@@ -727,6 +1095,12 @@ def run_eval_suite(
                         "failures": failures,
                         "outcome": outcome,
                         "verifier_results": verifier_results,
+                        "verifier_commands_declared": len(
+                            case.get("expected", {}).get("verifier_commands", [])
+                        ),
+                        "external_judgment_required": bool(
+                            case.get("external_judgment_required")
+                        ),
                         "external_judgment": external_judgment,
                         "retained_evidence": retained_evidence,
                     }
@@ -751,6 +1125,7 @@ def run_eval_suite(
                 json.dumps(adapter_command).encode("utf-8")
             ).hexdigest(),
             "provenance": adapter_provenance,
+            **_command_entrypoint_metadata(adapter_command),
         },
         "judge": (
             {
@@ -759,13 +1134,14 @@ def run_eval_suite(
                 "command_sha256": hashlib.sha256(
                     json.dumps(judge_command).encode("utf-8")
                 ).hexdigest(),
+                **_command_entrypoint_metadata(judge_command),
+                **(judge_provenance or {}),
             }
             if judge_command
             else None
         ),
-        "external_judgment_required": any(
-            case.get("external_judgment_required") for case in cases
-        ),
+        "external_judgment_required": external_judgment_required,
+        "verifier_commands_authorized": allow_verifier_commands,
         "behavioral_agent": effective_behavioral_agent,
         "behavioral_agent_asserted": behavioral_agent,
         "trials_per_case": trials_per_case,
@@ -776,26 +1152,7 @@ def run_eval_suite(
         hard_gates=hard_gates,
         configuration=configuration,
     )
-    trials_total = len(trial_results)
-    trials_passed = sum(1 for trial in trial_results if trial["passed"])
-    cases_passed = sum(
-        1
-        for case in cases
-        if all(
-            trial["passed"]
-            for trial in trial_results
-            if trial["case_id"] == case["id"]
-        )
-    )
-    zero_intervention_trials = sum(
-        1
-        for trial in trial_results
-        if trial["outcome"]["visible_user_interventions"] == 0
-    )
-    trials_with_user_steering = trials_total - zero_intervention_trials
-    internal_turns_total = sum(
-        trial["outcome"]["internal_turns"] for trial in trial_results
-    )
+    case_ids = [case["id"] for case in cases]
     report = {
         "schema_version": 1,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -804,36 +1161,14 @@ def run_eval_suite(
             "path": str(suite_path.resolve()),
             "sha256": hashlib.sha256(suite_path.read_bytes()).hexdigest(),
             "case_count": len(cases),
+            "case_ids": case_ids,
         },
         "configuration": configuration,
-        "aggregate": {
-            "cases_passed": cases_passed,
-            "cases_total": len(cases),
-            "trials_passed": trials_passed,
-            "trials_total": trials_total,
-            "avoidable_user_interventions": sum(
-                trial["outcome"]["visible_user_interventions"]
-                for trial in trial_results
-            ),
-            "trials_with_no_user_steering": zero_intervention_trials,
-            "trials_with_user_steering": trials_with_user_steering,
-            "trials_with_no_user_steering_rate": round(
-                zero_intervention_trials / trials_total, 4
-            ),
-            "avoidable_user_intervention_rate": round(
-                trials_with_user_steering / trials_total,
-                4,
-            ),
-            "internal_turns_total": internal_turns_total,
-            "internal_turns_denominator": trials_total,
-            "mean_internal_turns": round(
-                internal_turns_total / trials_total,
-                2,
-            ),
-        },
+        "aggregate": _aggregate_results(trial_results, case_ids),
         "dimensions": dimensions,
         "hard_gates": hard_gates,
         "variance": _case_variance(trial_results),
+        "observed_tradeoffs": _observed_tradeoffs(trial_results),
         "trials": trial_results,
         "meets_absolute_bar": not absolute_bar_failures,
         "absolute_bar_failures": absolute_bar_failures,
@@ -932,8 +1267,47 @@ def _configuration_failures(configuration: dict, prefix: str) -> list[str]:
     return failures
 
 
+def _retained_evidence_valid(retained: object) -> bool:
+    if not isinstance(retained, dict):
+        return False
+    for path_field, digest_field in (
+        ("manifest", "manifest_sha256"),
+        ("patch", "patch_sha256"),
+        ("git_status", "git_status_sha256"),
+    ):
+        raw_path = retained.get(path_field)
+        digest = retained.get(digest_field)
+        if not isinstance(raw_path, str) or not re.fullmatch(
+            r"[0-9a-f]{64}", str(digest)
+        ):
+            return False
+        path = Path(raw_path)
+        if (
+            not path.is_file()
+            or hashlib.sha256(path.read_bytes()).hexdigest() != digest
+        ):
+            return False
+    referenced_files = retained.get("referenced_files")
+    if not isinstance(referenced_files, list):
+        return False
+    for reference in referenced_files:
+        if not isinstance(reference, dict):
+            return False
+        path = Path(str(reference.get("path", "")))
+        digest = reference.get("sha256")
+        if (
+            not path.is_file()
+            or not re.fullmatch(r"[0-9a-f]{64}", str(digest))
+            or hashlib.sha256(path.read_bytes()).hexdigest() != digest
+        ):
+            return False
+    return True
+
+
 def _report_integrity_failures(report: dict, side: str) -> list[str]:
     failures = []
+    if report.get("schema_version") != 1:
+        failures.append(f"{side}_unsupported_report_schema")
     if set(report.get("dimensions", {})) != set(DIMENSIONS):
         failures.append(f"{side}_incomplete_dimensions")
     if set(report.get("hard_gates", {})) != set(HARD_GATES):
@@ -942,54 +1316,149 @@ def _report_integrity_failures(report: dict, side: str) -> list[str]:
     failures.extend(_configuration_failures(configuration, side))
     if configuration.get("behavioral_agent"):
         provenance = configuration.get("adapter", {}).get("provenance", {})
+        provider_runtime = provenance.get("provider_runtime", {})
         if not (
             provenance.get("reference_adapter_selected") is True
             and provenance.get("all_turns_attested") is True
+            and provenance.get("provider_runtime_consistent") is True
+            and re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(provenance.get("reference_adapter_sha256", "")),
+            )
+            and re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(provider_runtime.get("codex_executable_sha256", "")),
+            )
+            and re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(provider_runtime.get("codex_args_sha256", "")),
+            )
+            and provider_runtime.get("codex_version") not in {None, "", "unknown"}
+            and provider_runtime.get("sandbox") not in {None, "", "unknown"}
         ):
             failures.append(f"{side}_behavioral_adapter_unverified")
     blueprint = configuration.get("blueprint", {})
     if not blueprint.get("revision") or not blueprint.get("sha256"):
         failures.append(f"{side}_incomplete_blueprint_metadata")
+    if configuration.get("external_judgment_required"):
+        judge = configuration.get("judge") or {}
+        calibration_file = Path(str(judge.get("calibration_file", "")))
+        calibration_digest = judge.get("calibration_sha256")
+        if (
+            not calibration_file.is_file()
+            or not re.fullmatch(r"[0-9a-f]{64}", str(calibration_digest))
+            or hashlib.sha256(calibration_file.read_bytes()).hexdigest()
+            != calibration_digest
+        ):
+            failures.append(f"{side}_judge_calibration_invalid")
+        else:
+            try:
+                recomputed_calibration = _load_judge_calibration(
+                    calibration_file, str(judge.get("judge_model", "unknown"))
+                )
+            except ValueError:
+                failures.append(f"{side}_judge_calibration_invalid")
+            else:
+                calibration_fields = (
+                    "calibration_revision",
+                    "calibration_sha256",
+                    "human_rated_examples",
+                    "calibration_rating_pairs",
+                    "calibration_mean_absolute_error",
+                    "calibration_maximum_mean_absolute_error",
+                    "judge_model",
+                )
+                if any(
+                    judge.get(field) != recomputed_calibration.get(field)
+                    for field in calibration_fields
+                ):
+                    failures.append(f"{side}_judge_calibration_metrics_mismatch")
 
     trials = report.get("trials")
-    case_count = report.get("case_set", {}).get("case_count")
+    case_set = report.get("case_set", {})
+    case_count = case_set.get("case_count")
+    case_ids = case_set.get("case_ids")
     trials_per_case = configuration.get("trials_per_case")
     if (
         not isinstance(trials, list)
         or not isinstance(case_count, int)
+        or not isinstance(case_ids, list)
+        or len(case_ids) != case_count
+        or not all(isinstance(case_id, str) and case_id for case_id in case_ids)
+        or len(set(case_ids)) != case_count
         or not isinstance(trials_per_case, int)
+        or not all(isinstance(trial, dict) for trial in trials)
         or len(trials) != case_count * trials_per_case
     ):
         failures.append(f"{side}_incomplete_trials")
         return failures
     if configuration.get("behavioral_agent") and case_count < 18:
         failures.append(f"{side}_insufficient_behavioral_cases")
-    if len({trial.get("case_id") for trial in trials}) != case_count:
-        failures.append(f"{side}_case_count_inconsistent")
+    if bool(configuration.get("external_judgment_required")) != any(
+        trial.get("external_judgment_required") is True for trial in trials
+    ):
+        failures.append(f"{side}_judgment_scope_inconsistent")
+    expected_trials = {
+        (case_id, trial_number)
+        for case_id in case_ids
+        for trial_number in range(1, trials_per_case + 1)
+    }
+    trial_keys_valid = all(
+        isinstance(trial.get("case_id"), str)
+        and isinstance(trial.get("trial"), int)
+        for trial in trials
+    )
+    actual_trials = (
+        {(trial["case_id"], trial["trial"]) for trial in trials}
+        if trial_keys_valid
+        else set()
+    )
+    if (
+        not trial_keys_valid
+        or len(actual_trials) != len(trials)
+        or actual_trials != expected_trials
+    ):
+        failures.append(f"{side}_unbalanced_trials")
+
     for trial in trials:
         if not isinstance(trial.get("outcome"), dict):
             failures.append(f"{side}_trial_missing_outcome")
             break
-        retained = trial.get("retained_evidence")
-        if not isinstance(retained, dict) or not all(
-            retained.get(field)
-            for field in ("manifest", "manifest_sha256", "patch", "patch_sha256")
-        ):
-            failures.append(f"{side}_trial_missing_retained_evidence")
+        if not isinstance(trial.get("external_judgment_required"), bool):
+            failures.append(f"{side}_trial_judgment_scope_missing")
             break
-        if not isinstance(trial.get("verifier_results"), list):
+        retained = trial.get("retained_evidence")
+        if not _retained_evidence_valid(retained):
+            failures.append(f"{side}_trial_retained_evidence_invalid")
+            break
+        verifier_results = trial.get("verifier_results")
+        verifier_count = trial.get("verifier_commands_declared")
+        if (
+            not isinstance(verifier_results, list)
+            or not isinstance(verifier_count, int)
+            or verifier_count < 0
+            or len(verifier_results) != verifier_count
+        ):
             failures.append(f"{side}_trial_missing_verifier_results")
+            break
+        if verifier_count and not configuration.get("verifier_commands_authorized"):
+            failures.append(f"{side}_verifier_commands_unauthorized")
             break
         if bool(trial.get("passed")) != (not trial.get("failures", [])):
             failures.append(f"{side}_trial_pass_flag_inconsistent")
             break
         if bool(trial.get("passed")) and any(
-            result.get("exit_code") != 0 for result in trial["verifier_results"]
+            result.get("exit_code") != 0 for result in verifier_results
         ):
             failures.append(f"{side}_passing_trial_has_failed_verifier")
             break
         if configuration.get("behavioral_agent"):
             trajectory = trial["outcome"].get("trajectory", [])
+            provider_runtime = (
+                configuration.get("adapter", {})
+                .get("provenance", {})
+                .get("provider_runtime", {})
+            )
             if not trajectory or not all(
                 turn.get("adapter_metadata", {}).get("behavioral_agent") is True
                 and turn.get("adapter_metadata", {}).get("command_evidence_source")
@@ -1000,21 +1469,80 @@ def _report_integrity_failures(report: dict, side: str) -> list[str]:
                 == configuration.get("effort")
                 and turn.get("adapter_metadata", {}).get("tools")
                 == configuration.get("tools")
+                and turn.get("adapter_metadata", {}).get("codex_binary_verified")
+                is True
+                and turn.get("adapter_metadata", {}).get("codex_binary_override")
+                is False
+                and turn.get("adapter_metadata", {}).get("codex_expected_sha256")
+                == turn.get("adapter_metadata", {}).get(
+                    "codex_executable_sha256"
+                )
+                and turn.get("adapter_metadata", {}).get("codex_executable")
+                == provider_runtime.get("codex_executable")
+                and turn.get("adapter_metadata", {}).get("codex_executable_sha256")
+                == provider_runtime.get("codex_executable_sha256")
+                and turn.get("adapter_metadata", {}).get("codex_version")
+                == provider_runtime.get("codex_version")
+                and turn.get("adapter_metadata", {}).get("codex_args_sha256")
+                == provider_runtime.get("codex_args_sha256")
+                and turn.get("adapter_metadata", {}).get("sandbox")
+                == provider_runtime.get("sandbox")
                 for turn in trajectory
             ):
                 failures.append(f"{side}_trial_adapter_attestation_missing")
                 break
+        if trial.get("external_judgment_required"):
+            judgment = trial.get("external_judgment")
+            judge = configuration.get("judge") or {}
+            provenance = (
+                judgment.get("provenance", {}) if isinstance(judgment, dict) else {}
+            )
+            if not (
+                isinstance(judgment, dict)
+                and judgment.get("label") == judge.get("label")
+                and judgment.get("judge_model") == judge.get("judge_model")
+                and judgment.get("calibration_sha256")
+                == judge.get("calibration_sha256")
+                and isinstance(judgment.get("rubric_scores"), dict)
+                and all(
+                    isinstance(score, (int, float)) and not isinstance(score, bool)
+                    for score in judgment.get("rubric_scores", {}).values()
+                )
+                and judgment.get("evidence_refs")
+                and retained.get("referenced_files")
+                and any(
+                    Path(reference["path"]).suffix.lower() == ".png"
+                    and _valid_png_evidence(Path(reference["path"]))
+                    for reference in retained.get("referenced_files", [])
+                )
+                and provenance.get("judge_model") == judge.get("judge_model")
+                and provenance.get("calibration_revision")
+                == judge.get("calibration_revision")
+                and provenance.get("calibration_sha256")
+                == judge.get("calibration_sha256")
+            ):
+                failures.append(f"{side}_trial_judgment_incomplete")
+                break
 
     try:
+        recomputed_aggregate = _aggregate_results(trials, case_ids)
         recomputed_dimensions = _dimension_results(trials)
         recomputed_gates = _hard_gate_results(trials)
+        recomputed_variance = _case_variance(trials)
+        recomputed_tradeoffs = _observed_tradeoffs(trials)
     except (KeyError, TypeError, ZeroDivisionError):
         failures.append(f"{side}_trial_data_invalid")
         return failures
+    if recomputed_aggregate != report.get("aggregate"):
+        failures.append(f"{side}_aggregate_integrity_mismatch")
     if recomputed_dimensions != report.get("dimensions"):
         failures.append(f"{side}_dimension_integrity_mismatch")
     if recomputed_gates != report.get("hard_gates"):
         failures.append(f"{side}_hard_gate_integrity_mismatch")
+    if recomputed_variance != report.get("variance"):
+        failures.append(f"{side}_variance_integrity_mismatch")
+    if recomputed_tradeoffs != report.get("observed_tradeoffs"):
+        failures.append(f"{side}_tradeoff_integrity_mismatch")
     recomputed_bar_failures = _acceptance_failures(
         behavioral_agent=bool(configuration.get("behavioral_agent")),
         dimensions=recomputed_dimensions,
@@ -1023,6 +1551,10 @@ def _report_integrity_failures(report: dict, side: str) -> list[str]:
     )
     if bool(report.get("meets_absolute_bar")) != (not recomputed_bar_failures):
         failures.append(f"{side}_absolute_bar_integrity_mismatch")
+    if report.get("absolute_bar_failures") != recomputed_bar_failures:
+        failures.append(f"{side}_absolute_bar_failures_mismatch")
+    if report.get("accepted") is not False:
+        failures.append(f"{side}_standalone_report_claims_acceptance")
     return failures
 
 
@@ -1047,12 +1579,54 @@ def _changed_variable_groups(baseline: dict, candidate: dict) -> list[str]:
     if (
         before.get("harness"),
         before.get("adapter", {}).get("command_sha256"),
+        before.get("adapter", {}).get("entrypoint_sha256"),
+        before.get("adapter", {}).get("provenance", {}).get(
+            "reference_adapter_sha256"
+        ),
     ) != (
         after.get("harness"),
         after.get("adapter", {}).get("command_sha256"),
+        after.get("adapter", {}).get("entrypoint_sha256"),
+        after.get("adapter", {}).get("provenance", {}).get(
+            "reference_adapter_sha256"
+        ),
     ):
         groups.append("harness_and_adapter")
-    if before.get("judge") != after.get("judge"):
+    provider_fields = (
+        "codex_executable",
+        "codex_executable_sha256",
+        "codex_version",
+        "codex_args_sha256",
+        "sandbox",
+    )
+    before_provider = (
+        before.get("adapter", {}).get("provenance", {}).get("provider_runtime", {})
+    )
+    after_provider = (
+        after.get("adapter", {}).get("provenance", {}).get("provider_runtime", {})
+    )
+    if tuple(before_provider.get(field) for field in provider_fields) != tuple(
+        after_provider.get(field) for field in provider_fields
+    ):
+        groups.append("provider_runtime")
+    judge_fields = (
+        "label",
+        "executable",
+        "command_sha256",
+        "entrypoint_sha256",
+        "judge_model",
+        "calibration_revision",
+        "calibration_sha256",
+        "human_rated_examples",
+        "calibration_rating_pairs",
+        "calibration_mean_absolute_error",
+        "calibration_maximum_mean_absolute_error",
+    )
+    before_judge = before.get("judge") or {}
+    after_judge = after.get("judge") or {}
+    if tuple(before_judge.get(field) for field in judge_fields) != tuple(
+        after_judge.get(field) for field in judge_fields
+    ):
         groups.append("judge")
     return groups
 
@@ -1069,7 +1643,7 @@ def compare_reports(baseline: dict, candidate: dict) -> dict:
     same_case_count = baseline_case_set.get("case_count") == candidate_case_set.get(
         "case_count"
     )
-    comparable = same_revision and same_digest and same_case_count
+    comparable_case_set = same_revision and same_digest and same_case_count
     regressions = []
     if not same_revision:
         regressions.append("case_set_revision_mismatch")
@@ -1077,8 +1651,12 @@ def compare_reports(baseline: dict, candidate: dict) -> dict:
         regressions.append("case_set_digest_mismatch")
     if not same_case_count:
         regressions.append("case_set_count_mismatch")
-    regressions.extend(_report_integrity_failures(baseline, "baseline"))
-    regressions.extend(_report_integrity_failures(candidate, "candidate"))
+    integrity_failures = [
+        *_report_integrity_failures(baseline, "baseline"),
+        *_report_integrity_failures(candidate, "candidate"),
+    ]
+    regressions.extend(integrity_failures)
+    comparable = comparable_case_set and not integrity_failures
     for name in DIMENSIONS:
         before = baseline.get("dimensions", {}).get(name, {}).get("score")
         after = candidate.get("dimensions", {}).get(name, {}).get("score")
