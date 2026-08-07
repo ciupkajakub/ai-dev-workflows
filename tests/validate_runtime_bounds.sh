@@ -1,8 +1,10 @@
 #!/bin/sh
 
+# shellcheck disable=SC2016 # Backticks below are literal Markdown syntax.
+
 set -eu
 
-repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 blueprint="$repo_root/feature_execution_blueprint.md"
 readme="$repo_root/README.md"
 
@@ -22,7 +24,7 @@ reject_text() {
   fi
 }
 
-require_text 'Blueprint revision: `2.0.1`'
+require_text 'Blueprint revision: `2.1.0`'
 require_text 'Workflow schema: `2`'
 require_text 'Blueprint digest: `<sha256>`'
 require_text 'continuation_mode: batch_to_verified_outcome'
@@ -38,6 +40,9 @@ require_text 'Release evidence values:'
 require_text 'does not run automatically'
 require_text 'only sanitized, reproducible failure classes.'
 require_text 'A passing structure test alone is insufficient.'
+require_text 'only the comparable baseline-versus-candidate'
+require_text 'they are not behavioral agent evidence'
+require_text 'usability without steering, and regression evaluability'
 require_text 'avoidable user-intervention rate is at most 10%'
 require_text 'target 220 lines or fewer for FEATURE.md'
 require_text 'IMPLEMENTATION.md targets 360 lines or fewer'
@@ -107,7 +112,17 @@ check_line_budget() {
 
 check_line_budget "$example_root/work/B001-example-feature/FEATURE.md" 220
 check_line_budget "$example_root/work/B001-example-feature/IMPLEMENTATION.md" 360
-check_line_budget "$example_root/work/B001-example-feature/PROGRESS_STATE.md" 85
+check_line_budget "$example_root/work/B001-example-feature/PROGRESS_STATE.md" 70
 check_line_budget "$example_root/work/B001-example-feature/PROGRESS.md" 300
+
+if [ ! -x "$repo_root/bin/feature-execution" ]; then
+  echo "reference harness entry point is not executable" >&2
+  exit 1
+fi
+
+"$repo_root/bin/feature-execution" doctor "$example_root" \
+  --blueprint "$blueprint" >/dev/null
+python3 -m json.tool "$repo_root/schemas/agent_turn.schema.json" >/dev/null
+python3 -m json.tool "$repo_root/eval/cases/v1/catalog.json" >/dev/null
 
 echo "v2 outcome-driven runtime contract present"

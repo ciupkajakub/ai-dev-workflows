@@ -16,3 +16,5 @@ temp/
 # Dependency/cache directories
 node_modules/
 .cache/
+__pycache__/
+*.py[cod]

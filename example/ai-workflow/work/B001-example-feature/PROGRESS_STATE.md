@@ -1,19 +1,15 @@
 # Compact progress state
-
 Updated: 2026-07-27
-
 Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
 
 ## Workflow provenance
-
 - Workflow schema: 2
 - Blueprint source: `feature_execution_blueprint.md`
-- Blueprint revision: 2.0.1
-- Blueprint digest: `0fb2fbffb8dfaf9cee937f63c6f592dce8224fd2e2512751e5da0253c9bf3232`
+- Blueprint revision: 2.1.0
+- Blueprint digest: `3c3e6f60934bace574713f96ed93abc0e63d3f7e0d323a8d4b4f8d90e736e04d`
 - Agent surface/model/harness: fictional example / unknown / manual fixture
 
 ## Current batch
-
 - Batch: B001
 - Source items: NMI-001
 - Status: done
@@ -23,22 +19,18 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - Last batch state path: active -> blocked -> active -> validated -> done
 
 ## Completed
-
 - T001: Added overdue task query.
 - T002: Rendered overdue dashboard section and empty state.
 
 ## Next
-
 - None for B001.
 
 ## Active task runtime
-
 - Task: none; B001 task execution is complete.
 - Last progress checkpoint: T002 completed before its target checkpoint.
 - Current root cause or hypothesis: none.
 
 ## Validation evidence
-
 - All four declared task checks passed; exact commands and the repaired sorting
   failure are recorded in `PROGRESS.md`.
 - Batch-scoped `npm test` passed once during automatic section 13 repair-and-close.
@@ -46,36 +38,29 @@ Example note: this file is fictional sanitized output for a sample task manageme
   visual rubric; authenticated browser automation was not used.
 
 ## Open validation list
-
 - Task: none.
 - Batch: none.
 
 ## Integration and release evidence
-
 - Impact map: verified for dashboard query consumers, today-section behavior,
   existing selectors, and live fixture.
 - Integration: verified.
 - Release/CI: not_required.
 
 ## Open risks or blockers
-
 - None.
 
 ## Traceability state
-
 - All required grouped rows are verified; no gaps remain.
 
 ## Final batch check
-
 - Passed; lifecycle owners agree, local validation is closed, integration is
   verified, and release evidence is not required.
 
 ## Dirty repo and recovery state
-
 - Branch/base: main / origin/main; pre-existing modified files: none.
 - Agent-touched files: dashboard query, dashboard UI, related tests, workflow evidence
 - Rollback needed: no
 
 ## Context notes
-
 - Read `PROGRESS.md` only for detailed evidence or history.

@@ -1,7 +1,7 @@
 # Feature Execution Blueprint
 
 Blueprint id: `feature-execution-blueprint`
-Blueprint revision: `2.0.1`
+Blueprint revision: `2.1.0`
 Workflow schema: `2`
 Revision date: `2026-08-07`
 
@@ -53,6 +53,9 @@ understand, initialize, or operate the workflow.
 must be able to execute every workflow phase by reading the requested section of
 this file and the generated `ai-workflow/` artifacts named by that section. Do
 not require separate policy, prompt, template, schema, adapter, or eval sources.
+An optional external harness may automate the provenance preflight, outcome
+continuation, and section 14 runs, but it must implement this section contract
+rather than becoming a second source of workflow meaning.
 
 Stable section contract:
 
@@ -271,7 +274,7 @@ Use this structure:
 
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.0.1`
+Blueprint revision: `2.1.0`
 Blueprint digest: `<sha256>`
 
 ## Repository map
@@ -1030,7 +1033,7 @@ Completion level: `feature` or `release_ready`
 Delivery lane: `fast` or `standard`
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.0.1`
+Blueprint revision: `2.1.0`
 Blueprint digest: `<sha256>`
 
 ## 1. Problem / Context
@@ -1199,7 +1202,7 @@ Completion level: `<copy from FEATURE.md>`
 Delivery lane: `<copy from FEATURE.md>`
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.0.1`
+Blueprint revision: `2.1.0`
 Blueprint digest: `<sha256>`
 
 Before writing the plan, apply the implementation scope gate defined in this
@@ -1473,7 +1476,7 @@ evidence.
 
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.0.1`
+Blueprint revision: `2.1.0`
 Blueprint digest: `<sha256>`
 
 ## <YYYY-MM-DD>
@@ -1489,7 +1492,7 @@ Updated: <YYYY-MM-DD>
 ## Workflow provenance
 - Workflow schema: 2
 - Blueprint source: <exact path or URL used>
-- Blueprint revision: 2.0.1
+- Blueprint revision: 2.1.0
 - Blueprint digest: <sha256>
 - Agent surface/model/harness: <known values, otherwise unknown>
 
@@ -1937,6 +1940,16 @@ present; it does not prove that an agent follows them. Do not claim that a
 candidate passed section 14 without a baseline, comparable candidate runs, and a
 saved evaluation record.
 
+An evaluation runner is conforming only when it preserves the versioned case
+definitions separately from results, records the candidate blueprint revision
+and digest plus provider/harness configuration, retains per-trial trajectories,
+applies every dimension and hard gate below, and compares a baseline with the
+candidate on the same case-set revision. A standalone candidate run may report
+that it meets the absolute bar, but only the comparable baseline-versus-candidate
+step may report the candidate as accepted. Scripted or mocked adapters may prove
+the runner itself; they are not behavioral agent evidence and cannot accept a
+workflow change.
+
 The goal is to preserve or improve observable workflow behavior, not every word
 of the prompt. Measure context delivery as part of that behavior: a candidate
 should load fewer irrelevant or duplicated instructions without losing lifecycle,
@@ -2042,9 +2055,10 @@ test every intentional copy for drift.
 
 Score these dimensions from 0 to 10: outcome correctness, autonomous continuity,
 repair behavior, downstream-impact coverage, UI or observable quality, evidence
-and status truthfulness, context and artifact efficiency, and safety and scope
-control. Accept a candidate only when every dimension is at least 9.0/10 and every
-hard gate passes. Do not average away a weak dimension.
+and status truthfulness, context and artifact efficiency, safety and scope
+control, usability without steering, and regression evaluability. Accept a
+candidate only when every dimension is at least 9.0/10 and every hard gate
+passes. Do not average away a weak dimension.
 
 Hard gates:
 
@@ -2087,7 +2101,7 @@ reasoning, streaming, timeout, sandbox, approval, MCP, hook, and other
 provider-specific settings in the client or launch configuration. Re-check current
 official documentation before changing those settings.
 
-Official guidance reviewed for revision 2.0.1 on 2026-08-07:
+Official guidance reviewed for revision 2.1.0 on 2026-08-07:
 
 - [OpenAI ExecPlans](https://developers.openai.com/cookbook/articles/codex_exec_plans),
   [long-running work](https://learn.chatgpt.com/docs/long-running-work), and

@@ -8,6 +8,10 @@ The repository is a store for one self-contained reusable blueprint.
 blueprint should behave in practice. No separate toolkit files are required to
 initialize or run the workflow.
 
+The repository also includes an optional reference harness. It automates the
+workflow doctor, internal outcome continuation, and section 14 evaluation while
+leaving the blueprint as the sole workflow contract.
+
 Use it when a change is too large or risky to keep only in chat memory: product feedback, multi-step features, cross-cutting backend/UI changes, migration work, or anything where acceptance criteria and verification evidence matter.
 
 Do not use it as a replacement for human review, security review, production change control, or project-specific engineering judgment.
@@ -28,6 +32,14 @@ Do not use it as a replacement for human review, security review, production cha
    or harness behavior. It is an evaluation runbook, not an automatic part of
    feature execution.
 
+For the executable reference checks, run:
+
+```sh
+bin/feature-execution doctor example/ai-workflow \
+  --blueprint feature_execution_blueprint.md
+python3 -m unittest discover -s tests
+```
+
 The numbered sections are a stable interface designed for short remote or mobile
 commands. For example: `Use section 11 of feature_execution_blueprint.md for
 batch B001 and execute it to a verified outcome.` The agent reads that section and the
@@ -37,6 +49,63 @@ still inspect and modify the target repository's application code as needed.
 Section 12 remains the named-task variant of section 11, but delegates to the
 same canonical runtime procedure instead of maintaining a duplicated prompt.
 Existing commands such as `Use section 12 ... task T002` remain valid.
+
+## Optional reference harness
+
+`bin/feature-execution` is one public command with four operations:
+
+- `doctor` checks generated provenance, lifecycle agreement, required files,
+  allowed statuses, and artifact-size targets.
+- `run` drives one agent session through internal continuation until a verified
+  outcome, real blocker, authorization boundary, or the three-cycle no-progress
+  watchdog.
+- `eval` runs a versioned case set and saves JSON plus Markdown evidence.
+- `compare` compares a baseline with a candidate and is the only operation that
+  can mark the candidate accepted.
+
+The canonical generic suite is
+`eval/cases/v1/catalog.json`. It contains 20 sanitized cases covering every
+section 14 behavior class, all ten measured dimensions, and all fifteen hard
+gates. Run results belong in a separate report directory; never add private
+transcripts or project identifiers to the canonical catalog.
+
+The included Codex adapter uses structured output and resumable sessions. Pass
+its absolute path because evaluation workspaces are temporary:
+
+```sh
+bin/feature-execution eval \
+  --suite eval/cases/v1/catalog.json \
+  --adapter-command '["python3","/absolute/path/to/ai-dev-workflows/adapters/codex_exec.py"]' \
+  --blueprint /absolute/path/to/baseline-blueprint.md \
+  --configuration-label baseline \
+  --trials 3 \
+  --report-dir eval/reports \
+  --behavioral-agent \
+  --model '<model and version>' \
+  --effort '<effort setting>' \
+  --tools '<tool set>'
+```
+
+Repeat with the candidate blueprint and a different label, then compare the two
+saved JSON reports:
+
+```sh
+bin/feature-execution compare \
+  --baseline eval/reports/<baseline>.json \
+  --candidate eval/reports/<candidate>.json \
+  --output eval/reports/<comparison>.json
+```
+
+`--behavioral-agent` is an explicit evidence assertion: use it only for a real
+agent run. Scripted adapters are useful for testing the runner, but their reports
+remain unaccepted. A standalone behavioral report can only say that it meets the
+absolute bar; acceptance additionally requires the comparable baseline step.
+
+Provider configuration stays outside the blueprint. The reference Codex adapter
+reads `FEATURE_EXECUTION_CODEX_MODEL`, `FEATURE_EXECUTION_CODEX_SANDBOX`, and a
+JSON string array in `FEATURE_EXECUTION_CODEX_ARGS`. The harness records the
+configuration labels supplied on the command line but never treats an unknown
+model, effort, or tool set as known evidence.
 
 Pasteable setup prompt:
 

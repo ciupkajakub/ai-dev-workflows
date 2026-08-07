@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/feature-execution/agent-turn.schema.json",
+  "title": "Feature Execution agent turn",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "terminal_state",
+    "summary",
+    "progress_made",
+    "progress_fingerprint",
+    "root_cause",
+    "requested_user_instruction",
+    "evidence_refs",
+    "context_loaded",
+    "rubric_scores",
+    "commands_run",
+    "observations",
+    "modified_files"
+  ],
+  "properties": {
+    "terminal_state": {
+      "type": "string",
+      "enum": ["in_progress", "verified_outcome", "real_blocker", "needs_authorization", "no_progress"]
+    },
+    "summary": {"type": "string", "minLength": 1},
+    "progress_made": {"type": "boolean"},
+    "progress_fingerprint": {"type": "string"},
+    "root_cause": {"type": "string"},
+    "requested_user_instruction": {"type": "boolean"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}},
+    "context_loaded": {"type": "array", "items": {"type": "string"}},
+    "rubric_scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["criterion", "score"],
+        "properties": {
+          "criterion": {"type": "string"},
+          "score": {"type": "number", "minimum": 0, "maximum": 10}
+        }
+      }
+    },
+    "commands_run": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "exit_code", "result"],
+        "properties": {
+          "command": {"type": "string"},
+          "exit_code": {"type": ["integer", "null"]},
+          "result": {"type": "string"}
+        }
+      }
+    },
+    "observations": {"type": "array", "items": {"type": "string"}},
+    "modified_files": {"type": "array", "items": {"type": "string"}}
+  }
+}
