@@ -22,7 +22,7 @@ reject_text() {
   fi
 }
 
-require_text 'Blueprint revision: `2.0.0`'
+require_text 'Blueprint revision: `2.0.1`'
 require_text 'Workflow schema: `2`'
 require_text 'Blueprint digest: `<sha256>`'
 require_text 'continuation_mode: batch_to_verified_outcome'
@@ -35,16 +35,14 @@ require_text '## Impact map'
 require_text 'visual rubric'
 require_text 'Integration evidence values:'
 require_text 'Release evidence values:'
-require_text '`B070-like subjective UI`'
-require_text '`B073-like disproportionate plan`'
-require_text '`B076-like ordinary remediation`'
-require_text '`B077-like flaky full-suite result`'
-require_text '`B079-like stale expectation`'
-require_text '`B080-like cross-batch drift`'
+require_text 'does not run automatically'
+require_text 'only sanitized, reproducible failure classes.'
+require_text 'A passing structure test alone is insufficient.'
 require_text 'avoidable user-intervention rate is at most 10%'
-require_text '75% B079/B080 baseline'
-require_text 'FEATURE about 220 lines'
-require_text 'PROGRESS_STATE about 70'
+require_text 'target 220 lines or fewer for FEATURE.md'
+require_text 'IMPLEMENTATION.md targets 360 lines or fewer'
+require_text 'Keep this file near 70 lines or fewer'
+require_text 'exceeds about 300 lines'
 
 reject_text 'max_turn_elapsed_minutes'
 reject_text 'max_task_estimated_minutes'
@@ -53,6 +51,11 @@ reject_text 'max_validation_remediation_cycles'
 reject_text 'long_running_task_requires_approval'
 reject_text 'Never continue to another task in the same turn.'
 reject_text 'section 13 pending'
+
+if grep -Eq 'B[0-9]{3}-like|[0-9]+% B[0-9]{3}/B[0-9]{3} baseline' "$blueprint"; then
+  echo "project-specific evaluation history leaked into section 14" >&2
+  exit 1
+fi
 
 section_11_count=$(grep -c '^## 11\. Execute The Next Task$' "$blueprint")
 if [ "$section_11_count" -ne 1 ]; then

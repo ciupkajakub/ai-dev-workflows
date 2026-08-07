@@ -24,7 +24,9 @@ Do not use it as a replacement for human review, security review, production cha
    when you intentionally want one named task.
 7. Section 11 invokes section 13 automatically. You can also invoke section 13
    directly for repair-and-close, or explicitly request its audit-only mode.
-8. Use section 14 before changing prompts, models, tools, or harness behavior.
+8. Deliberately run section 14 before accepting changes to prompts, models, tools,
+   or harness behavior. It is an evaluation runbook, not an automatic part of
+   feature execution.
 
 The numbered sections are a stable interface designed for short remote or mobile
 commands. For example: `Use section 11 of feature_execution_blueprint.md for

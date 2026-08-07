@@ -7,8 +7,8 @@ leave a dated pointer and never delete archived evidence.
 
 Workflow schema: `2`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.0.0`
-Blueprint digest: `743dd7e5e9bfafc5d8f2e2c7f515274b4556289ede792792bd0bff30b78a77a8`
+Blueprint revision: `2.0.1`
+Blueprint digest: `0fb2fbffb8dfaf9cee937f63c6f592dce8224fd2e2512751e5da0253c9bf3232`
 
 Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
 

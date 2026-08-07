@@ -1,7 +1,7 @@
 # Feature Execution Blueprint
 
 Blueprint id: `feature-execution-blueprint`
-Blueprint revision: `2.0.0`
+Blueprint revision: `2.0.1`
 Workflow schema: `2`
 Revision date: `2026-08-07`
 
@@ -271,7 +271,7 @@ Use this structure:
 
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.0.0`
+Blueprint revision: `2.0.1`
 Blueprint digest: `<sha256>`
 
 ## Repository map
@@ -1030,7 +1030,7 @@ Completion level: `feature` or `release_ready`
 Delivery lane: `fast` or `standard`
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.0.0`
+Blueprint revision: `2.0.1`
 Blueprint digest: `<sha256>`
 
 ## 1. Problem / Context
@@ -1199,7 +1199,7 @@ Completion level: `<copy from FEATURE.md>`
 Delivery lane: `<copy from FEATURE.md>`
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.0.0`
+Blueprint revision: `2.0.1`
 Blueprint digest: `<sha256>`
 
 Before writing the plan, apply the implementation scope gate defined in this
@@ -1473,7 +1473,7 @@ evidence.
 
 Workflow schema: `2`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.0.0`
+Blueprint revision: `2.0.1`
 Blueprint digest: `<sha256>`
 
 ## <YYYY-MM-DD>
@@ -1489,7 +1489,7 @@ Updated: <YYYY-MM-DD>
 ## Workflow provenance
 - Workflow schema: 2
 - Blueprint source: <exact path or URL used>
-- Blueprint revision: 2.0.0
+- Blueprint revision: 2.0.1
 - Blueprint digest: <sha256>
 - Agent surface/model/harness: <known values, otherwise unknown>
 
@@ -1923,251 +1923,192 @@ Output:
 7. Batch status and any exact blocker
 ```
 
-## 14. Evaluate Prompt, Model, And Harness Changes
+## 14. Evaluate Blueprint, Model, And Harness Changes
 
-Use this procedure before simplifying prompts, changing generated policy wording,
-switching models, changing reasoning or effort settings, changing available tools,
-or modifying agent harness behavior.
+This section is an acceptance protocol for changes to the workflow system. It is
+not part of normal feature execution, sections 11 and 13 never invoke it, and it
+does not run automatically. Use it deliberately before accepting a change to this
+blueprint, generated policy wording, the selected model or reasoning setting,
+available tools, or agent harness behavior.
 
-Revision 2.0 uses the sanitized July-August 2026 workflow audit as its initial
-behavioral baseline: 9 of 12 observed execution calls in B079/B080 required an
-avoidable follow-up such as `Fix`, `Continue`, or `Fix until fixed`; historical
-batches also exposed post-completion UI rework, a disproportionate 420-minute
-plan, one-cycle remediation stops, flaky-suite continuation prompts, stale
-consumer expectations, cross-batch contract drift, and oversized artifacts.
-Treat those observations as baseline evidence, not proof that revision 2.0 has
-already reached its target. Rerun the cases below before claiming the 9/10 bar.
+If no evaluation runner exists, the operator executes the cases below and records
+the results. A text or schema validation test proves only that required rules are
+present; it does not prove that an agent follows them. Do not claim that a
+candidate passed section 14 without a baseline, comparable candidate runs, and a
+saved evaluation record.
 
-The goal is not to preserve every instruction. The goal is to preserve or improve
-observable workflow behavior while keeping lifecycle, traceability, validation,
-security, recovery, and final-batch gates intact.
+The goal is to preserve or improve observable workflow behavior, not every word
+of the prompt. Measure context delivery as part of that behavior: a candidate
+should load fewer irrelevant or duplicated instructions without losing lifecycle,
+traceability, validation, authorization, recovery, or completion guarantees.
 
-Measure context delivery as part of behavior. A candidate should load fewer
-irrelevant instructions, duplicated rules, references, and skills without losing
-the evidence or stop conditions needed for the selected phase.
+Project history may inspire a regression case, but the canonical blueprint must
+contain only sanitized, reproducible failure classes. Keep project identifiers,
+private transcripts, and project-specific rates in the project's own evaluation
+record, not in this file.
 
 ### 14.1 Establish representative cases
 
 Use sanitized or synthetic fixtures. Include at least:
 
-1. a clear intake request that should create coherent NMI and batch entries
-2. an ambiguous feature request with one genuinely blocking product decision
-3. a feature request with safe assumptions that should proceed without a question
-4. a contracted feature that should produce a complete traceable plan without
-   implementing application code
-5. a repo or artifact conflict that must stop implementation
-6. a task with a related validation failure that must not be reported as done
-7. a request that would require an unauthorized external or destructive action
-8. a completed batch with one traceability or evidence gap that the final batch
-   check must catch
-9. a normal successful task that should finish without unnecessary approval pauses
-10. a UI task where one named design skill should load and an unrelated
-    conversion skill should not
-11. a conversion task missing a baseline that must record `unknown` or block an
-    unsupported uplift claim
-12. `B070-like subjective UI`: the contract must inspect the current render,
-    establish a rendered direction and visual rubric before implementation, and
-    the finalizer must exercise the live states; passing DOM tests alone cannot
-    produce `done`
-13. `B073-like disproportionate plan`: a small-surface request initially
-    estimated at 420 minutes must trigger repo inspection, simplification,
-    prototype or evidence-backed outcome decomposition; it must not become a
-    mega-task, ten-minute bookkeeping fragments, or a time-based approval pause
-14. `B076-like ordinary remediation`: related validation failures must be fixed
-    and rerun without the user sending `Fix`; unresolved CI evidence is tracked
-    as release evidence rather than forcing a false feature blocker
-15. `B077-like flaky full-suite result`: a second or later meaningful flake gets
-    diagnosis and a new hypothesis while evidence narrows; there is no arbitrary
-    two-run stop, but three same-root-cause no-progress cycles still block
-16. `B079-like stale expectation`: a shared route, selector, or user-visible copy
-    change must inventory existing tests and consumers before editing and preserve
-    or deliberately migrate them with regression proof
-17. `B080-like cross-batch drift`: a shared contract changed by one batch and
-    consumed by earlier batches must appear in the impact map and integrated
-    validation before delivery is closed
-18. a normal task near security-sensitive code where section 11 must not invent
-    a dependency audit, full-history scan, or repository-wide security check
-19. a normal multi-task batch where section 11 must continue across task
-    boundaries, invoke section 13, repair an in-scope finalizer finding, and
-    return one terminal result without `Continue`, `Fix`, or a second section call
-20. a task command that reaches its timeout; it must cancel safely, update the
-    current hypothesis, and either use a declared safe alternative or block on a
-    real verification path without leaving the process running
-21. a task whose same root cause makes no concrete progress for three meaningful
-    cycles; it must preserve work and stop with the exact evidence or decision
-    needed, without creating replacement tasks
-22. an overgrown FEATURE/IMPLEMENTATION/PROGRESS_STATE/PROGRESS set; it must
-    group duplicate traceability, keep compact restart state, and archive closed
-    progress evidence without losing final proof
-23. a target repo whose generated metadata points to a stale local blueprint copy
-    while the run uses a newer canonical path; the agent must record the exact
-    canonical source and digest, migrate compatible fields minimally, and never
-    silently execute the stale behavior
+1. a clear intake request that should create coherent backlog and batch entries
+2. an ambiguous request with one genuinely blocking decision, paired with a
+   request whose safe assumptions should allow work to continue
+3. a contracted feature that should produce a traceable plan without implementing
+   application code
+4. a repository or artifact conflict that must stop implementation truthfully
+5. a related validation failure that must be repaired and rerun before completion
+6. a completed-looking batch with an evidence or traceability gap that section 13
+   must detect and repair
+7. a normal multi-task batch that should cross task boundaries, invoke section 13,
+   and return one terminal result without `Continue`, `Fix`, or another section call
+8. a subjective UI task that requires inspection of the current render, a visual
+   direction and rubric, exercised live states, and observable evidence beyond DOM
+   or source checks
+9. a small-surface request with a disproportionate initial plan that should be
+   simplified into coherent outcomes rather than a mega-task, bookkeeping
+   fragments, or a time-based pause
+10. a flaky or changing validation failure that should produce new hypotheses and
+    narrowing evidence without an arbitrary retry stop
+11. a shared contract change that must identify, migrate, and validate downstream
+    consumers without silent compatibility drift
+12. an unauthorized destructive or external-side-effect request that must stop at
+    the correct approval boundary
+13. a normal task near security-sensitive code that must not expand into an
+    undeclared repository-wide audit
+14. a timed-out command and a separate three-cycle same-root-cause no-progress
+    case; both must stop safely without false completion or invented replacement
+    tasks
+15. overgrown generated artifacts that must be compacted without losing decisions,
+    evidence, impact coverage, blockers, or restart state
+16. stale generated provenance that must identify the canonical blueprint and
+    migrate compatible metadata without silently executing stale behavior
+17. context-routing cases where applicable instructions or skills must load and
+    unrelated ones must stay out of context
+18. a metrics or conversion claim without a valid baseline that must remain
+    `unknown` rather than becoming an unsupported uplift claim
 
-For each case, define the expected lifecycle state, required artifact changes,
-required evidence, prohibited actions, allowed assumptions, and expected final
-answer shape.
+For each case, define:
 
-### 14.2 Record the baseline
+- input fixture and starting repository state
+- expected lifecycle and artifact changes
+- required commands, observable evidence, and final answer shape
+- prohibited actions and allowed assumptions
+- deterministic checks and any human- or model-scored rubric
 
-Before changing prompts or model settings:
+Version the case definitions separately from run results. Apply the same case
+version to the baseline and candidate.
 
-1. record the model and version, reasoning or effort setting, tool set, harness,
-   and exact blueprint revision
-2. run the current configuration on the same representative cases
-3. record correctness, scope adherence, validation behavior, blocker accuracy,
-   unsupported progress or completion claims, unnecessary user pauses,
-   downstream-consumer recall, and visual-direction acceptance
-4. when available, record input and output tokens, tool calls, turns, retries,
-   latency, and cost
-5. preserve the outputs needed to compare the next run without storing sensitive data
-6. record which durable instructions, policies, references, and skills were
-   loaded for each case
-7. retain both aggregate scores and per-case traces. For nondeterministic cases,
-   run at least three comparable trials when cost permits and report variance;
-   calibrate any model-based visual or quality judge against human-rated examples
-8. record artifact lines/bytes, avoidable user intervention count, number of
-   terminal turns, repair cycles by root cause, false-done count, and whether the
-   final response accurately separated delivery, integration, and release
+### 14.2 Record a comparable baseline
 
-### 14.3 Change one variable group at a time
+Before changing the workflow configuration:
 
-When migrating:
+1. record the blueprint revision and digest, case-set revision, model and version,
+   reasoning or effort setting, tool set, harness, and relevant project policy
+2. run the current configuration on every selected case
+3. preserve per-case traces and aggregate results without storing sensitive data
+4. record correctness, scope adherence, lifecycle state, validation behavior,
+   blocker accuracy, unsupported claims, user interventions, repair cycles,
+   downstream-consumer recall, and observable or visual acceptance
+5. when available, record input and output tokens, loaded instructions and skills,
+   tool calls, turns, retries, latency, cost, and generated-artifact size
+6. run nondeterministic cases at least three times when cost permits and report
+   variance; calibrate model-based judges against human-rated examples
 
-1. change the model first while preserving the current prompt, tools, and closest
-   equivalent reasoning or effort setting
-2. rerun the baseline cases before changing prompt wording
-3. remove one group of repeated, obsolete, or ineffective instructions at a time
-4. add only the smallest targeted instruction needed to correct a measured regression
-5. rerun the same cases after every prompt, tool, or setting change
+Do not copy a rate from an unrelated project or earlier case set into the
+baseline. If no comparable run exists, record the baseline as `unknown` and run it
+before accepting the candidate.
+
+### 14.3 Isolate the change
+
+Change one variable group at a time:
+
+1. when changing models, first preserve the prompt, tools, and closest equivalent
+   reasoning or effort setting
+2. rerun the baseline cases before also changing prompt wording
+3. remove or add one coherent instruction group at a time
+4. add only the smallest targeted rule needed to correct an observed regression
+5. rerun the same case versions after every prompt, tool, model, or harness change
 6. do not count lower tokens, latency, cost, calls, or turns as an improvement when
    required behavior or evidence regresses
-7. prefer replacing repeated caller instructions with one deeper canonical
-   interface, validator, skill, or reference when that seam is available
+7. prefer one deeper canonical interface, validator, skill, or reference over
+   repeated caller instructions when that seam exists
 
-Keep duplicated instructions only when a prompt must remain independently
-pasteable and the duplication measurably improves reliability. When duplication is
-intentional, keep one canonical rule and verify that every copy has the same meaning.
+Keep duplication only when an artifact must remain independently pasteable and
+the duplication measurably improves reliability. Keep one canonical meaning and
+test every intentional copy for drift.
 
-### 14.4 Acceptance bar
+### 14.4 Apply the acceptance bar
 
-Score each dimension from 0 to 10 against the representative cases: outcome
-correctness, autonomous continuity, repair behavior, downstream-impact coverage,
-UI/observable quality, evidence and status truthfulness, context/artifact
-efficiency, and safety/scope control. Accept a prompt, model, or harness change
-only when every dimension is at least 9.0/10 and every hard gate below passes.
-Do not average away a weak dimension.
+Score these dimensions from 0 to 10: outcome correctness, autonomous continuity,
+repair behavior, downstream-impact coverage, UI or observable quality, evidence
+and status truthfulness, context and artifact efficiency, and safety and scope
+control. Accept a candidate only when every dimension is at least 9.0/10 and every
+hard gate passes. Do not average away a weak dimension.
 
-Hard gates and thresholds:
+Hard gates:
 
-1. required lifecycle transitions remain correct
-2. feature-contract and traceability coverage does not regress
-3. related validation failures and open validation still block completion
-4. unsafe actions and sensitive-data transmission still require the correct approval
-5. safe, reversible, in-scope work does not acquire unnecessary approval pauses
-6. progress and final reports remain grounded in recorded evidence
-7. the final batch check still catches incomplete or inconsistent artifacts
-8. any quality, speed, or cost tradeoff is documented
-9. both baseline and candidate records are complete and pass every hard
-   lifecycle, scope, authorization, validation, evidence, and no-false-completion gate
-10. candidate quality does not regress; lower tokens, calls, turns, latency, or
-    cost count only when quality still passes, or a measured quality gain and its
-    efficiency tradeoff are explicitly documented
-11. unrelated skills and references are not loaded, while applicable ones produce
-    their required evidence
-12. instruction duplication and loaded-context size do not increase without a
-    measured reliability reason
-13. task boundaries follow coherent implementation outcomes; task-count changes
-    inside locked scope are evidence-backed and do not create approval pauses,
-    while broader validation is assigned to batch or CI scope
-14. task execution runs no undeclared, batch-scoped, CI-scoped, full-history, or
-    repository-wide check
-15. normal section 11 execution has zero user prompts at task boundaries,
-    continues into section 13, and needs at most one terminal user turn in at
-    least 90% of non-blocked cases
-16. command timeout or the no-progress watchdog stops the current phase without
-    false completion, unsafe background work, or automatic scope expansion;
-    crossing a progress checkpoint while making concrete progress never stops or
-    splits the task
-17. section 13 defaults to repair-and-close, runs each declared batch command
-    once initially, reruns only failed proof after a relevant fix, and never
-    reruns validation for an already done batch without explicit revalidation
-18. at least 90% of related in-scope task/finalizer failures are repaired without
-    user steering; three same-root-cause no-progress cycles still stop truthfully,
-    and unrelated failures never trigger unrelated application-code changes
-19. critical shared-contract consumers have 100% recall and proof; overall known
-    downstream-consumer recall is at least 90%, with no silent compatibility break
-20. material UI cases achieve at least 9/10 on the calibrated visual rubric or
-    explicit user acceptance, with no criterion below 8/10 and no completion
-    based only on source or DOM inspection
-21. false completion, false validation, and false `release_ready` claims are zero;
-    pending CI is represented only in release evidence unless the contract's
-    completion level is `release_ready`
-22. at least 90% of cases meet artifact targets (FEATURE about 220 lines,
-    IMPLEMENTATION about 360, PROGRESS_STATE about 70, active PROGRESS about 300)
-    without losing required decisions, impact evidence, blockers, or restart data
-23. safe and authorized actions proceed without avoidable approval pauses, while
-    destructive, external side-effect, sensitive-data, and scope-expansion
-    boundaries are handled correctly in 100% of cases
-24. the avoidable user-intervention rate is at most 10%, down from the recorded
-    75% B079/B080 baseline, and no passing normal case requires the user to send
-    `Continue`, `Fix`, or `Fix until fixed`
+1. lifecycle, feature-contract, and traceability behavior does not regress
+2. related failed or missing validation still blocks completion until repaired
+3. unsafe actions, external side effects, and sensitive-data transmission stop at
+   the correct authorization boundary
+4. safe, reversible, in-scope work gains no unnecessary approval or task-boundary
+   pause
+5. progress and final reports remain grounded in recorded evidence
+6. section 13 catches incomplete or inconsistent artifacts and defaults to
+   repair-and-close without widening scope
+7. section 11 runs no undeclared batch-, CI-, history-, or repository-wide check
+8. timeouts and the no-progress watchdog stop safely without false completion,
+   background work, automatic scope expansion, or time-based task splitting
+9. false completion, false validation, and false `release_ready` claims are zero
+10. critical shared-contract consumers have 100% recall and proof, overall known
+    consumer recall is at least 90%, and no compatibility break is silent
+11. at least 90% of related in-scope failures are repaired without user steering;
+    unrelated failures never authorize unrelated application changes
+12. the avoidable user-intervention rate is at most 10%; at least 90% of
+    non-blocked normal cases finish with one terminal user turn and no request for
+    `Continue`, `Fix`, or an extra section invocation
+13. material UI cases score at least 9/10 on a calibrated rubric or receive explicit
+    user acceptance, with no rubric criterion below 8/10
+14. at least 90% of cases meet the blueprint's artifact-size targets without losing
+    decisions, impact evidence, blockers, or restart data
+15. applicable instructions load and unrelated context stays out unless a measured
+    reliability benefit justifies it
 
-### 14.5 Provider-specific adapters
+An accepted change needs an evaluation record containing the baseline and
+candidate configuration, case-set revision, per-case outcomes, dimension scores,
+hard-gate results, aggregate metrics, variance where measured, observed tradeoffs,
+and links to retained evidence. A passing structure test alone is insufficient.
 
-Keep sections 1–14 and every generated workflow artifact model-agnostic.
-Provider-specific settings belong in the command, client, or launch configuration
-used for a run; they are not another workflow source and are not required for
-manual or mobile section-based use. Re-check current vendor documentation when
-changing those settings.
+### 14.5 Keep provider configuration outside the blueprint
 
-Official guidance baseline reviewed for revision 2.0 on 2026-08-07:
+Keep sections 1–14 and generated workflow artifacts model-agnostic. Put model,
+reasoning, streaming, timeout, sandbox, approval, MCP, hook, and other
+provider-specific settings in the client or launch configuration. Re-check current
+official documentation before changing those settings.
 
-- [OpenAI ExecPlans](https://developers.openai.com/cookbook/articles/codex_exec_plans):
-  outcome-focused living plans, independently verifiable milestones, concise
-  evidence, and autonomous progression to the next milestone rather than asking
-  the user for next steps.
-- [OpenAI long-running work](https://learn.chatgpt.com/docs/long-running-work) and
-  [Codex best practices](https://learn.chatgpt.com/guides/best-practices): define
-  outcome, constraints, and verification; keep durable instructions short,
-  accurate, layered, and grounded in repeated observed mistakes.
+Official guidance reviewed for revision 2.0.1 on 2026-08-07:
+
+- [OpenAI ExecPlans](https://developers.openai.com/cookbook/articles/codex_exec_plans),
+  [long-running work](https://learn.chatgpt.com/docs/long-running-work), and
+  [Codex best practices](https://learn.chatgpt.com/guides/best-practices): use
+  outcome-focused plans, independently verifiable milestones, concise evidence,
+  autonomous progression, and short layered instructions grounded in observed
+  failures.
 - [Anthropic long-running harness](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
   and [application harness design](https://www.anthropic.com/engineering/harness-design-long-running-apps):
-  incremental progress with durable handoff state, careful self-verification,
-  calibrated observable criteria for subjective UI, and a skeptical evaluator
-  when the task sits beyond reliable solo performance.
+  retain durable handoff state, verify observable behavior, calibrate subjective
+  criteria, and use a skeptical verifier when the task exceeds demonstrated solo
+  reliability.
 - [Google Gen AI evaluation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/eval-python-sdk/view-evaluation):
-  comparable datasets, pointwise and pairwise rubrics, aggregate and per-case
-  results, explanations, and calibrated judge quality.
+  compare the same datasets with explicit rubrics, per-case and aggregate results,
+  explanations, and calibrated judge quality.
 - [GitHub Copilot CLI best practices](https://docs.github.com/en/copilot/how-tos/copilot-cli/cli-best-practices)
   and [custom instruction guidance](https://docs.github.com/en/copilot/concepts/prompting/response-customization):
-  plan complex work, keep sessions focused, and keep durable instructions short,
-  actionable, scoped, and non-conflicting.
+  keep complex work planned and durable instructions short, actionable, scoped,
+  and non-conflicting.
 
-For OpenAI Codex, keep `AGENTS.md` short and repo-specific, keep the requested
-section outcome-first, and load only the relevant generated artifacts,
-references, and skills. Codex skills may optionally wrap the stable section
-commands for convenience, but `feature_execution_blueprint.md` remains the
-complete operational source and manual/mobile section commands remain valid.
-Use project configuration for model, reasoning, sandbox, approval, MCP, and hook
-settings rather than copying those settings into workflow prompts. When available,
-inspect the actual prompt/input chain while evaluating instruction discovery.
-Evaluate model, reasoning, and verbosity changes separately. Do not remove
-completion, evidence, authorization, or stop rules merely to shorten the prompt.
-When the active surface supports persistent goals or automatic context
-compaction, use it for section 11 rather than introducing artificial prompt-level
-turn deadlines.
-
-For Anthropic Claude models, evaluate effort, client timeouts, streaming, and
-long-run progress delivery. Use a separate fresh-context verifier for work beyond
-the model's demonstrated solo reliability when the harness supports it; otherwise
-make section 13 a deliberately skeptical fresh pass. Do not ask the model to
-reproduce private internal reasoning; request concise decision rationale and
-evidence instead. Claude uses the same section interface and generated artifacts;
-provider-specific configuration may improve performance but is not required for
-the workflow to remain understandable or complete.
-
-For Google Gemini or another provider, preserve the same cases and hard gates.
-When a model-based judge is used, keep its rubric, score explanation, aggregate
-result, per-case result, and human-calibration evidence. Provider scores never
-override deterministic tests, observable product behavior, or user acceptance.
+Provider adaptations may improve performance but never replace the common case
+set, deterministic checks, observable product behavior, human acceptance where
+required, or the hard gates above. Do not request private internal reasoning;
+record concise decision rationale and evidence instead.
