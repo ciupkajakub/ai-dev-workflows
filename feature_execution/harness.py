@@ -64,16 +64,14 @@ def _validate_turn(value: object) -> dict:
     normalized.setdefault("commands_run", [])
     normalized.setdefault("observations", [])
     normalized.setdefault("modified_files", [])
+    normalized.setdefault("adapter_metadata", {})
     return normalized
 
 
 def _continuation_prompt(previous: dict) -> str:
     return (
-        "Continue the same selected batch to a verified outcome. Do not ask the "
-        "user for Continue, Fix, or another section invocation. Resume from the "
-        "durable workflow state, repair related failures while evidence-backed "
-        "progress remains, and return only verified_outcome, real_blocker, "
-        "needs_authorization, or no_progress.\n\n"
+        "Resume the original request in the same session from its durable state. "
+        "Return the next result using the required response schema.\n\n"
         f"Previous internal checkpoint: {previous['summary']}\n"
     )
 
@@ -199,6 +197,7 @@ def run_outcome_loop(
                 "commands_run": turn.get("commands_run", []),
                 "observations": turn.get("observations", []),
                 "modified_files": turn.get("modified_files", []),
+                "adapter_metadata": turn.get("adapter_metadata", {}),
             }
             trajectory.append(turn_record)
 

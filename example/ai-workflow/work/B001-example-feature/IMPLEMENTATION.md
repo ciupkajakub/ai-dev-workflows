@@ -8,7 +8,7 @@ Delivery lane: `standard`
 Workflow schema: `2`
 Blueprint source: `feature_execution_blueprint.md`
 Blueprint revision: `2.1.0`
-Blueprint digest: `3c3e6f60934bace574713f96ed93abc0e63d3f7e0d323a8d4b4f8d90e736e04d`
+Blueprint digest: `c82265d1ec86e45039f2cbbd4b664e2ce908e34ccde4dd860a048506b27ebed0`
 
 ## Implementation scope gate
 

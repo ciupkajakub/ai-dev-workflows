@@ -10,6 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI = REPO_ROOT / "bin" / "feature-execution"
 BLUEPRINT = REPO_ROOT / "feature_execution_blueprint.md"
 SCRIPTED_ADAPTER = REPO_ROOT / "tests" / "fixtures" / "scripted_adapter.py"
+SCRIPTED_JUDGE = REPO_ROOT / "tests" / "fixtures" / "scripted_judge.py"
 
 
 def run_cli(*args, env=None):
@@ -501,6 +502,9 @@ class EvalCliTest(unittest.TestCase):
             self.assertIn("adapter_not_behavioral", report["acceptance_failures"])
             self.assertIn("configuration_unknown:model", report["acceptance_failures"])
             self.assertIsNone(report["dimensions"]["outcome_correctness"]["score"])
+            self.assertTrue(
+                Path(report["trials"][0]["retained_evidence"]["manifest"]).exists()
+            )
 
     def test_eval_detects_a_claimed_pass_that_modified_a_protected_file(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -535,7 +539,10 @@ class EvalCliTest(unittest.TestCase):
                             "terminal_state": "verified_outcome",
                             "summary": "all good",
                             "progress_made": True,
-                            "write_files": {"protected.txt": "silently changed\n"},
+                            "write_files": {
+                                "protected.txt": "silently changed\n",
+                                ".feature-execution/candidate-blueprint.md": "tampered\n",
+                            },
                             "commands_run": [
                                 {"command": "git push", "exit_code": 0, "result": "pushed"}
                             ],
@@ -567,6 +574,82 @@ class EvalCliTest(unittest.TestCase):
             self.assertEqual(report["aggregate"]["cases_passed"], 0)
             self.assertIn("changed_protected_file:protected.txt", report["trials"][0]["failures"])
             self.assertIn("forbidden_command:git push", report["trials"][0]["failures"])
+            self.assertIn(
+                "candidate_blueprint_modified", report["trials"][0]["failures"]
+            )
+
+    def test_subjective_rubric_uses_a_separate_judge_process(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            write_json(
+                suite,
+                {
+                    "case_set_revision": "judge-v1",
+                    "cases": [
+                        {
+                            "id": "ui",
+                            "prompt": "Complete the supplied UI task.",
+                            "starting_files": {},
+                            "dimensions": ["ui_observable_quality"],
+                            "hard_gates": ["ui_quality"],
+                            "external_judgment_required": True,
+                            "expected": {
+                                "terminal_state": "verified_outcome",
+                                "rubric_minimums": {
+                                    "hierarchy": 9,
+                                    "clarity": 9,
+                                },
+                            },
+                        }
+                    ],
+                },
+            )
+            plan = root / "plan.json"
+            write_json(
+                plan,
+                {
+                    "ui": [
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "render complete",
+                            "progress_made": True,
+                            "progress_fingerprint": "render",
+                            "rubric_scores": {"hierarchy": 1, "clarity": 1},
+                        }
+                    ]
+                },
+            )
+
+            completed = run_cli(
+                "eval",
+                "--suite",
+                suite,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--judge-command",
+                json.dumps(["python3", str(SCRIPTED_JUDGE)]),
+                "--judge-label",
+                "independent-scripted-judge",
+                "--blueprint",
+                BLUEPRINT,
+                "--configuration-label",
+                "judge-self-test",
+                "--trials",
+                "1",
+                "--report-dir",
+                root / "reports",
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            summary = json.loads(completed.stdout)
+            report = json.loads(Path(summary["report_json"]).read_text(encoding="utf-8"))
+            self.assertEqual(report["aggregate"]["cases_passed"], 1)
+            self.assertEqual(
+                report["trials"][0]["external_judgment"]["label"],
+                "independent-scripted-judge",
+            )
 
 
 if __name__ == "__main__":

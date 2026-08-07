@@ -18,6 +18,8 @@ turn = dict(turns[min(turn_index, len(turns) - 1)])
 for relative, content in turn.pop("write_files", {}).items():
     target = Path(os.environ["FEATURE_EXECUTION_WORKSPACE"]) / relative
     target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        target.chmod(0o644)
     target.write_text(content, encoding="utf-8")
 turn.setdefault("evidence_refs", [])
 turn.setdefault("requested_user_instruction", False)

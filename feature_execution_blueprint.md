@@ -1950,6 +1950,17 @@ step may report the candidate as accepted. Scripted or mocked adapters may prove
 the runner itself; they are not behavioral agent evidence and cannot accept a
 workflow change.
 
+Keep case prompts user-like and outcome-focused; do not restate the workflow rule
+being measured or reveal the expected terminal behavior in the agent input.
+Place deterministic expectations in the fixture verifier instead. Derive command
+evidence from harness/provider events, rerun safe deterministic verifier commands
+outside the agent response, and use a separate calibrated human or model judge
+for subjective rubrics; the agent under evaluation cannot be its own judge.
+Retain a content-addressed manifest, diff, per-case trajectory, and explicitly
+referenced evidence so report links survive workspace cleanup. The comparison
+step must reject incomplete reports, modified candidate copies, and runs where
+more than one declared variable group changed.
+
 The goal is to preserve or improve observable workflow behavior, not every word
 of the prompt. Measure context delivery as part of that behavior: a candidate
 should load fewer irrelevant or duplicated instructions without losing lifecycle,

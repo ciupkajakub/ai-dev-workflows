@@ -160,6 +160,7 @@ def _blueprint_identity(path: Path) -> dict[str, str]:
     provenance = _extract_provenance(text)
     return {
         "path": str(path.resolve()),
+        "Blueprint source": str(path.resolve()),
         "Workflow schema": provenance.get("Workflow schema", "unknown"),
         "Blueprint revision": provenance.get("Blueprint revision", "unknown"),
         "Blueprint digest": hashlib.sha256(path.read_bytes()).hexdigest(),
@@ -202,12 +203,20 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
     )
     if blueprint_identity:
         for field, code in (
+            ("Blueprint source", "blueprint_source_mismatch"),
             ("Workflow schema", "blueprint_schema_mismatch"),
             ("Blueprint revision", "blueprint_revision_mismatch"),
             ("Blueprint digest", "blueprint_digest_mismatch"),
         ):
             expected = blueprint_identity[field]
             actual = canonical_provenance.get(field)
+            if field == "Blueprint source" and actual:
+                source = Path(actual).expanduser()
+                actual = str(
+                    source.resolve()
+                    if source.is_absolute()
+                    else (Path.cwd() / source).resolve()
+                )
             if actual != expected:
                 issues.append(
                     Issue(

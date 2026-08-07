@@ -61,7 +61,8 @@ Existing commands such as `Use section 12 ... task T002` remain valid.
   watchdog.
 - `eval` runs a versioned case set and saves JSON plus Markdown evidence.
 - `compare` compares a baseline with a candidate and is the only operation that
-  can mark the candidate accepted.
+  can mark the candidate accepted. It rejects incomplete evidence and changes to
+  more than one configuration group.
 
 The canonical generic suite is
 `eval/cases/v1/catalog.json`. It contains 20 sanitized cases covering every
@@ -73,6 +74,10 @@ The included Codex adapter uses structured output and resumable sessions. Pass
 its absolute path because evaluation workspaces are temporary:
 
 ```sh
+export FEATURE_EXECUTION_CODEX_MODEL='<model and version>'
+export FEATURE_EXECUTION_CODEX_EFFORT='<effort setting>'
+export FEATURE_EXECUTION_CODEX_TOOLS_LABEL='<tool set>'
+
 bin/feature-execution eval \
   --suite eval/cases/v1/catalog.json \
   --adapter-command '["python3","/absolute/path/to/ai-dev-workflows/adapters/codex_exec.py"]' \
@@ -86,6 +91,13 @@ bin/feature-execution eval \
   --tools '<tool set>'
 ```
 
+The material UI case also requires an independent calibrated judge. Supply it as
+`--judge-command '["python3","/absolute/path/to/judge-adapter.py"]'` with a
+non-`unknown` `--judge-label`. The judge runs after the evaluated agent while the
+temporary workspace is still available. It returns rubric scores and evidence
+references through `FEATURE_EXECUTION_JUDGE_RESULT_FILE`; it must not be the
+evaluated adapter itself.
+
 Repeat with the candidate blueprint and a different label, then compare the two
 saved JSON reports:
 
@@ -97,15 +109,24 @@ bin/feature-execution compare \
 ```
 
 `--behavioral-agent` is an explicit evidence assertion: use it only for a real
-agent run. Scripted adapters are useful for testing the runner, but their reports
-remain unaccepted. A standalone behavioral report can only say that it meets the
-absolute bar; acceptance additionally requires the comparable baseline step.
+agent run through the included Codex adapter. The runner additionally verifies
+that every turn carries adapter-generated Codex JSONL provenance, so setting the
+flag on the scripted adapter cannot make its report behavioral. Scripted adapters
+are useful for testing the runner, but their reports remain unaccepted. A
+standalone behavioral report can only say that it meets the absolute bar;
+acceptance additionally requires the comparable baseline step.
+
+Every trial retains a workspace hash manifest, Git patch/status, full structured
+trajectory, independent verifier results, and safe explicitly referenced files
+under the report directory before the temporary workspace is removed. Use only
+sanitized fixtures; retained evidence must not contain secrets or production data.
 
 Provider configuration stays outside the blueprint. The reference Codex adapter
-reads `FEATURE_EXECUTION_CODEX_MODEL`, `FEATURE_EXECUTION_CODEX_SANDBOX`, and a
-JSON string array in `FEATURE_EXECUTION_CODEX_ARGS`. The harness records the
-configuration labels supplied on the command line but never treats an unknown
-model, effort, or tool set as known evidence.
+reads `FEATURE_EXECUTION_CODEX_MODEL`, `FEATURE_EXECUTION_CODEX_EFFORT`,
+`FEATURE_EXECUTION_CODEX_TOOLS_LABEL`, `FEATURE_EXECUTION_CODEX_SANDBOX`, and a
+JSON string array in `FEATURE_EXECUTION_CODEX_ARGS`. For a behavioral report,
+the first three values must match `--model`, `--effort`, and `--tools`; the runner
+checks that match on every turn and never treats an unknown value as evidence.
 
 Pasteable setup prompt:
 

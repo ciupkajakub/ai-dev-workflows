@@ -33,7 +33,8 @@ class CodexAdapterContractTests(unittest.TestCase):
                 "    h.write(json.dumps({'args': args, 'stdin': stdin}) + '\\n')\n"
                 "output = pathlib.Path(args[args.index('-o') + 1])\n"
                 "output.write_text(json.dumps({'terminal_state': 'verified_outcome', 'summary': 'verified', 'progress_made': True, 'progress_fingerprint': 'proof', 'root_cause': '', 'requested_user_instruction': False, 'evidence_refs': ['check:pass'], 'context_loaded': [], 'rubric_scores': [], 'commands_run': [], 'observations': [], 'modified_files': []}), encoding='utf-8')\n"
-                "print(json.dumps({'type': 'thread.started', 'thread_id': 'session-123'}))\n",
+                "print(json.dumps({'type': 'thread.started', 'thread_id': 'session-123'}))\n"
+                "print(json.dumps({'type': 'item.completed', 'item': {'type': 'command_execution', 'command': 'python3 verify.py', 'exit_code': 0, 'aggregated_output': 'pass'}}))\n",
                 encoding="utf-8",
             )
             fake_codex.chmod(0o755)
@@ -46,6 +47,8 @@ class CodexAdapterContractTests(unittest.TestCase):
                 "FEATURE_EXECUTION_RESUME_TOKEN": "",
                 "FEATURE_EXECUTION_CODEX_BIN": str(fake_codex),
                 "FEATURE_EXECUTION_CODEX_MODEL": "test-model",
+                "FEATURE_EXECUTION_CODEX_EFFORT": "high",
+                "FEATURE_EXECUTION_CODEX_TOOLS_LABEL": "codex-shell",
                 "FAKE_CODEX_LOG": str(invocation_log),
             }
 
@@ -61,6 +64,12 @@ class CodexAdapterContractTests(unittest.TestCase):
             self.assertEqual(first.returncode, 0, first.stderr)
             first_result = json.loads(result.read_text(encoding="utf-8"))
             self.assertEqual(first_result["resume_token"], "session-123")
+            self.assertEqual(
+                first_result["commands_run"][0]["command"], "python3 verify.py"
+            )
+            self.assertTrue(first_result["adapter_metadata"]["behavioral_agent"])
+            self.assertEqual(first_result["adapter_metadata"]["model"], "test-model")
+            self.assertEqual(first_result["adapter_metadata"]["effort"], "high")
             first_call = json.loads(invocation_log.read_text(encoding="utf-8").splitlines()[0])
             self.assertEqual(first_call["args"][0], "exec")
             self.assertIn("--output-schema", first_call["args"])
@@ -68,6 +77,8 @@ class CodexAdapterContractTests(unittest.TestCase):
             self.assertIn("--sandbox", first_call["args"])
             self.assertIn(str(workspace.resolve()), first_call["args"])
             self.assertIn(str(blueprint.resolve()), first_call["stdin"])
+            self.assertNotIn("Do not request a user message", first_call["stdin"])
+            self.assertNotIn("repair", first_call["stdin"].lower())
 
             resumed_env = {
                 **base_env,
