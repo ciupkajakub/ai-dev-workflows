@@ -2,10 +2,10 @@
 
 ## Batch queue
 
-| Batch | Status | Source items | Folder | Purpose | Updated |
-| --- | --- | --- | --- | --- | --- |
-| B001 | done | NMI-001 | `ai-workflow/work/B001-example-feature/` | Show overdue tasks on the dashboard. | 2026-06-23 |
-| B002 | planned | NMI-002 | `ai-workflow/work/B002-reminder-preferences/` | Add account-level due-date reminder preferences. | 2026-06-23 |
+| Batch | Status | Integration evidence | Release evidence | Source items | Folder | Purpose | Updated |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| B001 | done | verified | not_required | NMI-001 | `ai-workflow/work/B001-example-feature/` | Show overdue tasks on the dashboard. | 2026-06-23 |
+| B002 | planned | pending | pending | NMI-002 | `ai-workflow/work/B002-reminder-preferences/` | Add account-level due-date reminder preferences. | 2026-06-23 |
 
 ## Dependency and history notes
 
@@ -19,10 +19,9 @@
 | --- | --- |
 | 2026-06-20 | Created B001 from NMI-001. |
 | 2026-06-22 | Moved B001 from spec to ready after planning files were created. |
-| 2026-06-23 | Moved B001 from active to failed_validation after T001 query validation exposed missing due-date sorting. |
-| 2026-06-23 | Returned B001 to active after the T001 validation fix started. |
+| 2026-06-23 | Kept B001 active while T001 query validation exposed and then repaired missing due-date sorting. |
 | 2026-06-23 | Moved B001 from active to blocked while authenticated browser smoke validation required explicit approval. |
 | 2026-06-23 | Returned B001 to active after the user approved a synthetic local fixture smoke check. |
-| 2026-06-23 | Kept B001 active after T002 finished; separate section 13 batch validation remained pending. |
-| 2026-06-23 | Moved B001 through validated to done after the final batch check passed. |
+| 2026-06-23 | Continued automatically from completed T002 into section 13 repair-and-close. |
+| 2026-06-23 | Moved B001 through validated to done with integration verified and release evidence not required. |
 | 2026-06-23 | Created B002 from NMI-002. |

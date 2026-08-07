@@ -1,5 +1,10 @@
 # Agent rules
 
+Workflow schema: `2`
+Blueprint source: `feature_execution_blueprint.md`
+Blueprint revision: `2.0.0`
+Blueprint digest: `743dd7e5e9bfafc5d8f2e2c7f515274b4556289ede792792bd0bff30b78a77a8`
+
 Example note: this file is fictional sanitized output for a sample task
 management app. Paths and commands are illustrative.
 
@@ -63,6 +68,8 @@ management app. Paths and commands are illustrative.
   `rolled_back`; keep them `active` or `blocked` until final `done`, unless scope
   is explicitly `superseded`.
 - Never report a later lifecycle state than the artifacts support.
+- In section 11, task boundaries are internal checkpoints. Continue through
+  dependency-ready tasks and section 13 without asking for `Continue` or `Fix`.
 
 ## Conditional guidance
 
@@ -97,20 +104,19 @@ A task is done only when:
    tests, generated-file mistakes, or sensitive data
 6. detailed evidence, compact state, task status, and lifecycle owners agree
 
-Batch- and CI-scoped validation does not run during task execution; it remains
-open and blocks the batch, not a completed task. If task validation is missing,
-times out, or fails, use `blocked` or `failed_validation`. `accepted_gap`
-requires explicit user acceptance recorded in `PROGRESS.md`. Before a batch
-becomes `done`, section 13 must run declared batch validation once and pass the
-final state check; all scoped open validation lists must be empty, and every
-required traceability row must be `verified` or an approved `accepted_gap`.
+Batch- and CI-scoped validation does not run while a task is active. An ordinary
+related red check stays `in_progress` while repair makes concrete progress.
+Before a batch becomes `done`, section 13 must pass local delivery and impact-map
+checks. CI updates release evidence separately and blocks only `release_ready`
+unless the feature contract explicitly requires that completion level.
 
 ## Context and communication
 
 - Keep `PROGRESS_STATE.md` compact; put detailed evidence in append-only
   `PROGRESS.md`.
-- One task per turn. Obey the selected `IMPLEMENTATION.md` Execution policy.
-  Split only at a coherent implementation or independently verifiable outcome
-  seam, never solely because of elapsed time or validation-command count.
+- Work on one task at a time, but continue across dependency-ready tasks and
+  section 13 in the same section 11 run. Split only at a coherent implementation
+  or independently verifiable outcome seam. Elapsed time triggers a progress
+  checkpoint, never an automatic stop, split, or approval.
 - Lead updates and final reports with outcome, evidence, caveats, and next action.
 - Keep exact commands, paths, identifiers, and errors unchanged.

@@ -4,12 +4,23 @@ Updated: 2026-07-27
 
 Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
 
+## Workflow provenance
+
+- Workflow schema: 2
+- Blueprint source: `feature_execution_blueprint.md`
+- Blueprint revision: 2.0.0
+- Blueprint digest: `743dd7e5e9bfafc5d8f2e2c7f515274b4556289ede792792bd0bff30b78a77a8`
+- Agent surface/model/harness: fictional example / unknown / manual fixture
+
 ## Current batch
 
 - Batch: B001
 - Source items: NMI-001
 - Status: done
-- Last batch state path: active -> failed_validation -> active -> blocked -> active -> validated -> done
+- Completion level: feature
+- Integration evidence: verified
+- Release evidence: not_required
+- Last batch state path: active -> blocked -> active -> validated -> done
 
 ## Completed
 
@@ -19,43 +30,32 @@ Example note: this file is fictional sanitized output for a sample task manageme
 ## Next
 
 - None for B001.
-- Planned future work: B002 due-date reminder preferences.
-
-## Active guidance
-
-- Skills: none active; `apple-design` was scoped to T002 implementation and visual review.
-- References: existing today-section behavior, user-timezone fixture, and the interactive populated/empty dashboard fixture.
 
 ## Active task runtime
 
 - Task: none; B001 task execution is complete.
-- Started: not active.
-- Target checkpoint: not active.
 - Last progress checkpoint: T002 completed before its target checkpoint.
-- Consecutive no-progress cycles: 0/2.
-- Same-check retries without a relevant change: 0/0.
+- Current root cause or hypothesis: none.
 
 ## Validation evidence
 
-- `npm test -- dashboard-task-query.test.ts` passed.
-- `npm test -- dashboard-query-plan.test.ts` passed.
-- `npm test -- dashboard-overdue-section.test.ts` passed.
-- `npm test -- dashboard-today-section.test.ts` passed.
-- Batch-scoped `npm test` passed once during the separate section 13 run.
-- T001 finished in 8 minutes with two unique task checks; T002 finished in 7
-  minutes with three; batch validation finished in 4 minutes with one command.
-- Manual smoke check with a synthetic local account confirmed overdue tasks appear above today's tasks.
-- Desktop and mobile renders of populated and empty overdue states had no
-  clipping or spacing regressions, matched existing dashboard patterns, remained
-  keyboard-accessible and legible, and respected reduced-motion behavior.
-- Earlier `npm test -- dashboard-task-query.test.ts` failure for missing due-date sorting was fixed and rerun successfully.
-- Authenticated browser automation was not run; user approved the synthetic local fixture smoke check instead.
+- All four declared task checks passed; exact commands and the repaired sorting
+  failure are recorded in `PROGRESS.md`.
+- Batch-scoped `npm test` passed once during automatic section 13 repair-and-close.
+- The approved synthetic fixture passed the populated/empty desktop/mobile
+  visual rubric; authenticated browser automation was not used.
 
 ## Open validation list
 
 - Task: none.
 - Batch: none.
-- CI: none.
+
+## Integration and release evidence
+
+- Impact map: verified for dashboard query consumers, today-section behavior,
+  existing selectors, and live fixture.
+- Integration: verified.
+- Release/CI: not_required.
 
 ## Open risks or blockers
 
@@ -63,26 +63,19 @@ Example note: this file is fictional sanitized output for a sample task manageme
 
 ## Traceability state
 
-- All required rows in `IMPLEMENTATION.md` traceability closure are verified.
-- No `planned`, `blocked`, or `accepted_gap` traceability rows remain for B001.
+- All required grouped rows are verified; no gaps remain.
 
 ## Final batch check
 
-- Passed.
-- Declared batch validation passed once; no CI check was required.
-- Lifecycle statuses agree across workflow artifacts.
-- Task, batch, and CI open validation lists are empty.
-- No remaining risks or blockers.
+- Passed; lifecycle owners agree, local validation is closed, integration is
+  verified, and release evidence is not required.
 
 ## Dirty repo and recovery state
 
-- Branch: main
-- Intended base: origin/main
-- Pre-existing modified files: none
+- Branch/base: main / origin/main; pre-existing modified files: none.
 - Agent-touched files: dashboard query, dashboard UI, related tests, workflow evidence
 - Rollback needed: no
 
 ## Context notes
 
-- Keep this file compact enough to reload quickly.
-- Read `PROGRESS.md` only when prior blockers, validation evidence, or history are needed.
+- Read `PROGRESS.md` only for detailed evidence or history.

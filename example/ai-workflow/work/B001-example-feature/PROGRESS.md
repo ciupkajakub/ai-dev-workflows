@@ -2,7 +2,13 @@
 
 Append only.
 Use this file for detailed evidence. Do not include secrets, credentials, private customer data, proprietary logs, or production data.
-Archive old evidence only with explicit user approval.
+Archive closed historical entries when the active log exceeds about 300 lines;
+leave a dated pointer and never delete archived evidence.
+
+Workflow schema: `2`
+Blueprint source: `feature_execution_blueprint.md`
+Blueprint revision: `2.0.0`
+Blueprint digest: `743dd7e5e9bfafc5d8f2e2c7f515274b4556289ede792792bd0bff30b78a77a8`
 
 Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
 
@@ -16,8 +22,8 @@ Task: T001
 
 State path:
 - T001 `planned -> in_progress` before editing.
-- T001 `in_progress -> failed_validation` after the first query validation failed.
-- B001 `active -> failed_validation` while required validation was open.
+- T001 and B001 remained `in_progress`/`active` after the first query validation
+  failed because the related diagnosis-and-fix path was concrete.
 
 Changed:
 - Added an overdue task query that selects incomplete tasks due before the user's local date.
@@ -42,8 +48,6 @@ Risks or gaps:
 - Open validation: run `npm test -- dashboard-query-plan.test.ts` after behavior validation passes.
 
 Workflow updates:
-- Marked T001 failed_validation in `IMPLEMENTATION.md`.
-- Marked B001 failed_validation in `WORK_INDEX.md`.
 - Added both commands to `PROGRESS_STATE.md` open validation list.
 - Traceability rows for Functional requirement 3 and Acceptance criterion 5 remained blocked until the sort fix.
 
@@ -52,8 +56,8 @@ Workflow updates:
 Task: T001 recovery
 
 State path:
-- T001 `failed_validation -> in_progress` after starting the fix.
-- B001 `failed_validation -> active` while fixing the failed validation path.
+- T001 remained `in_progress` and B001 remained `active` while fixing the failed
+  validation path.
 - T001 `in_progress -> validated` after required validation passed.
 - T001 `validated -> done` after evidence, traceability, and lifecycle updates were recorded.
 
@@ -136,7 +140,8 @@ Workflow updates:
 - Marked T002 traceability rows verified in `IMPLEMENTATION.md`.
 - Kept B001 and NMI-001 active.
 - Left `npm test` in the batch-scoped open validation list.
-- Stopped the task turn with section 13 pending.
+- Continued automatically into section 13 repair-and-close without another user
+  prompt.
 
 ## 2026-06-23
 
@@ -155,7 +160,7 @@ Final state check:
 - Lifecycle statuses agree across `FEATURE.md`, `IMPLEMENTATION.md`, `WORK_INDEX.md`, `PRODUCT_BACKLOG.md`, and `PROGRESS_STATE.md`.
 - All required traceability rows are verified.
 - No `accepted_gap` rows remain.
-- Task, batch, and CI open validation lists are empty.
+- Task and batch open validation lists are empty; release evidence is not required.
 - Earlier failed query validation was rerun successfully after the fix.
 - Authenticated browser automation was blocked until the user approved the synthetic local fixture smoke check.
 - No sensitive data, customer data, or untrusted-content instruction was accepted silently.
@@ -164,6 +169,7 @@ Final state check:
 Workflow updates:
 - Marked B001 done in `IMPLEMENTATION.md` and `WORK_INDEX.md`.
 - Marked NMI-001 done in `PRODUCT_BACKLOG.md`.
+- Marked integration evidence verified and release evidence not required.
 
 Commit:
 - `feat: show overdue tasks on dashboard`

@@ -4,6 +4,12 @@ Batch: `B001`
 Source items: `NMI-001`
 Folder: `ai-workflow/work/B001-example-feature/`
 Status: `done`
+Completion level: `feature`
+Delivery lane: `standard`
+Workflow schema: `2`
+Blueprint source: `feature_execution_blueprint.md`
+Blueprint revision: `2.0.0`
+Blueprint digest: `743dd7e5e9bfafc5d8f2e2c7f515274b4556289ede792792bd0bff30b78a77a8`
 
 ## 1. Problem / Context
 
@@ -43,6 +49,12 @@ When a user opens the dashboard, the overdue section appears above today's tasks
 ## 8. Data and system impact
 
 No schema changes are required.
+
+### Changed contracts and consumer inventory
+
+| Changed seam | Known consumers and search evidence | Compatibility decision | Regression proof |
+| --- | --- | --- | --- |
+| Dashboard task-query result and section ordering | Existing today-section component, dashboard task-query tests, today-section tests, and dashboard smoke fixture; repository searches covered the query entrypoint, section label, and existing selectors. | Preserve the today-section contract and add overdue results without renaming existing selectors. | T001 query/query-plan checks plus T002 today-section and rendered-state checks. |
 
 ## 9. Edge cases and failure modes
 
@@ -104,6 +116,16 @@ Not applicable:
 
 - `conversion-optimization`: this batch improves operational clarity and does not
   define a conversion funnel, conversion goal, experiment, or uplift claim.
+
+### Visual contract
+
+- Direction status: `repo_reference`.
+- Rendered direction: preserve the existing dashboard identity and place the
+  overdue section above today's tasks in the interactive populated/empty fixture.
+- Rubric: coherent hierarchy, existing-product identity, consistent density and
+  spacing, obvious overdue/today distinction, unchanged primary actions,
+  responsive populated/empty states, keyboard access, legibility, and reduced
+  motion.
 
 ## 16. Backlog and batch updates
 

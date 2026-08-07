@@ -19,14 +19,16 @@ Do not use it as a replacement for human review, security review, production cha
 3. Paste raw feedback into the prompt from section 8 to create backlog and batch entries.
 4. Run section 9 to turn one selected batch into `FEATURE.md`.
 5. Run section 10 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
-6. Use section 11 or 12 for repeated execution, one task at a time.
-7. Use section 13 in a separate turn to run declared batch validation once,
-   check the final workflow state, and accept or block the batch.
+6. Use section 11 to start from the next task and continue autonomously through
+   dependency-ready tasks plus repair-capable finalization. Use section 12 only
+   when you intentionally want one named task.
+7. Section 11 invokes section 13 automatically. You can also invoke section 13
+   directly for repair-and-close, or explicitly request its audit-only mode.
 8. Use section 14 before changing prompts, models, tools, or harness behavior.
 
 The numbered sections are a stable interface designed for short remote or mobile
 commands. For example: `Use section 11 of feature_execution_blueprint.md for
-batch B001 and execute the next task.` The agent reads that section and the
+batch B001 and execute it to a verified outcome.` The agent reads that section and the
 generated artifacts it names; it needs no other toolkit source. Execution phases
 still inspect and modify the target repository's application code as needed.
 
@@ -68,29 +70,31 @@ The execution artifacts define entity-specific lifecycle gates. Backlog items,
 batches, and tasks each have their own allowed statuses, including `spec`,
 `ready`, `in_progress`, `failed_validation`, `validated`, `done`, `superseded`,
 and `rolled_back` where appropriate. Treat validation gaps, related failing
-tests, and unsafe tool access as blockers unless the user explicitly accepts an
-unvalidated state.
+tests, and unsafe tool access truthfully. An ordinary related failing check stays
+active while an evidence-backed repair path is progressing; real validation,
+permission, scope, and safety blockers remain explicit.
 
-The workflow also uses traceability closure: every feature requirement,
-acceptance criterion, non-functional requirement, permission rule, assumption,
-risk, edge case, and failure mode must map to a task plus validation evidence, a
-blocker, or an explicitly accepted gap. This is the main guard against a batch
-being marked done while part of the contract was never verified.
+The workflow combines a downstream-consumer impact map with grouped traceability
+closure. Every implementation-affecting contract item and changed shared seam
+maps to an owner plus proof, blocker, or explicitly accepted gap without
+duplicating the same evidence across hundreds of rows.
 
-Before accepting a completed batch, run the blueprint's final batch check. It
-runs declared broader local checks once, then checks lifecycle consistency,
-traceability closure, scoped open validation, security approvals, and
-final-report accuracy without implementing code.
+Before accepting a completed batch, the blueprint's finalizer runs declared
+broader local checks, exercises the observable result, evaluates UI against its
+visual rubric when applicable, and repairs related in-scope findings while
+evidence shows progress. It checks lifecycle consistency, impact and traceability
+closure, security approvals, and final-report accuracy before closing delivery.
 
-## Bounded task execution
+## Outcome-driven task execution
 
 Section 10 is the canonical source for the task execution policy copied into
-generated `IMPLEMENTATION.md` files. Task boundaries follow coherent
-implementation outcomes, not a stopwatch: the elapsed-time target is a progress
-checkpoint and never an automatic reason to multiply tasks. Hard bounds apply
-to individual commands and repeated no-progress cycles. During an active-batch
-replan, increasing the number of remaining tasks requires explicit user
-approval.
+generated `IMPLEMENTATION.md` files. Task boundaries follow coherent,
+independently verifiable outcomes. Estimates are scheduling signals, not stop or
+approval conditions. A ten-minute checkpoint produces a compact update and then
+work continues. Hard bounds apply to individual commands, repeated no-progress
+on the same root cause, and rerunning an unchanged check. Section 11 proceeds
+across task boundaries and into finalization without requiring `Continue` or
+`Fix` prompts.
 
 Full suites, repo-wide build/lint/typecheck, full-history or repository security
 scans, dependency audits, and CI commands cannot be task-scoped. This reduces
@@ -101,15 +105,16 @@ task.
 
 - `task`: focused checks run by section 11 or 12
 - `batch`: broader local checks run once by section 13 after all tasks
-- `ci`: external checks that local task and audit turns record but never launch
+- `ci`: external checks that local execution records but never launches
 
 Loading a security policy, testing policy, skill, or reference does not add a
 validation command. A task executor may propose broader proof for replanning, but
-cannot invent or run it. The last task leaves the batch active and stops with
-section 13 pending; it never folds the final batch check into the same turn.
-Section 13 runs each declared batch command once, trusts recorded task results,
-checks required CI evidence, and closes the lifecycle only when no blocker
-remains.
+cannot invent or run it. After the last task, section 11 invokes section 13.
+Section 13 runs each declared batch command once initially, reruns only failed
+proof after a relevant repair, and closes feature delivery separately from
+integration and release evidence. Pending CI blocks `release_ready`, not a
+truthful feature-delivery claim, unless the feature contract explicitly requires
+release readiness.
 
 ## Context strategy
 
@@ -147,6 +152,11 @@ The blueprint is the source of truth. It contains prompts and templates for gene
 - `ai-workflow/work/B###/IMPLEMENTATION.md`
 - `ai-workflow/work/B###/PROGRESS.md`
 - `ai-workflow/work/B###/PROGRESS_STATE.md`
+
+Generated runtime artifacts record the exact blueprint source, declared
+revision, workflow schema, and SHA-256 digest. This lets a run detect a stale
+project copy while continuing from the newer canonical source without rewriting
+historical evidence.
 
 `ai-workflow/AGENTS.md` is generated by the blueprint and is read by the workflow
 prompts. It intentionally stays compact and repo-specific rather than repeating
