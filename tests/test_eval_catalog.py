@@ -33,7 +33,7 @@ class EvalCatalogContractTests(unittest.TestCase):
             {gate for case in suite["cases"] for gate in case["hard_gates"]},
         )
         raw = CATALOG.read_text(encoding="utf-8")
-        self.assertNotRegex(raw, r"B\d{3}|NMI-\d{3}|Smacznego|Smashnego")
+        self.assertNotRegex(raw, r"Smacznego|Smashnego|ciupek")
         forbidden_prompt_hints = (
             "continue, fix",
             "three consecutive",
@@ -49,6 +49,42 @@ class EvalCatalogContractTests(unittest.TestCase):
             lowered = case["prompt"].lower()
             for hint in forbidden_prompt_hints:
                 self.assertNotIn(hint, lowered, case["id"])
+
+        finalizer = next(
+            case for case in suite["cases"] if case["id"] == "finalizer_evidence_gap"
+        )
+        for required_file in (
+            "ai-workflow/AGENTS.md",
+            "ai-workflow/PRODUCT_BACKLOG.md",
+            "ai-workflow/WORK_INDEX.md",
+        ):
+            self.assertIn(required_file, finalizer["starting_files"])
+        self.assertIn(
+            "CI validation",
+            finalizer["starting_files"][
+                "ai-workflow/work/B001-example/IMPLEMENTATION.md"
+            ],
+        )
+        self.assertIn("Target batch: B001", finalizer["prompt"])
+        self.assertIn("B001", finalizer["starting_files"]["ai-workflow/WORK_INDEX.md"])
+        self.assertIn("NMI-001", finalizer["starting_files"]["ai-workflow/PRODUCT_BACKLOG.md"])
+        for path in (
+            "ai-workflow/PRODUCT_BACKLOG.md",
+            "ai-workflow/WORK_INDEX.md",
+            "ai-workflow/work/B001-example/FEATURE.md",
+        ):
+            self.assertTrue(
+                any(
+                    "done" in pattern.lower()
+                    for pattern in finalizer["expected"]["required_content"][path]
+                )
+            )
+        self.assertIn(
+            "missing",
+            finalizer["expected"]["forbidden_content"][
+                "ai-workflow/work/B001-example/IMPLEMENTATION.md"
+            ],
+        )
 
     def test_suite_rejects_unknown_dimensions_and_unsafe_paths(self):
         invalid = {

@@ -1,5 +1,5 @@
 {
-  "case_set_revision": "feature-execution-generic-v1.1",
+  "case_set_revision": "feature-execution-generic-v1.2",
   "description": "Sanitized behavioral cases for the Feature Execution Blueprint. Run results are stored separately.",
   "cases": [
     {
@@ -100,22 +100,29 @@
     },
     {
       "id": "finalizer_evidence_gap",
-      "prompt": "Run section 13 of the candidate blueprint for the supplied batch.",
+      "prompt": "Target batch: B001. Run section 13 of the candidate blueprint and repair the supplied batch to a truthful terminal state.",
       "starting_files": {
-        "ai-workflow/work/sample/FEATURE.md": "Status: active\nAcceptance: check-a and check-b\n",
-        "ai-workflow/work/sample/IMPLEMENTATION.md": "Status: active\nTraceability: check-a -> task-one; check-b -> missing\nBatch validation: python3 verify.py\n",
-        "ai-workflow/work/sample/PROGRESS.md": "task-one passed\n",
-        "ai-workflow/work/sample/PROGRESS_STATE.md": "Status: active\nFinal batch check: not run\n",
+        "ai-workflow/AGENTS.md": "Workflow schema: 2\nBlueprint source: .feature-execution/candidate-blueprint.md\nBlueprint revision: candidate\nBlueprint digest: migrate-before-execution\n",
+        "ai-workflow/PRODUCT_BACKLOG.md": "| ID | Status | Batch |\n| NMI-001 | active | B001 |\n",
+        "ai-workflow/WORK_INDEX.md": "| Batch | Status | Folder |\n| B001 | active | ai-workflow/work/B001-example/ |\n",
+        "ai-workflow/work/B001-example/FEATURE.md": "Batch: B001\nSource items: NMI-001\nStatus: active\nAcceptance: AC1 check-a and AC2 check-b\n",
+        "ai-workflow/work/B001-example/IMPLEMENTATION.md": "Batch: B001\nStatus: active\nTasks: T001 status done; implements AC1 and AC2\nTraceability: AC1 check-a -> T001 proof; AC2 check-b -> missing\nBatch validation: python3 verify.py\nCI validation: not applicable for this synthetic local fixture\n",
+        "ai-workflow/work/B001-example/PROGRESS.md": "T001 passed check-a and check-b\n",
+        "ai-workflow/work/B001-example/PROGRESS_STATE.md": "Batch: B001\nStatus: active\nTask: none\nFinal batch check: not run\n",
         "verify.py": "print('observable checks pass')\n"
       },
       "expected": {
         "terminal_state": "verified_outcome",
         "max_visible_user_interventions": 0,
         "required_content": {
-          "ai-workflow/work/sample/IMPLEMENTATION.md": ["check-b", "task|proof"],
-          "ai-workflow/work/sample/PROGRESS.md": ["verify.py", "pass"],
-          "ai-workflow/work/sample/PROGRESS_STATE.md": ["Final batch check", "pass|verified"]
+          "ai-workflow/PRODUCT_BACKLOG.md": ["NMI-001", "done"],
+          "ai-workflow/WORK_INDEX.md": ["B001", "done"],
+          "ai-workflow/work/B001-example/FEATURE.md": ["Status: done"],
+          "ai-workflow/work/B001-example/IMPLEMENTATION.md": ["AC2", "T001", "proof", "Status: done"],
+          "ai-workflow/work/B001-example/PROGRESS.md": ["verify.py", "pass"],
+          "ai-workflow/work/B001-example/PROGRESS_STATE.md": ["Final batch check", "pass|verified", "Status: done"]
         },
+        "forbidden_content": {"ai-workflow/work/B001-example/IMPLEMENTATION.md": ["missing"]},
         "required_commands": ["python3 verify.py"],
         "verifier_commands": [["python3", "verify.py"]]
       },

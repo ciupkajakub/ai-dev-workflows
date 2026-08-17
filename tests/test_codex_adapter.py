@@ -78,6 +78,8 @@ class CodexAdapterContractTests(unittest.TestCase):
             self.assertIn("--output-schema", first_call["args"])
             self.assertIn(str(SCHEMA), first_call["args"])
             self.assertIn("--sandbox", first_call["args"])
+            self.assertIn("--ignore-user-config", first_call["args"])
+            self.assertIn("--ignore-rules", first_call["args"])
             self.assertIn(str(workspace.resolve()), first_call["args"])
             self.assertIn(str(blueprint.resolve()), first_call["stdin"])
             self.assertNotIn("Do not request a user message", first_call["stdin"])
@@ -166,6 +168,41 @@ class CodexAdapterContractTests(unittest.TestCase):
 
             self.assertEqual(completed.returncode, 64)
             self.assertIn("reserved provider setting", completed.stderr)
+
+    def test_extra_args_cannot_expand_workspace_or_bypass_hook_trust(self):
+        unsafe_args = (
+            ["--add-dir", "/tmp/outside-workspace"],
+            ["--add-dir=/tmp/outside-workspace"],
+            ["--dangerously-bypass-hook-trust"],
+            ["--profile", "mutable-profile"],
+            ["--profile=mutable-profile"],
+            ["--oss"],
+            ["--image", "/tmp/mutable.png"],
+        )
+        for extra_args in unsafe_args:
+            with self.subTest(extra_args=extra_args), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                workspace = root / "workspace"
+                workspace.mkdir()
+                prompt = root / "prompt.txt"
+                prompt.write_text("Run.", encoding="utf-8")
+                completed = subprocess.run(
+                    ["python3", str(ADAPTER)],
+                    cwd=workspace,
+                    env={
+                        **os.environ,
+                        "FEATURE_EXECUTION_WORKSPACE": str(workspace),
+                        "FEATURE_EXECUTION_PROMPT_FILE": str(prompt),
+                        "FEATURE_EXECUTION_RESULT_FILE": str(root / "result.json"),
+                        "FEATURE_EXECUTION_CODEX_ARGS": json.dumps(extra_args),
+                    },
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+
+                self.assertEqual(completed.returncode, 64)
+                self.assertIn("reserved provider setting", completed.stderr)
 
 
 if __name__ == "__main__":

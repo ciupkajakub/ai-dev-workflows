@@ -4,7 +4,7 @@
 
 | ID | Status | Priority | Title | Related | Batch | Updated |
 | --- | --- | --- | --- | --- | --- | --- |
-| NMI-001 | done | high | Show overdue tasks on the dashboard | - | B001 | 2026-06-23 |
+| NMI-001 | done | high | Show overdue tasks on the dashboard | - | B001 | 2026-07-27 |
 | NMI-002 | planned | medium | Add due-date reminder preferences | - | B002 | 2026-06-23 |
 | NMI-003 | superseded | medium | Add a single daily reminder toggle | Superseded by NMI-002 | - | 2026-06-23 |
 
@@ -17,7 +17,7 @@ Priority: high
 Related: -
 Batch: B001
 Created: 2026-06-20
-Updated: 2026-06-23
+Updated: 2026-07-27
 
 #### Feedback / source
 
@@ -110,4 +110,4 @@ Keep this item for history.
 | 2026-06-20 | Added NMI-001 for overdue dashboard visibility. |
 | 2026-06-21 | Added NMI-003 for a simple reminder toggle. |
 | 2026-06-23 | Added NMI-002 and marked NMI-003 superseded because reminder timing is required. |
-| 2026-06-23 | Marked NMI-001 done after B001 verification. |
+| 2026-07-27 | Marked NMI-001 done after B001 final verification and complete visual evidence. |

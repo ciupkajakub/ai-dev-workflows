@@ -89,19 +89,33 @@ def _extract_status(text: str) -> str | None:
     return None
 
 
-def _work_index_statuses(path: Path) -> dict[str, str]:
+def _work_index_rows(path: Path) -> dict[str, dict[str, str]]:
     if not path.exists():
         return {}
-    statuses = {}
+    rows = {}
+    indexes = {"batch": 0, "status": 1, "folder": 2}
     for line in path.read_text(encoding="utf-8").splitlines():
         columns = [
             column.strip().strip("`")
             for column in line.strip().strip("|").split("|")
         ]
-        if len(columns) < 2 or not re.fullmatch(r"B\d{3}", columns[0]):
+        normalized = [column.lower() for column in columns]
+        if all(name in normalized for name in indexes):
+            indexes = {name: normalized.index(name) for name in indexes}
             continue
-        statuses[columns[0]] = columns[1]
-    return statuses
+        if len(columns) <= max(indexes.values()):
+            continue
+        batch_id = columns[indexes["batch"]]
+        if not re.fullmatch(r"B\d{3}", batch_id):
+            continue
+        folder_parts = Path(columns[indexes["folder"]].rstrip("/")).parts
+        if folder_parts[:2] == ("ai-workflow", "work"):
+            folder_parts = folder_parts[1:]
+        rows[batch_id] = {
+            "status": columns[indexes["status"]],
+            "folder": str(Path(*folder_parts)),
+        }
+    return rows
 
 
 def _product_backlog_rows(path: Path) -> dict[str, dict[str, str]]:
@@ -227,11 +241,50 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
                     )
                 )
 
-    index_statuses = _work_index_statuses(workflow_root / "WORK_INDEX.md")
+    index_rows = _work_index_rows(workflow_root / "WORK_INDEX.md")
+    index_statuses = {
+        batch_id: row["status"] for batch_id, row in index_rows.items()
+    }
     backlog_rows = _product_backlog_rows(workflow_root / "PRODUCT_BACKLOG.md")
     batch_dirs = sorted(
         path for path in (workflow_root / "work").glob("B???-*") if path.is_dir()
     )
+    actual_batch_ids = {path.name[:4] for path in batch_dirs}
+    required_index_ids = {
+        batch_id
+        for batch_id, row in index_rows.items()
+        if row["status"] != "planned"
+    }
+    for batch_id, row in sorted(index_rows.items()):
+        if batch_id not in required_index_ids:
+            continue
+        declared_folder = Path(row["folder"])
+        valid_folder = (
+            not declared_folder.is_absolute()
+            and len(declared_folder.parts) == 2
+            and declared_folder.parts[0] == "work"
+            and declared_folder.parts[1].startswith(f"{batch_id}-")
+        )
+        if not valid_folder:
+            issues.append(
+                Issue(
+                    "invalid_batch_directory",
+                    row["folder"],
+                    f"{batch_id} folder must match work/{batch_id}-* inside the workflow root",
+                    {"batch": batch_id, "status": row["status"]},
+                )
+            )
+            continue
+        batch_path = workflow_root / declared_folder
+        if not batch_path.is_dir():
+            issues.append(
+                Issue(
+                    "missing_batch_directory",
+                    row["folder"],
+                    f"{batch_id} is indexed but its batch directory is missing",
+                    {"batch": batch_id, "status": row["status"]},
+                )
+            )
 
     for batch_dir in batch_dirs:
         batch_id = batch_dir.name[:4]
@@ -387,7 +440,7 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
         "schema_version": 1,
         "workflow_root": str(workflow_root),
         "valid": not issues,
-        "batches_checked": len(batch_dirs),
+        "batches_checked": len(actual_batch_ids | required_index_ids),
         "provenance": canonical_provenance,
         "blueprint": blueprint_identity,
         "artifact_targets": ARTIFACT_LIMITS,

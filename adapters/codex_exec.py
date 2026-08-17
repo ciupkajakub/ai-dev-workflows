@@ -36,35 +36,10 @@ def _extra_args() -> list[str]:
         isinstance(part, str) and part for part in value
     ):
         raise ValueError("FEATURE_EXECUTION_CODEX_ARGS must be a JSON string array")
-    reserved = {
-        "--ask-for-approval",
-        "--cd",
-        "--config",
-        "--dangerously-bypass-approvals-and-sandbox",
-        "--full-auto",
-        "--json",
-        "--model",
-        "--output-schema",
-        "--sandbox",
-        "--yolo",
-        "-C",
-        "-a",
-        "-c",
-        "-m",
-        "-o",
-        "-s",
-    }
-    if any(
-        part in reserved
-        or part.startswith("--cd=")
-        or part.startswith("--config=")
-        or part.startswith("--model=")
-        or part.startswith("--output-schema=")
-        or part.startswith("--sandbox=")
-        for part in value
-    ):
+    if value:
         raise ValueError(
-            "FEATURE_EXECUTION_CODEX_ARGS contains a reserved provider setting"
+            "FEATURE_EXECUTION_CODEX_ARGS contains a reserved provider setting; "
+            "controlled evaluation does not accept unattested extra arguments"
         )
     return value
 
@@ -197,7 +172,7 @@ def main() -> int:
         sandbox = os.environ.get("FEATURE_EXECUTION_CODEX_SANDBOX", "workspace-write")
         prompt = _agent_prompt(prompt_path.read_text(encoding="utf-8"), blueprint)
 
-        shared = ["--json"]
+        shared = ["--json", "--ignore-user-config", "--ignore-rules"]
         if model:
             shared.extend(["--model", model])
         if effort:
@@ -248,6 +223,8 @@ def main() -> int:
             "adapter": ADAPTER_VERSION,
             "behavioral_agent": codex_provenance["codex_binary_verified"],
             "command_evidence_source": "codex_jsonl_events",
+            "context_evidence_source": "provider_events",
+            "context_loaded_attested": [],
             "model": model or "unknown",
             "effort": effort or "unknown",
             "tools": tools_label or "unknown",

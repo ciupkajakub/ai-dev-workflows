@@ -1,13 +1,12 @@
 # Compact progress state
-Updated: 2026-07-27
+Updated: 2026-08-17
 Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
 
 ## Workflow provenance
 - Workflow schema: 2
 - Blueprint source: `feature_execution_blueprint.md`
-- Blueprint revision: 2.1.1
-- Blueprint digest: `710e0fa0523beee315e3918496de503df648c79b11063a35aaf3e518ad5821ac`
-- Agent surface/model/harness: fictional example / unknown / manual fixture
+- Blueprint revision: 2.2.0
+- Blueprint digest: `270e71dfc2af0bbadf458e08694fbf7321575d5af6e8929b730a4ffe721b3425`
 
 ## Current batch
 - Batch: B001
@@ -31,9 +30,10 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - Current root cause or hypothesis: none.
 
 ## Validation evidence
-- All four declared task checks passed; exact commands and the repaired sorting
+- All five declared task checks passed; exact commands and the repaired sorting
   failure are recorded in `PROGRESS.md`.
-- Batch-scoped `npm test` passed once during automatic section 13 repair-and-close.
+- Batch-scoped `npm test` passed once during section 11 final verification after
+  all task evidence was complete.
 - The approved synthetic fixture passed the populated/empty desktop/mobile
   visual rubric; authenticated browser automation was not used.
 
@@ -54,8 +54,8 @@ Example note: this file is fictional sanitized output for a sample task manageme
 - All required grouped rows are verified; no gaps remain.
 
 ## Final batch check
-- Passed; lifecycle owners agree, local validation is closed, integration is
-  verified, and release evidence is not required.
+- Passed on 2026-07-27; lifecycle owners agree, local validation is closed,
+  integration is verified, and release evidence is not required.
 
 ## Dirty repo and recovery state
 - Branch/base: main / origin/main; pre-existing modified files: none.
@@ -64,3 +64,5 @@ Example note: this file is fictional sanitized output for a sample task manageme
 
 ## Context notes
 - Read `PROGRESS.md` only for detailed evidence or history.
+- Workflow provenance migrated compatibly on 2026-08-17 without changing the
+  2026-07-27 completion evidence or lifecycle date.

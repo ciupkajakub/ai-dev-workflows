@@ -1,14 +1,15 @@
 # Progress log
 
-Append only.
+Append-only within each complete log volume.
 Use this file for detailed evidence. Do not include secrets, credentials, private customer data, proprietary logs, or production data.
-Archive closed historical entries when the active log exceeds about 300 lines;
-leave a dated pointer and never delete archived evidence.
+When this log approaches 300 lines, close and rename the whole unchanged volume,
+then start a new `PROGRESS.md` with a pointer to it. Never extract, reorder, or
+rewrite individual historical entries.
 
 Workflow schema: `2`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.1.1`
-Blueprint digest: `710e0fa0523beee315e3918496de503df648c79b11063a35aaf3e518ad5821ac`
+Blueprint revision: `2.2.0`
+Blueprint digest: `270e71dfc2af0bbadf458e08694fbf7321575d5af6e8929b730a4ffe721b3425`
 
 Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
 
@@ -104,9 +105,9 @@ State path:
 - B001 `active -> blocked` while the unsafe validation path was unresolved.
 - T002 `blocked -> in_progress` after the user approved a synthetic local fixture smoke check instead of authenticated browser automation.
 - B001 `blocked -> active` after the validation path was safe again.
-- T002 `in_progress -> validated` after required validation passed.
-- T002 `validated -> done` after evidence and lifecycle updates were recorded.
-- B001 remained `active` with section 13 batch validation pending.
+- T002 and B001 remained `in_progress`/`active`: the synthetic fixture proved
+  placement but did not yet record every required responsive, keyboard,
+  legibility, and reduced-motion observation.
 
 Changed:
 - Rendered the overdue section above today's tasks.
@@ -117,62 +118,44 @@ Validation:
 - `npm test -- dashboard-today-section.test.ts` passed.
 - Authenticated browser automation was not run because it required explicit approval.
 - User approved a synthetic local fixture smoke check.
-- Manual smoke check with the synthetic local account showed overdue tasks above today's tasks.
-- Three unique task-scoped checks and the task-local workflow updates completed
-  in 7 minutes, before T002's 10-minute progress checkpoint; no batch- or
-  CI-scoped command ran during the task.
+- An initial manual smoke check with the synthetic local account showed overdue
+  tasks above today's tasks.
+- Two automated task-scoped checks passed. The third declared task check remained
+  open pending complete visual and interaction evidence.
 
 Evidence:
 - UI test covers visible overdue section.
 - UI test covers empty state.
 - Existing today task rendering test still passes through `npm test -- dashboard-today-section.test.ts`.
-- Synthetic local smoke check covers the final dashboard layout without exposing customer data or authenticated browser state.
+- The synthetic local fixture established a safe path for inspecting the final
+  dashboard without customer data or authenticated browser state.
 
 Review:
 - Final diff was scoped to dashboard UI and component tests.
 - No generated files, debug code, focused tests, or sensitive data were added.
 
 Risks or gaps:
-- None.
+- Open: populated and empty states at desktop and mobile widths.
+- Open: explicit keyboard, text-legibility, and reduced-motion observations.
 
 Workflow updates:
-- Marked T002 done in `IMPLEMENTATION.md`.
-- Marked T002 traceability rows verified in `IMPLEMENTATION.md`.
+- Kept T002 in progress and its visual traceability row planned.
 - Kept B001 and NMI-001 active.
-- Left `npm test` in the batch-scoped open validation list.
-- Continued automatically into section 13 repair-and-close without another user
-  prompt.
+- Left the T002 manual check and batch-scoped `npm test` open.
 
 ## 2026-06-23
 
-Final batch check: B001
+Preliminary batch check: B001
 
-State path:
-- B001 `active -> validated -> done` after the declared batch validation and
-  compact final-state check passed.
-
-Batch validation:
-- `npm test` passed once in 4 minutes after all T* tasks were done.
+Validation:
+- `npm test` passed in 4 minutes, but it was an early diagnostic run while T002
+  still lacked required evidence and therefore did not satisfy final batch scope.
 - No CI-scoped validation was required.
-- Passing task-scoped commands were not rerun.
-
-Final state check:
-- Lifecycle statuses agree across `FEATURE.md`, `IMPLEMENTATION.md`, `WORK_INDEX.md`, `PRODUCT_BACKLOG.md`, and `PROGRESS_STATE.md`.
-- All required traceability rows are verified.
-- No `accepted_gap` rows remain.
-- Task and batch open validation lists are empty; release evidence is not required.
-- Earlier failed query validation was rerun successfully after the fix.
-- Authenticated browser automation was blocked until the user approved the synthetic local fixture smoke check.
-- No sensitive data, customer data, or untrusted-content instruction was accepted silently.
-- Final report may claim B001 done with no remaining risks.
 
 Workflow updates:
-- Marked B001 done in `IMPLEMENTATION.md` and `WORK_INDEX.md`.
-- Marked NMI-001 done in `PRODUCT_BACKLOG.md`.
-- Marked integration evidence verified and release evidence not required.
-
-Commit:
-- `feat: show overdue tasks on dashboard`
+- Kept T002 in progress and B001/NMI-001 active.
+- Did not treat the early broad run as final evidence.
+- Final verification remained open until all task evidence existed.
 
 ## 2026-07-15T14:00:00Z — visual-evidence clarification
 
@@ -184,16 +167,18 @@ Validation:
 Evidence:
 - Render inspection found no clipping or spacing regressions and confirmed the section follows existing dashboard patterns.
 
-Final batch check clarification:
-- Required desktop/mobile render inspection for populated and empty states is recorded above.
+Workflow updates:
+- Kept T002 in progress because keyboard, legibility, and reduced-motion evidence
+  was still missing.
+- Kept B001 and NMI-001 active; final verification did not run.
 
 ## 2026-07-27 — context-routing clarification
 
 Task: T002
 
 Validation:
-- `apple-design` was scoped to T002 implementation and visual review; it was not
-  loaded for the backend query task.
+- `apple-design` guidance was scoped to T002 visual review; its portable visual
+  contract remained sufficient if the provider-specific skill was unavailable.
 
 Evidence:
 - Keyboard access and text legibility remained intact in populated and empty
@@ -201,6 +186,35 @@ Evidence:
 - The section introduced no gesture or momentum interaction; reduced-motion mode
   preserved the same feedback and hierarchy without unnecessary movement.
 
-Final batch check clarification:
-- Required skill evidence is recorded without changing the historical T002
-  implementation entry.
+State path:
+- T002 `in_progress -> validated -> done` after all three declared task checks
+  and the visual-contract evidence were recorded.
+- Section 11 entered its internal final verification phase.
+- B001 `active -> validated -> done` only after the fresh batch check and final
+  lifecycle review passed.
+
+Batch validation:
+- `npm test` passed once in 4 minutes after every T* task was done.
+- No CI-scoped validation was required; passing task checks were not rerun.
+
+Final state check:
+- Lifecycle statuses agree across `FEATURE.md`, `IMPLEMENTATION.md`,
+  `WORK_INDEX.md`, `PRODUCT_BACKLOG.md`, and `PROGRESS_STATE.md`.
+- All required traceability and impact-map rows are verified; no accepted gaps
+  or open validation items remain.
+- The earlier query failure passed after repair, and the blocked authenticated
+  path was replaced only after explicit approval with a synthetic fixture.
+- Integration is verified and release evidence is not required.
+
+Workflow updates:
+- Marked T002 done, then marked B001 and NMI-001 done after final evidence.
+- Updated compact state and lifecycle owners to the same 2026-07-27 closure.
+
+Commit:
+- `feat: show overdue tasks on dashboard`
+
+## 2026-08-17 — workflow provenance migration
+
+- Migrated compatible workflow metadata from blueprint revision 2.1.1 to 2.2.0.
+- No application behavior, historical evidence, validation result, or lifecycle
+  timestamp changed during this metadata-only migration.

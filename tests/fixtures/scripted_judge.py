@@ -6,8 +6,8 @@ import struct
 import zlib
 
 
-workspace = Path(os.environ["FEATURE_EXECUTION_WORKSPACE"])
-evidence = workspace / "ui-evidence.png"
+evidence_root = Path(os.environ["FEATURE_EXECUTION_JUDGE_EVIDENCE_DIR"])
+evidence = evidence_root / "ui-evidence.png"
 
 
 def png_chunk(kind, payload):

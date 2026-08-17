@@ -12,7 +12,7 @@ The repository also includes an optional reference harness. It automates the
 workflow doctor, internal outcome continuation, and section 14 evaluation while
 leaving the blueprint as the sole workflow contract.
 
-Use it when a change is too large or risky to keep only in chat memory: product feedback, multi-step features, cross-cutting backend/UI changes, migration work, or anything where acceptance criteria and verification evidence matter.
+Use it when a change is too large or risky to keep only in chat memory: product feedback, multi-step features, cross-cutting backend/UI changes, migration work, or anything where acceptance criteria and verification evidence matter. For a small, local, reversible change, use the coding agent directly; this blueprint deliberately has no reduced fast lane.
 
 Do not use it as a replacement for human review, security review, production change control, or project-specific engineering judgment.
 
@@ -26,8 +26,8 @@ Do not use it as a replacement for human review, security review, production cha
 6. Use section 11 to start from the next task and continue autonomously through
    dependency-ready tasks plus repair-capable finalization. Use section 12 only
    when you intentionally want one named task.
-7. Section 11 invokes section 13 automatically. You can also invoke section 13
-   directly for repair-and-close, or explicitly request its audit-only mode.
+7. Section 11 owns final verification and repair. Section 13 remains a compatible
+   direct entry point for repairing an existing batch or running a read-only audit.
 8. Deliberately run section 14 before accepting changes to prompts, models, tools,
    or harness behavior. It is an evaluation runbook, not an automatic part of
    feature execution.
@@ -107,7 +107,9 @@ satisfy that threshold. The judge runs after the evaluated agent while the
 temporary workspace is still available. It returns rubric scores plus at least
 one decodable PNG evidence reference
 through `FEATURE_EXECUTION_JUDGE_RESULT_FILE`; it must not be the evaluated
-adapter itself. The runner retains and hashes the calibration and visual evidence.
+adapter itself. The runner gives the judge a snapshot of the evaluated workspace
+and a separate evidence-output directory, rejects any judge mutation of that
+snapshot, and retains and hashes the calibration and visual evidence.
 
 Repeat with the candidate blueprint and a different label, then compare the two
 saved JSON reports:
@@ -131,8 +133,10 @@ acceptance additionally requires the comparable baseline step.
 are marked non-behavioral. A behavioral run also requires
 `FEATURE_EXECUTION_CODEX_EXPECTED_SHA256` to match the resolved executable.
 Behavioral provenance records that executable, digest, version, sandbox, hashed
-extra arguments, and the included adapter's digest. Reserved extra arguments
-cannot override the attested model, effort, sandbox, workspace, or output schema.
+extra arguments, and the included adapter's digest. The adapter ignores user
+configuration and repository rules during controlled evaluation. Reserved extra
+arguments cannot override the attested model, effort, sandbox, workspace, output
+schema, extra writable directories, or hook trust.
 Comparison treats a provider-runtime or adapter digest change as a separate
 variable group.
 
@@ -146,8 +150,9 @@ absolute bar instead of trusting report claims.
 
 Provider configuration stays outside the blueprint. The reference Codex adapter
 reads `FEATURE_EXECUTION_CODEX_MODEL`, `FEATURE_EXECUTION_CODEX_EFFORT`,
-`FEATURE_EXECUTION_CODEX_TOOLS_LABEL`, `FEATURE_EXECUTION_CODEX_SANDBOX`, and a
-JSON string array in `FEATURE_EXECUTION_CODEX_ARGS`. For a behavioral report,
+`FEATURE_EXECUTION_CODEX_TOOLS_LABEL`, `FEATURE_EXECUTION_CODEX_SANDBOX`, and
+`FEATURE_EXECUTION_CODEX_ARGS`, which must remain an empty JSON array during a
+controlled evaluation. For a behavioral report,
 the first three values must match `--model`, `--effort`, and `--tools`; the runner
 checks that match on every turn and never treats an unknown value as evidence.
 
@@ -219,17 +224,19 @@ task.
 `IMPLEMENTATION.md` assigns every check to exactly one scope:
 
 - `task`: focused checks run by section 11 or 12
-- `batch`: broader local checks run once by section 13 after all tasks
+- `batch`: broader local checks run once by section 11 final verification after all tasks
 - `ci`: external checks that local execution records but never launches
 
 Loading a security policy, testing policy, skill, or reference does not add a
-validation command. A task executor may propose broader proof for replanning, but
-cannot invent or run it. After the last task, section 11 invokes section 13.
-Section 13 runs each declared batch command once initially, reruns only failed
-proof after a relevant repair, and closes feature delivery separately from
-integration and release evidence. Pending CI blocks `release_ready`, not a
-truthful feature-delivery claim, unless the feature contract explicitly requires
-release readiness.
+validation command. A task executor can record and run a newly discovered safe,
+focused check at the correct scope when evidence makes it necessary; broader or
+external proof still requires the batch/CI declaration and applicable permission.
+After the last task, section 11 enters its internal final verification phase. It
+runs each declared batch command once initially, reruns only failed proof after a
+relevant repair, and closes feature delivery separately from integration and
+release evidence. Pending CI blocks `release_ready`, not a truthful
+feature-delivery claim, unless the feature contract explicitly requires release
+readiness. Section 13 is only the stable repair/audit alias for this same phase.
 
 ## Context strategy
 
@@ -248,6 +255,8 @@ detail progressively:
 
 For example, a UI batch can route `apple-design` to contract design, UI
 implementation, and visual review without loading it for backend tasks. A
+provider-specific skill is advisory unless the contract also defines a portable
+fallback, so the workflow remains usable by another capable coding agent. A
 conversion skill applies only when the batch defines a funnel stage, conversion
 goal, baseline or explicit unknown, hypothesis, primary metric, and guardrails.
 Experiments additionally need a sample-size method and duration.

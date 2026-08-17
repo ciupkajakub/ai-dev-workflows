@@ -4,11 +4,10 @@ Batch: `B001`
 Source items: `NMI-001`
 Status: `done`
 Completion level: `feature`
-Delivery lane: `standard`
 Workflow schema: `2`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.1.1`
-Blueprint digest: `710e0fa0523beee315e3918496de503df648c79b11063a35aaf3e518ad5821ac`
+Blueprint revision: `2.2.0`
+Blueprint digest: `270e71dfc2af0bbadf458e08694fbf7321575d5af6e8929b730a4ffe721b3425`
 
 ## Implementation scope gate
 
@@ -72,7 +71,7 @@ validation_commands:
 | NFR1, AC6, Risk2 | Preserve the indexed user/due-date path and avoid N+1 rendering. | T001 | `npm test -- dashboard-query-plan.test.ts`; query-plan evidence in `PROGRESS.md`. | verified |
 | FR4, AC4 | Today's tasks and existing section behavior remain unchanged. | T002 | `npm test -- dashboard-today-section.test.ts`. | verified |
 | AC1, AC3 | Render overdue tasks above today and show the empty state when needed. | T001, T002 | Query result plus `npm test -- dashboard-overdue-section.test.ts`. | verified |
-| UX5, rollout verification, visual contract | Populated/empty desktop/mobile states satisfy hierarchy, identity, spacing, distinction, keyboard, legibility, and reduced-motion criteria. | T002 | Live synthetic fixture review and visual-rubric evidence in `PROGRESS.md`. | verified |
+| VIS1-VIS3 | Populated/empty desktop/mobile states satisfy hierarchy, identity, spacing, distinction, keyboard, legibility, and reduced-motion criteria. | T002 | Live synthetic fixture review and visual-rubric evidence in `PROGRESS.md`. | verified |
 
 ## Tasks
 
@@ -92,6 +91,22 @@ validation_commands:
     - FEATURE.md AC2
     - FEATURE.md AC5
     - FEATURE.md AC6
+  feature_refs:
+    - FR1
+    - FR2
+    - FR3
+    - NFR1
+    - Edge1
+    - Edge2
+    - Edge3
+    - AC1
+    - AC2
+    - AC5
+    - AC6
+    - Permission1
+    - Assumption1
+    - Risk1
+    - Risk2
   tests_required:
     - model or service test for included overdue tasks
     - test excluding completed overdue tasks
@@ -141,6 +156,7 @@ validation_commands:
       required: false
       load_when: none
       required_evidence: none
+      portable_fallback: not_required
   stop_conditions:
     - user timezone source is unclear
     - no reliable query-plan or instrumentation check exists for the no-N+1 requirement
@@ -160,6 +176,14 @@ validation_commands:
   acceptance_criteria:
     - FEATURE.md AC3
     - FEATURE.md AC4
+  feature_refs:
+    - FR4
+    - AC1
+    - AC3
+    - AC4
+    - VIS1
+    - VIS2
+    - VIS3
   tests_required:
     - view or component test for overdue section
     - view or component test for empty state
@@ -208,9 +232,10 @@ validation_commands:
   applicable_skills:
     - name: apple-design
       reason: the task changes dashboard hierarchy, feedback, responsive states, and visual integration
-      required: true
+      required: false
       load_when: implementation and visual review
       required_evidence: desktop/mobile populated/empty renders plus keyboard, legibility, reduced-motion, and existing-pattern findings in PROGRESS.md
+      portable_fallback: apply FEATURE.md VIS1-VIS3 directly and record the same rendered-state, accessibility, and reduced-motion evidence
   stop_conditions:
     - dashboard layout has competing pending changes
   source_items:

@@ -7,6 +7,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import struct
 import subprocess
 import tempfile
@@ -327,6 +328,57 @@ def _initialize_git(workspace: Path) -> str:
     ).stdout.strip()
 
 
+def _workspace_manifest(workspace: Path) -> list[dict]:
+    manifest = []
+    for path in sorted(workspace.rglob("*")):
+        relative_path = path.relative_to(workspace)
+        if ".git" in relative_path.parts:
+            continue
+        metadata = path.lstat()
+        entry = {
+            "path": str(relative_path),
+            "mode": oct(stat.S_IMODE(metadata.st_mode)),
+        }
+        if stat.S_ISLNK(metadata.st_mode):
+            entry.update({"kind": "symlink", "target": os.readlink(path)})
+        elif stat.S_ISDIR(metadata.st_mode):
+            entry["kind"] = "directory"
+        elif stat.S_ISREG(metadata.st_mode):
+            entry.update(
+                {
+                    "kind": "file",
+                    "size": metadata.st_size,
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                }
+            )
+        else:
+            entry["kind"] = "special"
+        manifest.append(entry)
+    return manifest
+
+
+def _copy_workspace_snapshot(source: Path, destination: Path) -> list[str]:
+    manifest = _workspace_manifest(source)
+    unsafe = [
+        entry["path"]
+        for entry in manifest
+        if entry["kind"] in {"symlink", "special"}
+    ]
+    if unsafe:
+        return unsafe
+    destination.mkdir()
+    for entry in manifest:
+        relative = Path(entry["path"])
+        source_path = source / relative
+        destination_path = destination / relative
+        if entry["kind"] == "directory":
+            destination_path.mkdir(exist_ok=True)
+        else:
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_path, destination_path, follow_symlinks=False)
+    return []
+
+
 def _retain_trial_evidence(
     *,
     workspace: Path,
@@ -336,21 +388,12 @@ def _retain_trial_evidence(
     fixture_commit: str,
     outcome: dict,
     external_judgment: dict | None,
+    external_evidence_root: Path | None,
+    external_judgment_result: Path | None,
 ) -> dict:
     target = evidence_root / case_id / f"trial-{trial_number}"
     target.mkdir(parents=True, exist_ok=True)
-    manifest = []
-    for path in sorted(workspace.rglob("*")):
-        if not path.is_file() or ".git" in path.relative_to(workspace).parts:
-            continue
-        relative = str(path.relative_to(workspace))
-        manifest.append(
-            {
-                "path": relative,
-                "size": path.stat().st_size,
-                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-            }
-        )
+    manifest = _workspace_manifest(workspace)
     manifest_path = target / "workspace-manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
@@ -374,17 +417,24 @@ def _retain_trial_evidence(
     status_path.write_text(status, encoding="utf-8")
 
     copied = []
+    external_copied = []
     files_root = target / "files"
-    evidence_references = list(outcome.get("evidence_refs", []))
-    if external_judgment:
-        evidence_references.extend(external_judgment.get("evidence_refs", []))
-    for raw_reference in evidence_references:
+    evidence_references = [
+        (raw_reference, workspace)
+        for raw_reference in outcome.get("evidence_refs", [])
+    ]
+    if external_judgment and external_evidence_root:
+        evidence_references.extend(
+            (raw_reference, external_evidence_root)
+            for raw_reference in external_judgment.get("evidence_refs", [])
+        )
+    for raw_reference, allowed_root in evidence_references:
         reference = Path(str(raw_reference))
         if not reference.is_absolute():
-            reference = workspace / reference
+            reference = allowed_root / reference
         try:
             resolved = reference.resolve()
-            resolved.relative_to(workspace.resolve())
+            resolved.relative_to(allowed_root.resolve())
         except (OSError, ValueError):
             continue
         if not resolved.is_file() or resolved.stat().st_size > 10 * 1024 * 1024:
@@ -393,12 +443,24 @@ def _retain_trial_evidence(
         prefix = hashlib.sha256(str(resolved).encode("utf-8")).hexdigest()[:10]
         destination = files_root / f"{prefix}-{resolved.name}"
         shutil.copy2(resolved, destination)
-        copied.append(
-            {
-                "path": str(destination.resolve()),
-                "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
-            }
-        )
+        copied_reference = {
+            "path": str(destination.resolve()),
+            "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+        }
+        copied.append(copied_reference)
+        if external_evidence_root and allowed_root == external_evidence_root:
+            external_copied.append(
+                {**copied_reference, "source_reference": str(raw_reference)}
+            )
+
+    retained_judgment = None
+    if external_judgment_result and external_judgment_result.is_file():
+        judgment_path = target / "judge-result.json"
+        shutil.copy2(external_judgment_result, judgment_path)
+        retained_judgment = {
+            "path": str(judgment_path.resolve()),
+            "sha256": hashlib.sha256(judgment_path.read_bytes()).hexdigest(),
+        }
 
     return {
         "manifest": str(manifest_path.resolve()),
@@ -408,6 +470,8 @@ def _retain_trial_evidence(
         "git_status": str(status_path.resolve()),
         "git_status_sha256": hashlib.sha256(status_path.read_bytes()).hexdigest(),
         "referenced_files": copied,
+        "external_judge_files": external_copied,
+        "external_judge_result": retained_judgment,
     }
 
 
@@ -454,88 +518,102 @@ def _run_external_judge(
     judge_label: str,
     judge_provenance: dict | None,
     trial_number: int,
-) -> tuple[dict | None, list[str]]:
+) -> tuple[dict | None, list[str], Path | None, Path | None]:
     if not case.get("external_judgment_required"):
-        return None, []
+        return None, [], None, None
     if not judge_command or not judge_provenance:
-        return None, ["external_judge_not_configured"]
-    with tempfile.TemporaryDirectory(prefix="feature-execution-judge-") as directory:
-        root = Path(directory)
-        case_path = root / "case.json"
-        outcome_path = root / "outcome.json"
-        result_path = root / "judgment.json"
-        case_path.write_text(json.dumps(case, indent=2), encoding="utf-8")
-        outcome_path.write_text(json.dumps(outcome, indent=2), encoding="utf-8")
-        environment = {
-            **os.environ,
-            "FEATURE_EXECUTION_WORKSPACE": str(workspace),
-            "FEATURE_EXECUTION_CASE_FILE": str(case_path),
-            "FEATURE_EXECUTION_OUTCOME_FILE": str(outcome_path),
-            "FEATURE_EXECUTION_JUDGE_RESULT_FILE": str(result_path),
-            "FEATURE_EXECUTION_CASE_ID": case["id"],
-            "FEATURE_EXECUTION_TRIAL": str(trial_number),
-            "FEATURE_EXECUTION_JUDGE_MODEL": str(
-                judge_provenance["judge_model"]
-            ),
-            "FEATURE_EXECUTION_JUDGE_CALIBRATION_FILE": str(
-                judge_provenance["calibration_file"]
-            ),
-            "FEATURE_EXECUTION_JUDGE_CALIBRATION_SHA256": str(
-                judge_provenance["calibration_sha256"]
-            ),
-        }
+        return None, ["external_judge_not_configured"], None, None
+
+    root = workspace.parent / f"judge-{case['id']}-{trial_number}"
+    snapshot = root / "workspace"
+    evidence_root = root / "evidence"
+    case_path = root / "case.json"
+    outcome_path = root / "outcome.json"
+    result_path = root / "judgment.json"
+    root.mkdir()
+    unsafe_entries = _copy_workspace_snapshot(workspace, snapshot)
+    if unsafe_entries:
+        failures = [
+            f"external_judge_unsafe_workspace_entry:{entry}"
+            for entry in unsafe_entries
+        ]
+        return None, failures, None, None
+    evidence_root.mkdir()
+    case_path.write_text(json.dumps(case, indent=2), encoding="utf-8")
+    outcome_path.write_text(json.dumps(outcome, indent=2), encoding="utf-8")
+    snapshot_before = _workspace_manifest(snapshot)
+    environment = {
+        **os.environ,
+        "FEATURE_EXECUTION_WORKSPACE": str(snapshot),
+        "FEATURE_EXECUTION_JUDGE_EVIDENCE_DIR": str(evidence_root),
+        "FEATURE_EXECUTION_CASE_FILE": str(case_path),
+        "FEATURE_EXECUTION_OUTCOME_FILE": str(outcome_path),
+        "FEATURE_EXECUTION_JUDGE_RESULT_FILE": str(result_path),
+        "FEATURE_EXECUTION_CASE_ID": case["id"],
+        "FEATURE_EXECUTION_TRIAL": str(trial_number),
+        "FEATURE_EXECUTION_JUDGE_MODEL": str(judge_provenance["judge_model"]),
+        "FEATURE_EXECUTION_JUDGE_CALIBRATION_FILE": str(
+            judge_provenance["calibration_file"]
+        ),
+        "FEATURE_EXECUTION_JUDGE_CALIBRATION_SHA256": str(
+            judge_provenance["calibration_sha256"]
+        ),
+    }
+    try:
+        completed = subprocess.run(
+            judge_command,
+            cwd=snapshot,
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=int(case.get("judge_timeout_seconds", 300)),
+        )
+    except subprocess.TimeoutExpired:
+        return None, ["external_judge_timed_out"], evidence_root, None
+    if completed.returncode != 0 or not result_path.exists():
+        return None, [f"external_judge_failed:{completed.returncode}"], evidence_root, None
+    failures = []
+    if _workspace_manifest(snapshot) != snapshot_before:
+        failures.append("external_judge_modified_snapshot")
+    try:
+        judgment = json.loads(result_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None, [*failures, "external_judge_invalid_json"], evidence_root, result_path
+    scores = judgment.get("rubric_scores")
+    if not isinstance(scores, dict) or not all(
+        isinstance(name, str) and isinstance(score, (int, float))
+        for name, score in scores.items()
+    ):
+        return None, [*failures, "external_judge_invalid_scores"], evidence_root, result_path
+    if (
+        judgment.get("judge_model") != judge_provenance["judge_model"]
+        or judgment.get("calibration_sha256")
+        != judge_provenance["calibration_sha256"]
+    ):
+        return None, [*failures, "external_judge_provenance_mismatch"], evidence_root, result_path
+    evidence_refs = judgment.get("evidence_refs")
+    if not isinstance(evidence_refs, list) or not evidence_refs:
+        return None, [*failures, "external_judge_missing_visual_evidence"], evidence_root, result_path
+    for raw_reference in evidence_refs:
+        reference = Path(str(raw_reference))
+        if not reference.is_absolute():
+            reference = evidence_root / reference
         try:
-            completed = subprocess.run(
-                judge_command,
-                cwd=workspace,
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=int(case.get("judge_timeout_seconds", 300)),
-            )
-        except subprocess.TimeoutExpired:
-            return None, ["external_judge_timed_out"]
-        if completed.returncode != 0 or not result_path.exists():
-            return None, [f"external_judge_failed:{completed.returncode}"]
-        try:
-            judgment = json.loads(result_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return None, ["external_judge_invalid_json"]
-        scores = judgment.get("rubric_scores")
-        if not isinstance(scores, dict) or not all(
-            isinstance(name, str) and isinstance(score, (int, float))
-            for name, score in scores.items()
-        ):
-            return None, ["external_judge_invalid_scores"]
+            resolved = reference.resolve()
+            resolved.relative_to(evidence_root.resolve())
+        except (OSError, ValueError):
+            return None, [*failures, "external_judge_unsafe_visual_evidence"], evidence_root, result_path
         if (
-            judgment.get("judge_model") != judge_provenance["judge_model"]
-            or judgment.get("calibration_sha256")
-            != judge_provenance["calibration_sha256"]
+            not resolved.is_file()
+            or resolved.suffix.lower() != ".png"
+            or resolved.stat().st_size > 10 * 1024 * 1024
+            or not _valid_png_evidence(resolved)
         ):
-            return None, ["external_judge_provenance_mismatch"]
-        evidence_refs = judgment.get("evidence_refs")
-        if not isinstance(evidence_refs, list) or not evidence_refs:
-            return None, ["external_judge_missing_visual_evidence"]
-        for raw_reference in evidence_refs:
-            reference = Path(str(raw_reference))
-            if not reference.is_absolute():
-                reference = workspace / reference
-            try:
-                resolved = reference.resolve()
-                resolved.relative_to(workspace.resolve())
-            except (OSError, ValueError):
-                return None, ["external_judge_unsafe_visual_evidence"]
-            if (
-                not resolved.is_file()
-                or resolved.suffix.lower() != ".png"
-                or resolved.stat().st_size > 10 * 1024 * 1024
-                or not _valid_png_evidence(resolved)
-            ):
-                return None, ["external_judge_invalid_visual_evidence"]
-        judgment["label"] = judge_label
-        judgment["provenance"] = judge_provenance
-        return judgment, []
+            return None, [*failures, "external_judge_invalid_visual_evidence"], evidence_root, result_path
+    judgment["label"] = judge_label
+    judgment["provenance"] = judge_provenance
+    return judgment, failures, evidence_root, result_path
 
 
 def _file_expectations(
@@ -649,9 +727,14 @@ def _evaluate_case(
     required_context = set(expected.get("required_context", []))
     forbidden_context = set(expected.get("forbidden_context", []))
     loaded_context = {
-        item
-        for item in required_context | forbidden_context
-        if item in rendered_commands
+        str(item)
+        for turn in outcome.get("trajectory", [])
+        if turn.get("adapter_metadata", {}).get("context_evidence_source")
+        == "provider_events"
+        for item in turn.get("adapter_metadata", {}).get(
+            "context_loaded_attested", []
+        )
+        if isinstance(item, str) and item
     }
     for item in sorted(required_context - loaded_context):
         failures.append(f"missing_context:{item}")
@@ -1051,7 +1134,12 @@ def run_eval_suite(
                     max_turns=int(case.get("max_turns", 24)),
                     adapter_timeout_seconds=int(case.get("timeout_seconds", 1800)),
                 )
-                external_judgment, judge_failures = _run_external_judge(
+                (
+                    external_judgment,
+                    judge_failures,
+                    judge_evidence_root,
+                    judge_result_path,
+                ) = _run_external_judge(
                     case=case,
                     outcome=outcome,
                     workspace=workspace,
@@ -1084,7 +1172,15 @@ def run_eval_suite(
                     fixture_commit=fixture_commit,
                     outcome=outcome,
                     external_judgment=external_judgment,
+                    external_evidence_root=judge_evidence_root,
+                    external_judgment_result=judge_result_path,
                 )
+                if external_judgment:
+                    retained_paths = [
+                        item["path"]
+                        for item in retained_evidence["external_judge_files"]
+                    ]
+                    external_judgment["evidence_refs"] = retained_paths
                 trial_results.append(
                     {
                         "case_id": case["id"],
@@ -1301,6 +1397,34 @@ def _retained_evidence_valid(retained: object) -> bool:
             or hashlib.sha256(path.read_bytes()).hexdigest() != digest
         ):
             return False
+    external_files = retained.get("external_judge_files", [])
+    if not isinstance(external_files, list):
+        return False
+    referenced_pairs = {
+        (reference.get("path"), reference.get("sha256"))
+        for reference in referenced_files
+    }
+    for reference in external_files:
+        if (
+            not isinstance(reference, dict)
+            or not isinstance(reference.get("source_reference"), str)
+            or (reference.get("path"), reference.get("sha256"))
+            not in referenced_pairs
+        ):
+            return False
+    judgment_result = retained.get("external_judge_result")
+    if judgment_result is not None:
+        if not isinstance(judgment_result, dict):
+            return False
+        judgment_path = Path(str(judgment_result.get("path", "")))
+        judgment_digest = judgment_result.get("sha256")
+        if (
+            not judgment_path.is_file()
+            or not re.fullmatch(r"[0-9a-f]{64}", str(judgment_digest))
+            or hashlib.sha256(judgment_path.read_bytes()).hexdigest()
+            != judgment_digest
+        ):
+            return False
     return True
 
 
@@ -1494,26 +1618,46 @@ def _report_integrity_failures(report: dict, side: str) -> list[str]:
         if trial.get("external_judgment_required"):
             judgment = trial.get("external_judgment")
             judge = configuration.get("judge") or {}
+            raw_judgment = None
+            judgment_record = retained.get("external_judge_result")
+            if isinstance(judgment_record, dict):
+                try:
+                    raw_judgment = json.loads(
+                        Path(judgment_record["path"]).read_text(encoding="utf-8")
+                    )
+                except (KeyError, OSError, json.JSONDecodeError):
+                    raw_judgment = None
+            external_files = retained.get("external_judge_files", [])
             provenance = (
                 judgment.get("provenance", {}) if isinstance(judgment, dict) else {}
             )
             if not (
                 isinstance(judgment, dict)
+                and isinstance(raw_judgment, dict)
                 and judgment.get("label") == judge.get("label")
                 and judgment.get("judge_model") == judge.get("judge_model")
                 and judgment.get("calibration_sha256")
                 == judge.get("calibration_sha256")
+                and raw_judgment.get("judge_model")
+                == judgment.get("judge_model")
+                and raw_judgment.get("calibration_sha256")
+                == judgment.get("calibration_sha256")
+                and raw_judgment.get("rubric_scores")
+                == judgment.get("rubric_scores")
                 and isinstance(judgment.get("rubric_scores"), dict)
                 and all(
                     isinstance(score, (int, float)) and not isinstance(score, bool)
                     for score in judgment.get("rubric_scores", {}).values()
                 )
                 and judgment.get("evidence_refs")
-                and retained.get("referenced_files")
-                and any(
+                == [reference.get("path") for reference in external_files]
+                and [str(item) for item in raw_judgment.get("evidence_refs", [])]
+                == [reference.get("source_reference") for reference in external_files]
+                and external_files
+                and all(
                     Path(reference["path"]).suffix.lower() == ".png"
                     and _valid_png_evidence(Path(reference["path"]))
-                    for reference in retained.get("referenced_files", [])
+                    for reference in external_files
                 )
                 and provenance.get("judge_model") == judge.get("judge_model")
                 and provenance.get("calibration_revision")

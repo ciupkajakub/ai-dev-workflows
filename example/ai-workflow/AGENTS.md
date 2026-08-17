@@ -2,8 +2,8 @@
 
 Workflow schema: `2`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.1.1`
-Blueprint digest: `710e0fa0523beee315e3918496de503df648c79b11063a35aaf3e518ad5821ac`
+Blueprint revision: `2.2.0`
+Blueprint digest: `270e71dfc2af0bbadf458e08694fbf7321575d5af6e8929b730a4ffe721b3425`
 
 Example note: this file is fictional sanitized output for a sample task
 management app. Paths and commands are illustrative.
@@ -30,93 +30,24 @@ management app. Paths and commands are illustrative.
 
 ## Working agreements
 
-- Follow the selected batch `FEATURE.md` for outcomes and constraints and
-  `IMPLEMENTATION.md` for task outcomes, dependencies, validation, and stop
-  conditions.
-- Treat likely files and techniques as hypotheses. Existing code, tests, schemas,
-  migrations, commands, and local conventions are authoritative.
-- If the contract conflicts with repo evidence, stop and report the conflict,
-  impact, options, and recommended next step.
-- Explore before editing, preserve unrelated user changes, make the smallest
-  coherent change, and avoid unrelated refactors or speculative abstractions.
-- Ask only when a missing decision blocks safe progress or materially expands the
-  authorized outcome. Record safe assumptions in `PROGRESS.md`.
-
-## Workflow routing
-
-- Start execution from `PROGRESS_STATE.md`, the selected task, relevant
-  `FEATURE.md` items, and this file.
-- Read detailed progress, ledgers, policies, references, and skills only when the
-  selected phase or task needs them.
-- Lifecycle follows
-  `planned -> spec -> ready -> active -> validated -> done`.
-  A task follows `planned -> in_progress -> validated -> done`.
-  Use `blocked`, `failed_validation`, `superseded`, or `rolled_back` only with
-  evidence and a next state.
-- Apply lifecycle ownership atomically:
-  - contract lock updates `FEATURE.md`, `WORK_INDEX.md`, and source NMI rows
-  - valid planning updates `IMPLEMENTATION.md`, `WORK_INDEX.md`, and
-    `PROGRESS_STATE.md`
-  - the first task start updates the task, batch artifacts, `WORK_INDEX.md`, and
-    source NMI rows from `ready/spec` to `active`
-  - later task starts and task completions update only the task, touched
-    traceability rows, `PROGRESS.md`, and `PROGRESS_STATE.md` unless the batch
-    itself changes state
-  - final completion updates every owner only after validation, traceability
-    closure, evidence, and the final batch check pass
-- Source NMI rows never use task/batch-only `failed_validation`, `validated`, or
-  `rolled_back`; keep them `active` or `blocked` until final `done`, unless scope
-  is explicitly `superseded`.
-- Never report a later lifecycle state than the artifacts support.
-- In section 11, task boundaries are internal checkpoints. Continue through
-  dependency-ready tasks and section 13 without asking for `Continue` or `Fix`.
-
-## Conditional guidance
-
-- Read `SECURITY.md` before work involving sensitive data, untrusted content,
-  permissions, dependency installation, external or production systems,
-  browser/MCP/app actions, CI, destructive actions, or external transmission.
-- Read `TESTING_POLICY.md` when behavior or tests change.
-- Reading `SECURITY.md`, `TESTING_POLICY.md`, a skill, or a reference does not
-  add validation commands. `IMPLEMENTATION.md` assigns each check to task,
-  batch, or CI scope; run it only at that scope.
-- Load only skills listed for the selected batch/task or whose description
-  clearly matches the work; record material evidence in `PROGRESS.md`. If a
-  required skill is unavailable, stop or use an explicitly approved fallback.
-- Open only references that can change implementation or verification.
-- For UI work, render the affected responsive, loading, empty, error, and
-  interaction states. When a design skill applies, include accessibility and
-  reduced-motion checks.
-- For conversion work, require a funnel stage, conversion goal, baseline or
-  explicit unknown, hypothesis, primary metric, and guardrails. Experiments also
-  need a sample-size method and duration.
-
-## Completion gates
-
-A task is done only when:
-
-1. `done_when` and relevant acceptance criteria are satisfied
-2. required task-scoped validation and focused existing regression checks pass
-   within their declared command timeouts
-3. previously failed task-scoped checks pass after the fix or are proven unrelated
-4. touched traceability rows contain evidence
-5. final diff review finds no unrelated changes, temporary code, focused/skipped
-   tests, generated-file mistakes, or sensitive data
-6. detailed evidence, compact state, task status, and lifecycle owners agree
-
-Batch- and CI-scoped validation does not run while a task is active. An ordinary
-related red check stays `in_progress` while repair makes concrete progress.
-Before a batch becomes `done`, section 13 must pass local delivery and impact-map
-checks. CI updates release evidence separately and blocks only `release_ready`
-unless the feature contract explicitly requires that completion level.
-
-## Context and communication
-
-- Keep `PROGRESS_STATE.md` compact; put detailed evidence in append-only
-  `PROGRESS.md`.
-- Work on one task at a time, but continue across dependency-ready tasks and
-  section 13 in the same section 11 run. Split only at a coherent implementation
-  or independently verifiable outcome seam. Elapsed time triggers a progress
-  checkpoint, never an automatic stop, split, or approval.
-- Lead updates and final reports with outcome, evidence, caveats, and next action.
-- Keep exact commands, paths, identifiers, and errors unchanged.
+- Follow the selected blueprint section as the source of procedure, `FEATURE.md`
+  for the locked outcome, and `IMPLEMENTATION.md` for task scope and validation.
+- Start runtime work from `PROGRESS_STATE.md`, the selected task, its exact
+  `feature_refs`, and this repo map. Load detailed progress, ledgers, policies,
+  references, and skills only when the selected phase or task needs them.
+- Treat likely files and techniques as hypotheses. Explore before editing,
+  preserve unrelated work, and make the smallest coherent change.
+- Read `TESTING_POLICY.md` when behavior or tests change. Read `SECURITY.md`
+  before sensitive-data, permission, dependency, browser/app, CI, production,
+  destructive, untrusted-content, or external-transmission work.
+- A listed skill is advisory unless its task marks it required and provides a
+  portable fallback. Use the fallback when a provider-specific skill is absent.
+- Keep `PROGRESS_STATE.md` compact and `PROGRESS.md` append-only. Record evidence
+  before advancing a task, batch, or backlog item; never report a later state
+  than all lifecycle owners support.
+- Section 11 continues across dependency-ready tasks and owns final verification
+  and repair. Section 13 is only its repair/audit compatibility entry point.
+- Ask only for a genuinely blocking product decision or a new permission,
+  side-effect, data, or scope boundary.
+- Preserve exact commands, paths, identifiers, and errors except required
+  sensitive-data redaction; mark every redaction explicitly.

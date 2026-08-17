@@ -5,11 +5,10 @@ Source items: `NMI-001`
 Folder: `ai-workflow/work/B001-example-feature/`
 Status: `done`
 Completion level: `feature`
-Delivery lane: `standard`
 Workflow schema: `2`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.1.1`
-Blueprint digest: `710e0fa0523beee315e3918496de503df648c79b11063a35aaf3e518ad5821ac`
+Blueprint revision: `2.2.0`
+Blueprint digest: `270e71dfc2af0bbadf458e08694fbf7321575d5af6e8929b730a4ffe721b3425`
 
 ## 1. Problem / Context
 
@@ -37,14 +36,14 @@ When a user opens the dashboard, the overdue section appears above today's tasks
 
 ## 6. Functional requirements
 
-1. A task is overdue when it is incomplete and its due date is before the user's current local date.
-2. Completed tasks must not appear in the overdue section.
-3. Overdue tasks must be sorted by due date ascending.
-4. Tasks due today remain in the existing today section.
+FR1. A task is overdue when it is incomplete and its due date is before the user's current local date.
+FR2. Completed tasks must not appear in the overdue section.
+FR3. Overdue tasks must be sorted by due date ascending.
+FR4. Tasks due today remain in the existing today section.
 
 ## 7. Non functional requirements
 
-1. The dashboard query must use the existing indexed task due-date/user filtering path or an equivalent query plan; it must not introduce an N+1 query for overdue task rendering.
+NFR1. The dashboard query must use the existing indexed task due-date/user filtering path or an equivalent query plan; it must not introduce an N+1 query for overdue task rendering.
 
 ## 8. Data and system impact
 
@@ -58,22 +57,22 @@ No schema changes are required.
 
 ## 9. Edge cases and failure modes
 
-1. Tasks with no due date are not overdue.
-2. Completed overdue tasks are excluded.
-3. Timezone handling must use the user's local date boundary.
+Edge1. Tasks with no due date are not overdue.
+Edge2. Completed overdue tasks are excluded.
+Edge3. Timezone handling must use the user's local date boundary.
 
 ## 10. Acceptance criteria
 
-1. Given incomplete tasks due before today, they appear in the overdue section.
-2. Given completed tasks due before today, they do not appear in the overdue section.
-3. Given no overdue tasks, the dashboard shows an overdue empty state.
-4. Given tasks due today, they remain in the today section.
-5. Given multiple overdue tasks, they are sorted by due date ascending.
-6. Given overdue tasks render on the dashboard, the implementation uses the existing indexed user/due-date query path or equivalent evidence shows no N+1 query was introduced.
+AC1. Given incomplete tasks due before today, they appear in the overdue section.
+AC2. Given completed tasks due before today, they do not appear in the overdue section.
+AC3. Given no overdue tasks, the dashboard shows an overdue empty state.
+AC4. Given tasks due today, they remain in the today section.
+AC5. Given multiple overdue tasks, they are sorted by due date ascending.
+AC6. Given overdue tasks render on the dashboard, the implementation uses the existing indexed user/due-date query path or equivalent evidence shows no N+1 query was introduced.
 
 ## 11. Permissions and visibility rules
 
-1. Users can only see their own tasks.
+Permission1. Users can only see their own tasks.
 
 ## 12. Rollout and verification
 
@@ -84,12 +83,12 @@ legibility, and reduced-motion behavior.
 
 ## 13. Risks and open questions
 
-1. Timezone boundaries are the main behavior risk.
-2. Query shape is the main performance risk.
+Risk1. Timezone boundaries are the main behavior risk.
+Risk2. Query shape is the main performance risk.
 
 ## 14. Assumptions
 
-1. The app already has a reliable user timezone setting.
+Assumption1. The app already has a reliable user timezone setting.
 
 ## 15. References and applicable skills
 
@@ -106,11 +105,13 @@ Applicable skills:
 1. `apple-design`
    - Reason: the batch changes dashboard hierarchy, feedback, responsive states,
      and visual integration with an existing surface.
-   - Required: yes.
+   - Required: no; advisory when available.
    - Phases: feature contract, T002 implementation, visual review.
    - Required evidence: affected desktop/mobile and populated/empty states,
      keyboard access, legibility, reduced motion, and consistency with existing
      dashboard patterns.
+   - Portable fallback: apply the Visual contract below directly and record the
+     same rendered-state, accessibility, and reduced-motion evidence.
 
 Not applicable:
 
@@ -119,10 +120,10 @@ Not applicable:
 
 ### Visual contract
 
-- Direction status: `repo_reference`.
-- Rendered direction: preserve the existing dashboard identity and place the
+- VIS1 Direction status: `repo_reference`.
+- VIS2 Rendered direction: preserve the existing dashboard identity and place the
   overdue section above today's tasks in the interactive populated/empty fixture.
-- Rubric: coherent hierarchy, existing-product identity, consistent density and
+- VIS3 Rubric: coherent hierarchy, existing-product identity, consistent density and
   spacing, obvious overdue/today distinction, unchanged primary actions,
   responsive populated/empty states, keyboard access, legibility, and reduced
   motion.

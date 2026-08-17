@@ -1,9 +1,17 @@
+import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
+
+from feature_execution.evals import (
+    _copy_workspace_snapshot,
+    _report_integrity_failures,
+    _workspace_manifest,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -118,6 +126,52 @@ class DoctorCliTest(unittest.TestCase):
                 ("missing_file", "SECURITY.md"),
                 {(issue["code"], issue["path"]) for issue in report["issues"]},
             )
+
+    def test_indexed_batch_with_missing_directory_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflow = Path(directory) / "ai-workflow"
+            workflow.mkdir()
+            batch = write_valid_workflow(workflow)
+            shutil.rmtree(batch)
+            (workflow / "WORK_INDEX.md").write_text(
+                "| Batch | Status | Integration evidence | Release evidence | Source items | Folder |\n"
+                "|---|---|---|---|---|---|\n"
+                "| B001 | active | pending | pending | NMI-001 | `ai-workflow/work/B001-example/` |\n",
+                encoding="utf-8",
+            )
+
+            completed = run_cli("doctor", workflow)
+
+            self.assertEqual(completed.returncode, 1)
+            report = json.loads(completed.stdout)
+            self.assertEqual(report["batches_checked"], 1)
+            self.assertIn(
+                ("missing_batch_directory", "work/B001-example"),
+                {(issue["code"], issue["path"]) for issue in report["issues"]},
+            )
+
+    def test_indexed_batch_folder_must_be_confined_and_match_batch_id(self):
+        unsafe_folders = ("", "/tmp", "../work/B001-example", "work/B999-other")
+        for folder in unsafe_folders:
+            with self.subTest(folder=folder), tempfile.TemporaryDirectory() as directory:
+                workflow = Path(directory) / "ai-workflow"
+                workflow.mkdir()
+                write_valid_workflow(workflow)
+                (workflow / "WORK_INDEX.md").write_text(
+                    "| Batch | Status | Folder |\n"
+                    "|---|---|---|\n"
+                    f"| B001 | active | `{folder}` |\n",
+                    encoding="utf-8",
+                )
+
+                completed = run_cli("doctor", workflow)
+
+                self.assertEqual(completed.returncode, 1)
+                report = json.loads(completed.stdout)
+                self.assertIn(
+                    "invalid_batch_directory",
+                    {issue["code"] for issue in report["issues"]},
+                )
 
     def test_supplied_blueprint_digest_is_verified_not_only_cross_compared(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -411,6 +465,116 @@ class OutcomeHarnessCliTest(unittest.TestCase):
 
 
 class EvalCliTest(unittest.TestCase):
+    def test_judge_snapshot_rejects_workspace_symlinks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            outside = root / "private.txt"
+            outside.write_text("must not be copied\n", encoding="utf-8")
+            (workspace / "leak.txt").symlink_to(outside)
+
+            unsafe = _copy_workspace_snapshot(workspace, root / "snapshot")
+
+            self.assertEqual(unsafe, ["leak.txt"])
+            self.assertFalse((root / "snapshot").exists())
+            manifest = _workspace_manifest(workspace)
+            self.assertEqual(manifest[0]["kind"], "symlink")
+            self.assertEqual(manifest[0]["target"], str(outside))
+
+    def test_context_routing_uses_declared_loaded_context_not_command_text(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            write_json(
+                suite,
+                {
+                    "case_set_revision": "context-events-v1",
+                    "cases": [
+                        {
+                            "id": "declared-context",
+                            "prompt": "Use the supplied context.",
+                            "starting_files": {"context.md": "rules\n"},
+                            "dimensions": ["context_artifact_efficiency"],
+                            "hard_gates": ["context_routing"],
+                            "expected": {
+                                "terminal_state": "verified_outcome",
+                                "required_context": ["context.md"],
+                            },
+                        },
+                        {
+                            "id": "mentioned-only",
+                            "prompt": "Use the supplied context.",
+                            "starting_files": {"context.md": "rules\n"},
+                            "dimensions": ["context_artifact_efficiency"],
+                            "hard_gates": ["context_routing"],
+                            "expected": {
+                                "terminal_state": "verified_outcome",
+                                "required_context": ["context.md"],
+                            },
+                        },
+                    ],
+                },
+            )
+            plan = root / "plan.json"
+            write_json(
+                plan,
+                {
+                    "declared-context": [
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "done",
+                            "progress_made": True,
+                            "progress_fingerprint": "declared",
+                            "context_loaded": ["context.md"],
+                            "adapter_metadata": {
+                                "context_evidence_source": "provider_events",
+                                "context_loaded_attested": ["context.md"],
+                            },
+                        }
+                    ],
+                    "mentioned-only": [
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "done",
+                            "progress_made": True,
+                            "progress_fingerprint": "mentioned",
+                            "context_loaded": ["context.md"],
+                            "commands_run": [
+                                {"command": "echo context.md", "exit_code": 0}
+                            ],
+                        }
+                    ],
+                },
+            )
+
+            completed = run_cli(
+                "eval",
+                "--suite",
+                suite,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--blueprint",
+                BLUEPRINT,
+                "--configuration-label",
+                "context-events-self-test",
+                "--trials",
+                "1",
+                "--report-dir",
+                root / "reports",
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            report_path = json.loads(completed.stdout)["report_json"]
+            report = json.loads(Path(report_path).read_text(encoding="utf-8"))
+            trials = {trial["case_id"]: trial for trial in report["trials"]}
+            self.assertTrue(trials["declared-context"]["passed"])
+            self.assertFalse(trials["mentioned-only"]["passed"])
+            self.assertIn(
+                "missing_context:context.md", trials["mentioned-only"]["failures"]
+            )
+
     def test_eval_report_stays_unaccepted_for_scripted_adapter(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -673,12 +837,122 @@ class EvalCliTest(unittest.TestCase):
                 judgment["provenance"]["calibration_revision"], "fixture-ui-v1"
             )
             self.assertTrue(judgment["evidence_refs"])
+            retained = report["trials"][0]["retained_evidence"]
+            self.assertTrue(Path(retained["external_judge_result"]["path"]).is_file())
             evidence = Path(
-                report["trials"][0]["retained_evidence"]["referenced_files"][0][
-                    "path"
-                ]
+                retained["external_judge_files"][0]["path"]
             )
             self.assertEqual(evidence.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+            tampered = json.loads(json.dumps(report))
+            tampered["trials"][0]["external_judgment"]["rubric_scores"][
+                "hierarchy"
+            ] = 1
+            self.assertIn(
+                "candidate_trial_judgment_incomplete",
+                _report_integrity_failures(tampered, "candidate"),
+            )
+
+    def test_judge_runs_on_snapshot_and_cannot_change_agent_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            write_json(
+                suite,
+                {
+                    "case_set_revision": "judge-isolation-v1",
+                    "cases": [
+                        {
+                            "id": "ui",
+                            "prompt": "Evaluate the supplied UI.",
+                            "starting_files": {"app.txt": "agent output\n"},
+                            "dimensions": ["ui_observable_quality"],
+                            "hard_gates": ["ui_quality"],
+                            "external_judgment_required": True,
+                            "expected": {
+                                "terminal_state": "verified_outcome",
+                                "rubric_minimums": {"hierarchy": 9, "clarity": 9},
+                            },
+                        }
+                    ],
+                },
+            )
+            plan = root / "plan.json"
+            write_json(
+                plan,
+                {
+                    "ui": [
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "render complete",
+                            "progress_made": True,
+                            "progress_fingerprint": "render",
+                        }
+                    ]
+                },
+            )
+            calibration = root / "judge-calibration.json"
+            write_json(
+                calibration,
+                {
+                    "calibration_revision": "fixture-ui-v1",
+                    "judge_model": "fixture-judge-v1",
+                    "maximum_mean_absolute_error": 1.0,
+                    "human_rated_examples": [
+                        {"id": "one", "human_score": 8, "judge_score": 8},
+                        {"id": "two", "human_score": 9, "judge_score": 9},
+                        {"id": "three", "human_score": 10, "judge_score": 9},
+                    ],
+                },
+            )
+            mutating_judge = root / "mutating_judge.py"
+            mutating_judge.write_text(
+                "import os, runpy\n"
+                "from pathlib import Path\n"
+                "Path(os.environ['FEATURE_EXECUTION_WORKSPACE'], 'app.txt').write_text('judge mutation\\n', encoding='utf-8')\n"
+                f"runpy.run_path({str(SCRIPTED_JUDGE)!r})\n",
+                encoding="utf-8",
+            )
+
+            completed = run_cli(
+                "eval",
+                "--suite",
+                suite,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--judge-command",
+                json.dumps(["python3", str(mutating_judge)]),
+                "--judge-label",
+                "mutating-scripted-judge",
+                "--judge-model",
+                "fixture-judge-v1",
+                "--judge-calibration-file",
+                calibration,
+                "--blueprint",
+                BLUEPRINT,
+                "--configuration-label",
+                "judge-isolation-self-test",
+                "--trials",
+                "1",
+                "--report-dir",
+                root / "reports",
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            report_path = json.loads(completed.stdout)["report_json"]
+            report = json.loads(Path(report_path).read_text(encoding="utf-8"))
+            trial = report["trials"][0]
+            self.assertFalse(trial["passed"])
+            self.assertIn("external_judge_modified_snapshot", trial["failures"])
+            manifest = json.loads(
+                Path(trial["retained_evidence"]["manifest"]).read_text(
+                    encoding="utf-8"
+                )
+            )
+            app_entry = next(item for item in manifest if item["path"] == "app.txt")
+            self.assertEqual(
+                app_entry["sha256"], hashlib.sha256(b"agent output\n").hexdigest()
+            )
 
     def test_verifier_commands_require_explicit_authorization(self):
         with tempfile.TemporaryDirectory() as directory:

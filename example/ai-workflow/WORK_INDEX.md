@@ -4,7 +4,7 @@
 
 | Batch | Status | Integration evidence | Release evidence | Source items | Folder | Purpose | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| B001 | done | verified | not_required | NMI-001 | `ai-workflow/work/B001-example-feature/` | Show overdue tasks on the dashboard. | 2026-06-23 |
+| B001 | done | verified | not_required | NMI-001 | `ai-workflow/work/B001-example-feature/` | Show overdue tasks on the dashboard. | 2026-07-27 |
 | B002 | planned | pending | pending | NMI-002 | `ai-workflow/work/B002-reminder-preferences/` | Add account-level due-date reminder preferences. | 2026-06-23 |
 
 ## Dependency and history notes
@@ -22,6 +22,8 @@
 | 2026-06-23 | Kept B001 active while T001 query validation exposed and then repaired missing due-date sorting. |
 | 2026-06-23 | Moved B001 from active to blocked while authenticated browser smoke validation required explicit approval. |
 | 2026-06-23 | Returned B001 to active after the user approved a synthetic local fixture smoke check. |
-| 2026-06-23 | Continued automatically from completed T002 into section 13 repair-and-close. |
-| 2026-06-23 | Moved B001 through validated to done with integration verified and release evidence not required. |
+| 2026-06-23 | Kept B001 active after preliminary broad validation because T002 visual and interaction evidence was incomplete. |
 | 2026-06-23 | Created B002 from NMI-002. |
+| 2026-07-15 | Kept B001 active after responsive render evidence because keyboard, legibility, and reduced-motion evidence was still open. |
+| 2026-07-27 | Continued automatically from completed T002 into section 11 final verification. |
+| 2026-07-27 | Moved B001 through validated to done with fresh batch validation, integration verified, and release evidence not required. |
