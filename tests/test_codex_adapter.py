@@ -12,6 +12,48 @@ SCHEMA = REPO_ROOT / "schemas" / "agent_turn.schema.json"
 
 
 class CodexAdapterContractTests(unittest.TestCase):
+    def test_capability_preflight_fails_before_provider_invocation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            prompt = root / "prompt.txt"
+            prompt.write_text("Finalize.", encoding="utf-8")
+            fake_codex = root / "must_not_run.py"
+            marker = root / "invoked"
+            fake_codex.write_text(
+                "#!/usr/bin/env python3\n"
+                "from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('invoked')\n",
+                encoding="utf-8",
+            )
+            fake_codex.chmod(0o755)
+
+            completed = subprocess.run(
+                ["python3", str(ADAPTER)],
+                cwd=workspace,
+                env={
+                    **os.environ,
+                    "FEATURE_EXECUTION_WORKSPACE": str(workspace),
+                    "FEATURE_EXECUTION_PROMPT_FILE": str(prompt),
+                    "FEATURE_EXECUTION_RESULT_FILE": str(root / "result.json"),
+                    "FEATURE_EXECUTION_CODEX_BIN": str(fake_codex),
+                    "FEATURE_EXECUTION_REQUIRED_CAPABILITIES": json.dumps(
+                        ["filesystem", "database"]
+                    ),
+                    "FEATURE_EXECUTION_CODEX_CAPABILITIES": json.dumps(
+                        ["filesystem"]
+                    ),
+                },
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 76)
+            self.assertIn("database", completed.stderr)
+            self.assertFalse(marker.exists())
+
     def test_initial_and_resumed_turns_use_schema_and_preserve_session(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -141,6 +183,42 @@ class CodexAdapterContractTests(unittest.TestCase):
 
             self.assertEqual(completed.returncode, 1)
             self.assertIn("invalid_json_schema", completed.stderr)
+
+    def test_missing_resumed_session_uses_portable_unavailable_exit_code(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            prompt = root / "prompt.txt"
+            prompt.write_text("Continue.", encoding="utf-8")
+            fake_codex = root / "missing_session_codex.py"
+            fake_codex.write_text(
+                "#!/usr/bin/env python3\n"
+                "import sys\n"
+                "print('session not found', file=sys.stderr)\n"
+                "raise SystemExit(1)\n",
+                encoding="utf-8",
+            )
+            fake_codex.chmod(0o755)
+
+            completed = subprocess.run(
+                ["python3", str(ADAPTER)],
+                cwd=workspace,
+                env={
+                    **os.environ,
+                    "FEATURE_EXECUTION_WORKSPACE": str(workspace),
+                    "FEATURE_EXECUTION_PROMPT_FILE": str(prompt),
+                    "FEATURE_EXECUTION_RESULT_FILE": str(root / "result.json"),
+                    "FEATURE_EXECUTION_RESUME_TOKEN": "missing-session",
+                    "FEATURE_EXECUTION_CODEX_BIN": str(fake_codex),
+                },
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 75)
+            self.assertIn("session not found", completed.stderr)
 
     def test_extra_args_cannot_override_attested_provider_settings(self):
         with tempfile.TemporaryDirectory() as directory:

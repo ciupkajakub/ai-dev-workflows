@@ -6,8 +6,8 @@ Status: `done`
 Completion level: `feature`
 Workflow schema: `2`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.2.0`
-Blueprint digest: `270e71dfc2af0bbadf458e08694fbf7321575d5af6e8929b730a4ffe721b3425`
+Blueprint revision: `2.4.0`
+Blueprint digest: `de5c2c52bb128c3337bc0c7c38c40833ac5badc84f13b8bbfa1d343b51ea7039`
 
 ## Implementation scope gate
 
@@ -45,6 +45,7 @@ validation_commands:
     required: true
     scope: batch
     timeout_seconds: 300
+    required_capabilities: [filesystem]
 ```
 
 ## CI validation
@@ -118,6 +119,9 @@ validation_commands:
     - task query layer
   risk: medium
   dependencies: []
+  session:
+    mode: fresh
+    reason: durable query contract, fixtures, repository code, and task validation provide the full handoff
   batch_group: query
   validation_level: targeted_tests
   execution_guidance:
@@ -131,11 +135,13 @@ validation_commands:
       required: true
       scope: task
       timeout_seconds: 120
+      required_capabilities: [filesystem]
     - command: npm test -- dashboard-query-plan.test.ts
       purpose: proves overdue rendering uses the indexed user/due-date query path or equivalent no-N+1 guard
       required: true
       scope: task
       timeout_seconds: 120
+      required_capabilities: [filesystem]
   existing_checks_to_rerun:
     - command: npm test -- dashboard-task-query.test.ts
       reason: same command as required validation because the query test file is also the nearest existing behavior coverage for the touched query layer
@@ -192,6 +198,9 @@ validation_commands:
   risk: low
   dependencies:
     - T001
+  session:
+    mode: fresh
+    reason: T001's completed query outcome is durable in code and tests; this separately specified UI consumer does not require conversational context
   batch_group: ui
   validation_level: targeted_tests, manual_check
   execution_guidance:
@@ -205,16 +214,19 @@ validation_commands:
       required: true
       scope: task
       timeout_seconds: 120
+      required_capabilities: [filesystem]
     - command: npm test -- dashboard-today-section.test.ts
       purpose: proves existing today task rendering remains unchanged
       required: true
       scope: task
       timeout_seconds: 120
+      required_capabilities: [filesystem]
     - command: manual smoke check with synthetic local account fixture
       purpose: renders populated and empty overdue states at desktop and mobile widths and proves layout, clipping, spacing, keyboard access, legibility, reduced-motion behavior, and existing-pattern consistency without authenticated browser automation or customer data
       required: true
       scope: task
       timeout_seconds: 120
+      required_capabilities: [filesystem, browser]
   existing_checks_to_rerun:
     - command: npm test -- dashboard-today-section.test.ts
       reason: same command as required validation because it is the existing UI regression check for unchanged today task rendering

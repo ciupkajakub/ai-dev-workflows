@@ -5,8 +5,8 @@ Example note: this file is fictional sanitized output for a sample task manageme
 ## Workflow provenance
 - Workflow schema: 2
 - Blueprint source: `feature_execution_blueprint.md`
-- Blueprint revision: 2.2.0
-- Blueprint digest: `270e71dfc2af0bbadf458e08694fbf7321575d5af6e8929b730a4ffe721b3425`
+- Blueprint revision: 2.4.0
+- Blueprint digest: `de5c2c52bb128c3337bc0c7c38c40833ac5badc84f13b8bbfa1d343b51ea7039`
 
 ## Current batch
 - Batch: B001
@@ -23,9 +23,11 @@ Example note: this file is fictional sanitized output for a sample task manageme
 
 ## Next
 - None for B001.
+- Executable next action: none.
 
 ## Active task runtime
 - Task: none; B001 task execution is complete.
+- Session fallback: none; both executable tasks used their planned fresh mode.
 - Last progress checkpoint: T002 completed before its target checkpoint.
 - Current root cause or hypothesis: none.
 

@@ -56,6 +56,42 @@
       }
     },
     "observations": {"type": "array", "items": {"type": "string"}},
-    "modified_files": {"type": "array", "items": {"type": "string"}}
+    "modified_files": {"type": "array", "items": {"type": "string"}},
+    "task_id": {
+      "type": "string",
+      "pattern": "^T[0-9]{3}$"
+    },
+    "session_route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["batch_id", "task_id", "mode"],
+      "properties": {
+        "batch_id": {"type": "string", "pattern": "^B[0-9]{3}$"},
+        "task_id": {"type": "string", "pattern": "^T[0-9]{3}$"},
+        "mode": {"type": "string", "enum": ["fresh", "continue"]},
+        "from_task": {"type": "string", "pattern": "^T[0-9]{3}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "continue"}}},
+          "then": {"required": ["from_task"]},
+          "else": {"not": {"required": ["from_task"]}}
+        }
+      ]
+    },
+    "capability_preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "required_capabilities"],
+      "properties": {
+        "phase": {"const": "final_verification"},
+        "required_capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"}
+        }
+      }
+    }
   }
 }

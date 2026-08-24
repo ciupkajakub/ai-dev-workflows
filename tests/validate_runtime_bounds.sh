@@ -24,10 +24,18 @@ reject_text() {
   fi
 }
 
-require_text 'Blueprint revision: `2.2.0`'
+require_text 'Blueprint revision: `2.4.0`'
 require_text 'Workflow schema: `2`'
 require_text 'Blueprint digest: `<sha256>`'
 require_text 'continuation_mode: batch_to_verified_outcome'
+require_text 'mode: fresh'
+require_text 'mode: continue'
+require_text 'from_task: T001'
+require_text 'repair-mandatory'
+require_text 'Executable next action'
+require_text 'required_capabilities'
+require_text 'A missing implementation, required test,'
+require_text 'Commit packaging is optional'
 require_text 'progress_checkpoint_minutes: 10'
 require_text 'same_root_cause_no_progress_limit: 3'
 require_text 'Do not ask the user to say `continue`, `fix`, or invoke'

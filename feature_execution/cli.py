@@ -44,7 +44,7 @@ def _parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--model", default="unknown")
     evaluate.add_argument("--effort", default="unknown")
     evaluate.add_argument("--tools", default="unknown")
-    evaluate.add_argument("--harness-label", default="feature-execution-v1")
+    evaluate.add_argument("--harness-label", default="feature-execution-v3")
     evaluate.add_argument("--allow-verifier-commands", action="store_true")
     evaluate.add_argument("--judge-command")
     evaluate.add_argument("--judge-label", default="unknown")

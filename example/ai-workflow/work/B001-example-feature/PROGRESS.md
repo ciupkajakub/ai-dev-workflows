@@ -8,8 +8,8 @@ rewrite individual historical entries.
 
 Workflow schema: `2`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.2.0`
-Blueprint digest: `270e71dfc2af0bbadf458e08694fbf7321575d5af6e8929b730a4ffe721b3425`
+Blueprint revision: `2.4.0`
+Blueprint digest: `de5c2c52bb128c3337bc0c7c38c40833ac5badc84f13b8bbfa1d343b51ea7039`
 
 Example note: this file is fictional sanitized output for a sample task management app. Commands and validation evidence are illustrative.
 
@@ -218,3 +218,19 @@ Commit:
 - Migrated compatible workflow metadata from blueprint revision 2.1.1 to 2.2.0.
 - No application behavior, historical evidence, validation result, or lifecycle
   timestamp changed during this metadata-only migration.
+
+## 2026-08-20 — task-session routing migration
+
+- Migrated compatible workflow metadata from blueprint revision 2.2.0 to 2.3.0.
+- Recorded both executable example tasks as `fresh`; T002 remains dependent on
+  T001, demonstrating that durable dependency output does not imply session
+  continuation. A separate generated plan demonstrates an intentional
+  `continue` relationship without rewriting this append-only history.
+- No application behavior, historical evidence, validation result, or lifecycle
+  timestamp changed during this metadata-only migration.
+
+## 2026-08-24 — mandatory-repair migration
+
+- Migrated compatible workflow metadata from blueprint revision 2.3.0 to 2.4.0.
+- Added provider-neutral validation capability declarations and the explicit
+  executable-next terminal gate; historical execution evidence is unchanged.

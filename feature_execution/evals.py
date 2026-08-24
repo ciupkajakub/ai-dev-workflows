@@ -76,7 +76,12 @@ def _validate_paths(case: dict) -> None:
     for raw_path in case.get("starting_files", {}):
         _safe_relative_path(raw_path)
     expected = case.get("expected", {})
-    for field in ("required_files", "forbidden_files", "unchanged_files"):
+    for field in (
+        "required_files",
+        "forbidden_files",
+        "unchanged_files",
+        "required_modified_files",
+    ):
         for raw_path in expected.get(field, []):
             _safe_relative_path(raw_path)
     for field in ("required_content", "forbidden_content", "line_limits"):
@@ -704,6 +709,24 @@ def _evaluate_case(
     for pattern in expected.get("forbidden_commands", []):
         if re.search(pattern, rendered_commands, flags=re.IGNORECASE) is not None:
             failures.append(f"forbidden_command:{pattern}")
+    failed_commands = "\n".join(
+        command.get("command", "")
+        for turn in outcome.get("trajectory", [])
+        for command in turn.get("commands_run", [])
+        if isinstance(command, dict)
+        and command.get("exit_code") not in {None, 0}
+    )
+    for pattern in expected.get("required_failed_commands", []):
+        if re.search(pattern, failed_commands, flags=re.IGNORECASE) is None:
+            failures.append(f"missing_failed_command:{pattern}")
+    modified_files = {
+        str(path)
+        for turn in outcome.get("trajectory", [])
+        for path in turn.get("modified_files", [])
+    }
+    for path in expected.get("required_modified_files", []):
+        if path not in modified_files:
+            failures.append(f"missing_modified_file_evidence:{path}")
 
     if external_judgment is not None:
         rendered_evidence = "\n".join(
@@ -1004,6 +1027,7 @@ def _reference_adapter_verified(
         "codex_version",
         "codex_args_sha256",
         "sandbox",
+        "capabilities_sha256",
     )
     provider_fingerprints = {
         tuple(turn.get("adapter_metadata", {}).get(field) for field in provider_fields)
@@ -1037,6 +1061,10 @@ def _reference_adapter_verified(
         not in {None, "", "unknown"}
         and turn.get("adapter_metadata", {}).get("sandbox")
         not in {None, "", "unknown"}
+        and re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(turn.get("adapter_metadata", {}).get("capabilities_sha256", "")),
+        )
         for turn in turns
     ) and runtime_consistent
     first_metadata = turns[0].get("adapter_metadata", {}) if turns else {}
@@ -1459,6 +1487,10 @@ def _report_integrity_failures(report: dict, side: str) -> list[str]:
             )
             and provider_runtime.get("codex_version") not in {None, "", "unknown"}
             and provider_runtime.get("sandbox") not in {None, "", "unknown"}
+            and re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(provider_runtime.get("capabilities_sha256", "")),
+            )
         ):
             failures.append(f"{side}_behavioral_adapter_unverified")
     blueprint = configuration.get("blueprint", {})
@@ -1742,6 +1774,7 @@ def _changed_variable_groups(baseline: dict, candidate: dict) -> list[str]:
         "codex_version",
         "codex_args_sha256",
         "sandbox",
+        "capabilities_sha256",
     )
     before_provider = (
         before.get("adapter", {}).get("provenance", {}).get("provider_runtime", {})

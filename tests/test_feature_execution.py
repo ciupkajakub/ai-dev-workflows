@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -36,6 +37,30 @@ def run_cli(*args, env=None):
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value), encoding="utf-8")
+
+
+def write_session_plan(workspace, tasks, batch_id="B001", folder="sample"):
+    implementation = workspace / "ai-workflow" / "work" / folder / "IMPLEMENTATION.md"
+    implementation.parent.mkdir(parents=True, exist_ok=True)
+    implementation.write_text(
+        f"# Implementation\n\nBatch: `{batch_id}`\n\n## Tasks\n\n```yaml\n"
+        + "\n".join(
+            task.replace(
+                "\n",
+                (
+                    "\n  status: planned\n  dependencies:\n    - "
+                    + re.search(r"T\d{3}", tasks[index - 1]).group(0)
+                    + "\n"
+                    if index == len(tasks) - 1 and index > 0
+                    else "\n  status: done\n  dependencies: []\n"
+                ),
+                1,
+            )
+            for index, task in enumerate(tasks)
+        )
+        + "\n```\n",
+        encoding="utf-8",
+    )
 
 
 def write_valid_workflow(root):
@@ -352,6 +377,566 @@ class OutcomeHarnessCliTest(unittest.TestCase):
             self.assertEqual(outcome["visible_user_interventions"], 0)
             self.assertEqual(len(outcome["trajectory"]), 3)
 
+    def test_fresh_task_boundary_clears_provider_session_and_reloads_durable_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            write_session_plan(
+                workspace,
+                [
+                    "- id: T001\n  session:\n    mode: fresh",
+                    "- id: T002\n  session:\n    mode: fresh",
+                ],
+            )
+            write_session_plan(
+                workspace,
+                [
+                    "- id: T001\n  session:\n    mode: fresh",
+                    "- id: T002\n  session:\n    mode: fresh",
+                ],
+                batch_id="B002",
+                folder="other-batch",
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text(
+                "Target batch: B001\nDeliver the whole batch.", encoding="utf-8"
+            )
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "T001 complete and durably checkpointed",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-1",
+                            "task_id": "T001",
+                            "resume_token": "session-t001",
+                            "session_route": {"batch_id": "B001", "task_id": "T002", "mode": "fresh"},
+                        },
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "batch verified",
+                            "progress_made": True,
+                            "progress_fingerprint": "verified",
+                            "task_id": "T002",
+                            "resume_token": "session-t002",
+                        },
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+            adapter_log = Path(directory) / "adapter.jsonl"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={
+                    "SCRIPTED_ADAPTER_PLAN": str(plan),
+                    "SCRIPTED_ADAPTER_LOG": str(adapter_log),
+                },
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            calls = [json.loads(line) for line in adapter_log.read_text().splitlines()]
+            self.assertEqual([call["resume_token"] for call in calls], ["", ""])
+            self.assertIn("PROGRESS_STATE.md", calls[1]["prompt"])
+            self.assertIn("T002", calls[1]["prompt"])
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            self.assertEqual(
+                outcome["trajectory"][0]["session_routing"]["effective_mode"],
+                "fresh",
+            )
+
+    def test_continue_task_boundary_uses_the_declared_source_task_session(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            write_session_plan(
+                workspace,
+                [
+                    "- id: T001\n  session:\n    mode: fresh",
+                    "- id: T002\n  session:\n    mode: fresh",
+                    "- id: T003\n  session:\n    mode: continue\n    from_task: T001",
+                ],
+            )
+            implementation = (
+                workspace
+                / "ai-workflow"
+                / "work"
+                / "sample"
+                / "IMPLEMENTATION.md"
+            )
+            t002_done_plan = implementation.read_text(encoding="utf-8")
+            implementation.write_text(
+                t002_done_plan.replace(
+                    "- id: T002\n  status: done",
+                    "- id: T002\n  status: planned",
+                ),
+                encoding="utf-8",
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Deliver the whole batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "T001 complete",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-1",
+                            "task_id": "T001",
+                            "resume_token": "session-t001",
+                            "session_route": {"batch_id": "B001", "task_id": "T002", "mode": "fresh"},
+                        },
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "T002 complete",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-2",
+                            "task_id": "T002",
+                            "resume_token": "session-t002",
+                            "session_route": {
+                                "batch_id": "B001",
+                                "task_id": "T003",
+                                "mode": "continue",
+                                "from_task": "T001",
+                            },
+                            "write_files": {
+                                "ai-workflow/work/sample/IMPLEMENTATION.md": t002_done_plan
+                            },
+                        },
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "batch verified",
+                            "progress_made": True,
+                            "progress_fingerprint": "verified",
+                            "task_id": "T003",
+                        },
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+            adapter_log = Path(directory) / "adapter.jsonl"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={
+                    "SCRIPTED_ADAPTER_PLAN": str(plan),
+                    "SCRIPTED_ADAPTER_LOG": str(adapter_log),
+                },
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            calls = [json.loads(line) for line in adapter_log.read_text().splitlines()]
+            self.assertEqual(
+                [call["resume_token"] for call in calls],
+                ["", "", "session-t001"],
+            )
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            route = outcome["trajectory"][1]["session_routing"]
+            self.assertEqual(route["requested_from_task"], "T001")
+            self.assertEqual(route["effective_mode"], "continue")
+
+    def test_missing_declared_session_falls_back_to_fresh_durable_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            write_session_plan(
+                workspace,
+                [
+                    "- id: T000\n  session:\n    mode: fresh",
+                    "- id: T001\n  session:\n    mode: fresh",
+                    "- id: T002\n  session:\n    mode: continue\n    from_task: T000",
+                ],
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Deliver the whole batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "T001 complete",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-1",
+                            "task_id": "T001",
+                            "resume_token": "session-t001",
+                            "session_route": {
+                                "batch_id": "B001",
+                                "task_id": "T002",
+                                "mode": "continue",
+                                "from_task": "T000",
+                            },
+                        },
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "batch verified from durable state",
+                            "progress_made": True,
+                            "progress_fingerprint": "verified",
+                            "task_id": "T002",
+                        },
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+            adapter_log = Path(directory) / "adapter.jsonl"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={
+                    "SCRIPTED_ADAPTER_PLAN": str(plan),
+                    "SCRIPTED_ADAPTER_LOG": str(adapter_log),
+                },
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            calls = [json.loads(line) for line in adapter_log.read_text().splitlines()]
+            self.assertEqual([call["resume_token"] for call in calls], ["", ""])
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            route = outcome["trajectory"][0]["session_routing"]
+            self.assertEqual(route["effective_mode"], "fresh")
+            self.assertEqual(route["fallback_reason"], "source_session_unavailable")
+
+    def test_provider_rejected_continuation_is_retried_once_as_fresh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            write_session_plan(
+                workspace,
+                [
+                    "- id: T001\n  session:\n    mode: fresh",
+                    "- id: T002\n  session:\n    mode: continue\n    from_task: T001",
+                ],
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Deliver the whole batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "T001 complete",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-1",
+                            "task_id": "T001",
+                            "resume_token": "session-t001",
+                            "session_route": {
+                                "batch_id": "B001",
+                                "task_id": "T002",
+                                "mode": "continue",
+                                "from_task": "T001",
+                            },
+                        },
+                        {
+                            "resume_unavailable": True,
+                            "terminal_state": "verified_outcome",
+                            "summary": "batch verified from durable state",
+                            "progress_made": True,
+                            "progress_fingerprint": "verified",
+                            "task_id": "T002",
+                            "resume_token": "session-t002",
+                        },
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+            adapter_log = Path(directory) / "adapter.jsonl"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={
+                    "SCRIPTED_ADAPTER_PLAN": str(plan),
+                    "SCRIPTED_ADAPTER_LOG": str(adapter_log),
+                },
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            calls = [json.loads(line) for line in adapter_log.read_text().splitlines()]
+            self.assertEqual(
+                [call["resume_token"] for call in calls],
+                ["", "session-t001", ""],
+            )
+            self.assertIn("PROGRESS_STATE.md", calls[2]["prompt"])
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            self.assertEqual(
+                outcome["trajectory"][1]["session_start"]["fallback_reason"],
+                "provider_continuation_unavailable",
+            )
+
+    def test_session_route_cannot_override_a_terminal_security_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Deploy to production.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "needs_authorization",
+                            "summary": "approval required",
+                            "progress_made": False,
+                            "task_id": "T001",
+                            "session_route": {"batch_id": "B001", "task_id": "T002", "mode": "fresh"},
+                        }
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 3, completed.stderr)
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            self.assertEqual(outcome["terminal_state"], "needs_authorization")
+            self.assertEqual(
+                outcome["trajectory"][0]["session_routing"]["reason"],
+                "terminal_gate_takes_precedence",
+            )
+
+    def test_session_route_must_match_the_durable_task_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            write_session_plan(
+                workspace,
+                [
+                    "- id: T001\n  session:\n    mode: fresh",
+                    "- id: T002\n  session:\n    mode: fresh",
+                ],
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Deliver the whole batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "T001 complete",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-1",
+                            "task_id": "T001",
+                            "resume_token": "session-t001",
+                            "session_route": {
+                                "batch_id": "B001",
+                                "task_id": "T002",
+                                "mode": "continue",
+                                "from_task": "T001",
+                            },
+                        }
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 5, completed.stderr)
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            self.assertIn("durable task contract", outcome["summary"])
+
+    def test_session_route_requires_completed_source_and_ready_dependencies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            write_session_plan(
+                workspace,
+                [
+                    "- id: T001\n  session:\n    mode: fresh",
+                    "- id: T002\n  session:\n    mode: fresh",
+                ],
+            )
+            implementation = (
+                workspace
+                / "ai-workflow"
+                / "work"
+                / "sample"
+                / "IMPLEMENTATION.md"
+            )
+            implementation.write_text(
+                implementation.read_text(encoding="utf-8").replace(
+                    "status: done", "status: in_progress", 1
+                ),
+                encoding="utf-8",
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Deliver the whole batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "claiming T001 complete too early",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-1",
+                            "task_id": "T001",
+                            "resume_token": "session-t001",
+                            "session_route": {
+                                "batch_id": "B001",
+                                "task_id": "T002",
+                                "mode": "fresh",
+                            },
+                        }
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 5, completed.stderr)
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            self.assertIn("durable task contract", outcome["summary"])
+
+    def test_resolvable_blocked_task_remains_routable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            write_session_plan(
+                workspace,
+                [
+                    "- id: T001\n  session:\n    mode: fresh",
+                    "- id: T002\n  session:\n    mode: fresh",
+                ],
+            )
+            implementation = (
+                workspace
+                / "ai-workflow"
+                / "work"
+                / "sample"
+                / "IMPLEMENTATION.md"
+            )
+            implementation.write_text(
+                implementation.read_text(encoding="utf-8").replace(
+                    "status: planned", "status: blocked", 1
+                ),
+                encoding="utf-8",
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Resume with newly available evidence.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "T001 complete; T002 now has new evidence",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-1",
+                            "task_id": "T001",
+                            "resume_token": "session-t001",
+                            "session_route": {
+                                "batch_id": "B001",
+                                "task_id": "T002",
+                                "mode": "fresh",
+                            },
+                        },
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "resolvable blocked task completed",
+                            "progress_made": True,
+                            "progress_fingerprint": "task-2",
+                            "task_id": "T002",
+                        },
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+
     def test_three_no_progress_cycles_stop_without_more_agent_turns(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory) / "workspace"
@@ -461,6 +1046,311 @@ class OutcomeHarnessCliTest(unittest.TestCase):
             self.assertEqual(completed.returncode, 3, completed.stderr)
             outcome = json.loads(result.read_text(encoding="utf-8"))
             self.assertEqual(outcome["terminal_state"], "needs_authorization")
+            self.assertEqual(outcome["internal_turns"], 1)
+
+    def test_terminal_blocker_is_rejected_while_executable_next_remains(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            state = workspace / "ai-workflow" / "work" / "sample" / "PROGRESS_STATE.md"
+            state.parent.mkdir(parents=True)
+            state.write_text(
+                "## Next\n- Executable next action: add the missing focused test\n",
+                encoding="utf-8",
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Repair the existing batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "real_blocker",
+                            "summary": "database unavailable",
+                            "progress_made": False,
+                            "root_cause": "database",
+                        },
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "repair completed",
+                            "progress_made": True,
+                            "progress_fingerprint": "test-added",
+                            "write_files": {
+                                "ai-workflow/work/sample/PROGRESS_STATE.md": (
+                                    "## Next\n- Executable next action: none\n"
+                                )
+                            },
+                        },
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            rejection = outcome["trajectory"][0]["terminal_state_rejected"]
+            self.assertEqual(rejection["reason"], "executable_next_action_remains")
+            self.assertEqual(outcome["internal_turns"], 2)
+
+    def test_capability_preflight_blocks_only_after_independent_repair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            implementation = (
+                workspace / "ai-workflow" / "work" / "sample" / "IMPLEMENTATION.md"
+            )
+            implementation.parent.mkdir(parents=True)
+            implementation.write_text(
+                "T001 status: done\nrequired_capabilities: [filesystem, database]\n",
+                encoding="utf-8",
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Repair and validate the batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "added the missing required test",
+                            "progress_made": True,
+                            "progress_fingerprint": "missing-test-added",
+                            "capability_preflight": {
+                                "phase": "final_verification",
+                                "required_capabilities": ["filesystem", "database"],
+                            },
+                            "write_files": {"tests/test_required.py": "# repaired\n"},
+                        }
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+            adapter_log = Path(directory) / "adapter.jsonl"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={
+                    "SCRIPTED_ADAPTER_PLAN": str(plan),
+                    "SCRIPTED_ADAPTER_CAPABILITIES": json.dumps(["filesystem"]),
+                    "SCRIPTED_ADAPTER_LOG": str(adapter_log),
+                },
+            )
+
+            self.assertEqual(completed.returncode, 4, completed.stderr)
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            self.assertEqual(outcome["terminal_state"], "real_blocker")
+            self.assertIn("database", outcome["summary"])
+            self.assertTrue((workspace / "tests" / "test_required.py").exists())
+            self.assertEqual(outcome["internal_turns"], 1)
+            first_prompt = json.loads(
+                adapter_log.read_text(encoding="utf-8").splitlines()[0]
+            )["prompt"]
+            self.assertIn("Do not run batch validation", first_prompt)
+            self.assertIn("do not mutate", first_prompt)
+
+    def test_capable_profile_continues_after_final_verification_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            workspace.mkdir()
+            implementation = (
+                workspace / "ai-workflow" / "work" / "sample" / "IMPLEMENTATION.md"
+            )
+            implementation.parent.mkdir(parents=True)
+            implementation.write_text(
+                "T001 status: done\nrequired_capabilities: [database]\n",
+                encoding="utf-8",
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Finalize the batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "independent repairs complete",
+                            "progress_made": True,
+                            "progress_fingerprint": "repairs-complete",
+                            "capability_preflight": {
+                                "phase": "final_verification",
+                                "required_capabilities": ["database"],
+                            },
+                        },
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "database validation passed and batch closed",
+                            "progress_made": True,
+                            "progress_fingerprint": "batch-closed",
+                        },
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={
+                    "SCRIPTED_ADAPTER_PLAN": str(plan),
+                    "SCRIPTED_ADAPTER_CAPABILITIES": json.dumps(
+                        ["filesystem", "database"]
+                    ),
+                },
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            self.assertTrue(
+                outcome["trajectory"][1]["capability_preflight_completed"]
+            )
+
+    def test_verified_outcome_requires_declared_capability_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            implementation = (
+                workspace / "ai-workflow" / "work" / "sample" / "IMPLEMENTATION.md"
+            )
+            implementation.parent.mkdir(parents=True)
+            implementation.write_text(
+                "Batch validation:\n  required_capabilities: [filesystem]\n",
+                encoding="utf-8",
+            )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Finalize the batch.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "claimed completion without preflight",
+                            "progress_made": True,
+                            "progress_fingerprint": "premature",
+                        },
+                        {
+                            "terminal_state": "in_progress",
+                            "summary": "requesting required preflight",
+                            "progress_made": True,
+                            "progress_fingerprint": "preflight-requested",
+                            "capability_preflight": {
+                                "phase": "final_verification",
+                                "required_capabilities": ["filesystem"],
+                            },
+                        },
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "verified after preflight",
+                            "progress_made": True,
+                            "progress_fingerprint": "verified",
+                        },
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            outcome = json.loads(result.read_text(encoding="utf-8"))
+            self.assertEqual(
+                outcome["trajectory"][0]["terminal_state_rejected"]["reason"],
+                "final_verification_capability_preflight_missing",
+            )
+            self.assertTrue(
+                outcome["trajectory"][2]["capability_preflight_completed"]
+            )
+
+    def test_terminal_gate_ignores_executable_next_from_unrelated_batch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            for batch_id, action in (
+                ("B001", "none"),
+                ("B002", "repair an unrelated batch"),
+            ):
+                batch = workspace / "ai-workflow" / "work" / batch_id.lower()
+                batch.mkdir(parents=True)
+                (batch / "IMPLEMENTATION.md").write_text(
+                    f"Batch: {batch_id}\nStatus: active\nT001 status: done\n",
+                    encoding="utf-8",
+                )
+                (batch / "PROGRESS_STATE.md").write_text(
+                    f"Executable next action: {action}\n", encoding="utf-8"
+                )
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("Target batch: B001\nFinalize it.", encoding="utf-8")
+            plan = Path(directory) / "plan.json"
+            write_json(
+                plan,
+                {
+                    "default": [
+                        {
+                            "terminal_state": "verified_outcome",
+                            "summary": "B001 verified",
+                            "progress_made": True,
+                            "progress_fingerprint": "b001-verified",
+                        }
+                    ]
+                },
+            )
+            result = Path(directory) / "result.json"
+
+            completed = run_cli(
+                "run",
+                "--workspace",
+                workspace,
+                "--prompt-file",
+                prompt,
+                "--adapter-command",
+                json.dumps(["python3", str(SCRIPTED_ADAPTER)]),
+                "--result",
+                result,
+                env={"SCRIPTED_ADAPTER_PLAN": str(plan)},
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            outcome = json.loads(result.read_text(encoding="utf-8"))
             self.assertEqual(outcome["internal_turns"], 1)
 
 

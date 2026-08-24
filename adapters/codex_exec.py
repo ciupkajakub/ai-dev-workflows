@@ -18,8 +18,16 @@ import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+from feature_execution.protocol import (  # noqa: E402
+    CAPABILITY_UNAVAILABLE_EXIT_CODE,
+    CONTINUATION_UNAVAILABLE_EXIT_CODE,
+)
+
+
 TURN_SCHEMA = REPO_ROOT / "schemas" / "agent_turn.schema.json"
-ADAPTER_VERSION = "codex-exec-v1"
+ADAPTER_VERSION = "codex-exec-v3"
 
 
 def _required_path(name: str) -> Path:
@@ -42,6 +50,29 @@ def _extra_args() -> list[str]:
             "controlled evaluation does not accept unattested extra arguments"
         )
     return value
+
+
+def _capabilities(name: str, default: list[str]) -> list[str]:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = json.loads(raw)
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and re.fullmatch(r"[a-z][a-z0-9_-]*", item)
+        for item in value
+    ):
+        raise ValueError(f"{name} must be a JSON string array of capability ids")
+    return sorted(set(value))
+
+
+def _preflight_capabilities(sandbox: str) -> tuple[list[str], list[str]]:
+    required = _capabilities("FEATURE_EXECUTION_REQUIRED_CAPABILITIES", [])
+    available_default = ["filesystem"] if sandbox == "workspace-write" else []
+    available = _capabilities(
+        "FEATURE_EXECUTION_CODEX_CAPABILITIES", available_default
+    )
+    missing = sorted(set(required) - set(available))
+    return available, missing
 
 
 def _codex_binary() -> tuple[str, dict]:
@@ -126,6 +157,17 @@ def _jsonl_errors(stdout: str) -> list[str]:
     return messages
 
 
+def _continuation_unavailable(messages: list[str]) -> bool:
+    return any(
+        re.search(
+            r"(?:session|thread).*(?:not found|unavailable|expired|does not exist)",
+            message,
+            flags=re.IGNORECASE,
+        )
+        for message in messages
+    )
+
+
 def _jsonl_commands(stdout: str) -> list[dict]:
     commands = []
     for line in stdout.splitlines():
@@ -170,6 +212,16 @@ def main() -> int:
             json.dumps(extra_args, separators=(",", ":")).encode("utf-8")
         ).hexdigest()
         sandbox = os.environ.get("FEATURE_EXECUTION_CODEX_SANDBOX", "workspace-write")
+        available_capabilities, missing_capabilities = _preflight_capabilities(
+            sandbox
+        )
+        if missing_capabilities:
+            print(
+                "capability preflight failed; selected Codex profile lacks: "
+                + ", ".join(missing_capabilities),
+                file=sys.stderr,
+            )
+            return CAPABILITY_UNAVAILABLE_EXIT_CODE
         prompt = _agent_prompt(prompt_path.read_text(encoding="utf-8"), blueprint)
 
         shared = ["--json", "--ignore-user-config", "--ignore-rules"]
@@ -205,8 +257,14 @@ def main() -> int:
             check=False,
         )
         if completed.returncode != 0:
-            diagnostics = [completed.stderr.strip(), *_jsonl_errors(completed.stdout)]
+            provider_errors = _jsonl_errors(completed.stdout)
+            stderr_error = completed.stderr.strip()
+            diagnostics = [stderr_error, *provider_errors]
             print("\n".join(item for item in diagnostics if item), file=sys.stderr)
+            if resume_token and _continuation_unavailable(
+                [stderr_error, *provider_errors]
+            ):
+                return CONTINUATION_UNAVAILABLE_EXIT_CODE
             return completed.returncode
         if not result_path.exists():
             print("codex did not write the structured final response", file=sys.stderr)
@@ -229,6 +287,15 @@ def main() -> int:
             "effort": effort or "unknown",
             "tools": tools_label or "unknown",
             "sandbox": sandbox,
+            "available_capabilities": available_capabilities,
+            "capabilities_sha256": hashlib.sha256(
+                json.dumps(
+                    available_capabilities, separators=(",", ":")
+                ).encode("utf-8")
+            ).hexdigest(),
+            "required_capabilities": _capabilities(
+                "FEATURE_EXECUTION_REQUIRED_CAPABILITIES", []
+            ),
             "codex_args_sha256": extra_args_sha256,
             **codex_provenance,
         }

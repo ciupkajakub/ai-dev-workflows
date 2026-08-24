@@ -8,8 +8,10 @@ import unittest
 from feature_execution.evals import (
     DIMENSIONS,
     HARD_GATES,
+    _evaluate_case,
     _load_judge_calibration,
     _reference_adapter_verified,
+    _write_starting_files,
     compare_reports,
     load_eval_suite,
 )
@@ -85,6 +87,124 @@ class EvalCatalogContractTests(unittest.TestCase):
                 "ai-workflow/work/B001-example/IMPLEMENTATION.md"
             ],
         )
+        regression_ids = {
+            "repair_before_unavailable_database",
+            "terminal_rejected_with_executable_next",
+            "ordinary_finalization_defect_repaired",
+            "unresolvable_product_decision",
+            "finalizer_capability_preflight",
+            "optional_commit_packaging_failure",
+        }
+        self.assertTrue(regression_ids.issubset({case["id"] for case in suite["cases"]}))
+
+    def test_repair_case_evaluator_contract_rejects_old_shaped_evidence(self):
+        suite = load_eval_suite(CATALOG)
+        cases = {
+            case["id"]: case
+            for case in suite["cases"]
+            if case["id"]
+            in {
+                "repair_before_unavailable_database",
+                "terminal_rejected_with_executable_next",
+                "ordinary_finalization_defect_repaired",
+                "unresolvable_product_decision",
+                "finalizer_capability_preflight",
+                "optional_commit_packaging_failure",
+            }
+        }
+        old_states = {
+            "repair_before_unavailable_database": "real_blocker",
+            "terminal_rejected_with_executable_next": "real_blocker",
+            "ordinary_finalization_defect_repaired": "real_blocker",
+            "unresolvable_product_decision": "verified_outcome",
+            "finalizer_capability_preflight": "verified_outcome",
+            "optional_commit_packaging_failure": "real_blocker",
+        }
+        repaired = {
+            "repair_before_unavailable_database": {
+                "terminal_state": "real_blocker",
+                "summary": "database capability unavailable after adding the required test; no alternate profile configured",
+                "writes": {"tests/test_title.py": "from app.title import normalize\nassert normalize(' x ') == 'x'\n"},
+                "modified_files": ["tests/test_title.py"],
+            },
+            "terminal_rejected_with_executable_next": {
+                "terminal_state": "verified_outcome",
+                "summary": "verified",
+                "writes": {
+                    "app/value.py": "def value(): return 'ready'\n",
+                    "ai-workflow/work/sample/PROGRESS_STATE.md": "Status: done\nExecutable next action: none\n",
+                },
+                "commands": ["python3 verify.py"],
+            },
+            "ordinary_finalization_defect_repaired": {
+                "terminal_state": "verified_outcome",
+                "summary": "verified",
+                "writes": {
+                    "app/label.py": "def format_label(value): return value + '.'\n",
+                    "ai-workflow/work/sample/IMPLEMENTATION.md": "Batch: B001\nStatus: done\nT001 status: done; FR1 and AC1 verified\n",
+                    "ai-workflow/work/sample/PROGRESS_STATE.md": "Status: done\nExecutable next action: none\n",
+                },
+                "commands": ["python3 verify.py"],
+            },
+            "unresolvable_product_decision": {
+                "terminal_state": "real_blocker",
+                "summary": "timezone product decision input is required",
+            },
+            "finalizer_capability_preflight": {
+                "terminal_state": "real_blocker",
+                "summary": "hardware_token capability is unavailable; no alternate profile configured",
+            },
+            "optional_commit_packaging_failure": {
+                "terminal_state": "verified_outcome",
+                "summary": "delivery verified; optional commit packaging failed",
+                "writes": {"app/status.py": "STATUS = 'ready'\n"},
+                "commands": ["python3 verify.py"],
+                "failed_commands": ["python3 package_commit.py"],
+            },
+        }
+
+        for case_id, case in cases.items():
+            with self.subTest(case_id=case_id), tempfile.TemporaryDirectory() as directory:
+                workspace = Path(directory)
+                _write_starting_files(workspace, case["starting_files"])
+                old_outcome = {
+                    "terminal_state": old_states[case_id],
+                    "summary": "old behavior stopped early",
+                    "internal_turns": 1,
+                    "visible_user_interventions": 0,
+                    "trajectory": [],
+                }
+                old_passed, _ = _evaluate_case(case, old_outcome, workspace)
+                self.assertFalse(old_passed)
+
+                evidence = repaired[case_id]
+                for relative, content in evidence.get("writes", {}).items():
+                    target = workspace / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(content, encoding="utf-8")
+                commands = [
+                    {"command": command, "exit_code": 0, "result": "pass"}
+                    for command in evidence.get("commands", [])
+                ] + [
+                    {"command": command, "exit_code": 1, "result": "failed"}
+                    for command in evidence.get("failed_commands", [])
+                ]
+                repaired_outcome = {
+                    "terminal_state": evidence["terminal_state"],
+                    "summary": evidence["summary"],
+                    "internal_turns": 2,
+                    "visible_user_interventions": 0,
+                    "trajectory": [
+                        {
+                            "commands_run": commands,
+                            "modified_files": evidence.get("modified_files", []),
+                        }
+                    ],
+                }
+                repaired_passed, failures = _evaluate_case(
+                    case, repaired_outcome, workspace
+                )
+                self.assertTrue(repaired_passed, failures)
 
     def test_suite_rejects_unknown_dimensions_and_unsafe_paths(self):
         invalid = {
@@ -156,6 +276,7 @@ class EvalCatalogContractTests(unittest.TestCase):
                                 "codex_version": "codex-cli 1.2.3",
                                 "codex_args_sha256": "d" * 64,
                                 "sandbox": "workspace-write",
+                                "capabilities_sha256": "e" * 64,
                             }
                         }
                     ],
@@ -208,6 +329,7 @@ class EvalCatalogContractTests(unittest.TestCase):
                             "codex_version": "codex-cli 1.2.3",
                             "codex_args_sha256": "d" * 64,
                             "sandbox": "workspace-write",
+                            "capabilities_sha256": "e" * 64,
                         },
                     },
                 },
@@ -376,6 +498,7 @@ class EvalCatalogContractTests(unittest.TestCase):
                                 "codex_version": "codex-cli 1.2.3",
                                 "codex_args_sha256": "d" * 64,
                                 "sandbox": "workspace-write",
+                                "capabilities_sha256": "e" * 64,
                             }
                         }
                     ]

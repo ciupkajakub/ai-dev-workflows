@@ -24,8 +24,9 @@ Do not use it as a replacement for human review, security review, production cha
 4. Run section 9 to turn one selected batch into `FEATURE.md`.
 5. Run section 10 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
 6. Use section 11 to start from the next task and continue autonomously through
-   dependency-ready tasks plus repair-capable finalization. Use section 12 only
-   when you intentionally want one named task.
+   dependency-ready tasks plus repair-mandatory finalization. Each task uses its
+   planned fresh or continued session relationship. Use section 12 only when you
+   intentionally want one named task.
 7. Section 11 owns final verification and repair. Section 13 remains a compatible
    direct entry point for repairing an existing batch or running a read-only audit.
 8. Deliberately run section 14 before accepting changes to prompts, models, tools,
@@ -56,28 +57,33 @@ Existing commands such as `Use section 12 ... task T002` remain valid.
 
 - `doctor` checks generated provenance, lifecycle agreement, required files,
   allowed statuses, and artifact-size targets.
-- `run` drives one agent session through internal continuation until a verified
-  outcome, real blocker, authorization boundary, or the three-cycle no-progress
-  watchdog.
+- `run` drives execution through internal continuation until a verified outcome,
+  real blocker, authorization boundary, or the three-cycle no-progress watchdog.
+  It preserves a provider session within a task, switches sessions at declared
+  task boundaries, records safe continuation fallback, rejects terminal results
+  with an executable next action, and enforces final-verification capability
+  preflight requested after independent repairs are complete.
 - `eval` runs a versioned case set and saves JSON plus Markdown evidence.
 - `compare` compares a baseline with a candidate and is the only operation that
   can mark the candidate accepted. It rejects incomplete evidence and changes to
   more than one configuration group.
 
 The canonical generic suite is
-`eval/cases/v1/catalog.json`. It contains 20 sanitized cases covering every
+`eval/cases/v1/catalog.json`. It contains 32 sanitized cases covering every
 section 14 behavior class, all ten measured dimensions, and all fifteen hard
 gates. Run results belong in a separate report directory; never add private
 transcripts or project identifiers to the canonical catalog.
 
-The included Codex adapter uses structured output and resumable sessions. Pass
-its absolute path because evaluation workspaces are temporary:
+The included Codex adapter uses structured output and provider-specific resume
+tokens behind the generic session-routing contract. Pass its absolute path
+because evaluation workspaces are temporary:
 
 ```sh
 export FEATURE_EXECUTION_CODEX_MODEL='<model and version>'
 export FEATURE_EXECUTION_CODEX_EFFORT='<effort setting>'
 export FEATURE_EXECUTION_CODEX_TOOLS_LABEL='<tool set>'
 export FEATURE_EXECUTION_CODEX_EXPECTED_SHA256='<sha256 of the resolved codex executable>'
+export FEATURE_EXECUTION_CODEX_CAPABILITIES='["filesystem","database","browser"]'
 
 bin/feature-execution eval \
   --suite eval/cases/v1/catalog.json \
@@ -133,7 +139,7 @@ acceptance additionally requires the comparable baseline step.
 are marked non-behavioral. A behavioral run also requires
 `FEATURE_EXECUTION_CODEX_EXPECTED_SHA256` to match the resolved executable.
 Behavioral provenance records that executable, digest, version, sandbox, hashed
-extra arguments, and the included adapter's digest. The adapter ignores user
+extra arguments, capability profile, and the included adapter's digest. The adapter ignores user
 configuration and repository rules during controlled evaluation. Reserved extra
 arguments cannot override the attested model, effort, sandbox, workspace, output
 schema, extra writable directories, or hook trust.
@@ -151,8 +157,10 @@ absolute bar instead of trusting report claims.
 Provider configuration stays outside the blueprint. The reference Codex adapter
 reads `FEATURE_EXECUTION_CODEX_MODEL`, `FEATURE_EXECUTION_CODEX_EFFORT`,
 `FEATURE_EXECUTION_CODEX_TOOLS_LABEL`, `FEATURE_EXECUTION_CODEX_SANDBOX`, and
-`FEATURE_EXECUTION_CODEX_ARGS`, which must remain an empty JSON array during a
-controlled evaluation. For a behavioral report,
+`FEATURE_EXECUTION_CODEX_CAPABILITIES`. The capability list describes the local
+resources available to the selected execution profile and is checked before the
+agent continues into final validation. `FEATURE_EXECUTION_CODEX_ARGS` must remain
+an empty JSON array during a controlled evaluation. For a behavioral report,
 the first three values must match `--model`, `--effort`, and `--tools`; the runner
 checks that match on every turn and never treats an unknown value as evidence.
 
@@ -202,8 +210,12 @@ duplicating the same evidence across hundreds of rows.
 Before accepting a completed batch, the blueprint's finalizer runs declared
 broader local checks, exercises the observable result, evaluates UI against its
 visual rubric when applicable, and repairs related in-scope findings while
-evidence shows progress. It checks lifecycle consistency, impact and traceability
-closure, security approvals, and final-report accuracy before closing delivery.
+evidence shows progress. Missing tests and workflow corrections are unfinished
+repair, not blockers. After all independent repairs, the adapter verifies that
+its selected profile provides the declared database, browser, filesystem, and
+other local capabilities before final validation or lifecycle closure. The
+finalizer checks lifecycle consistency, impact and traceability closure, security
+approvals, and final-report accuracy before closing delivery.
 
 ## Outcome-driven task execution
 
@@ -215,6 +227,37 @@ work continues. Hard bounds apply to individual commands, repeated no-progress
 on the same root cause, and rerunning an unchanged check. Section 11 proceeds
 across task boundaries and into finalization without requiring `Continue` or
 `Fix` prompts.
+
+The execution architecture is:
+
+```text
+strong planner -> durable execution contract -> potentially cheaper isolated workers
+               -> final verification or escalation
+```
+
+Section 10 records a small task-level `session` contract. `fresh` is the default:
+the executor reconstructs only the required context from `AGENTS.md`,
+`PROGRESS_STATE.md`, the selected task, exact `feature_refs`, completed dependency
+outcomes, routed references and skills, and repository code/tests. `continue`
+names an earlier task and is reserved for concrete implementation discoveries or
+debugging state that would be expensive to reconstruct. `depends_on` does not
+imply `continue`.
+
+This design does not require using different models. It permits a strong planner
+to produce a durable contract that cheaper or lower-effort workers can execute,
+with difficult work and final verification escalated when useful. It is not a
+multi-agent framework: there is no automatic model policy, parallel scheduler,
+agent pool, distributed queue, or worktree orchestration.
+
+Provider adapters implement semantic continuity using their own mechanism. The
+Codex adapter uses resume tokens, but those tokens never enter workflow
+artifacts. If a requested source session is missing or the provider reports it
+unavailable, the harness records the fallback and retries once as `fresh` from
+durable state. Missing conversation history alone is not a blocker and never
+relaxes lifecycle, validation, traceability, authorization, or security gates.
+At the harness boundary, provider adapters use exit code `75` only to report
+that a requested continuation handle is unavailable; other adapter failures
+remain errors and are not retried as fresh sessions.
 
 Full suites, repo-wide build/lint/typecheck, full-history or repository security
 scans, dependency audits, and CI commands cannot be task-scoped. This reduces
@@ -245,8 +288,9 @@ detail progressively:
 
 - `ai-workflow/AGENTS.md` is a compact repo map, command reference, and router to
   the core workflow gates.
-- A runtime turn starts from `PROGRESS_STATE.md`, one task, relevant contract
-  items, and `AGENTS.md`.
+- A fresh runtime task starts from `PROGRESS_STATE.md`, one task, its completed
+  dependency outcomes, relevant contract items, and `AGENTS.md`; conversation
+  history is an optional optimization.
 - `SECURITY.md`, `TESTING_POLICY.md`, detailed progress, references, and skills
   load only when the selected phase or task needs them.
 - `FEATURE.md` records the smallest useful references and applicable skills.
@@ -305,7 +349,11 @@ permission boundaries.
 
 ## Commit preference
 
-The workflow is designed around small verified task commits. If your agent or environment requires approval for git operations, approve the commit step explicitly or ask the agent to draft the message first.
+The workflow is designed around small verified task commits. Commit packaging is
+separate from feature delivery: when a commit is not part of the feature contract,
+staging or `.git/index.lock` failure does not block a verified batch. If your
+agent or environment requires approval for git operations, approve the commit
+step explicitly or ask the agent to draft the message first.
 
 ## Blueprint vs example
 
@@ -323,5 +371,8 @@ To tour the example, read the files in workflow order:
 4. `example/ai-workflow/work/B001-example-feature/IMPLEMENTATION.md` breaks the contract into verified tasks.
 5. `example/ai-workflow/work/B001-example-feature/PROGRESS.md` records detailed execution evidence.
 6. `example/ai-workflow/work/B001-example-feature/PROGRESS_STATE.md` keeps compact restart state.
+7. `example/session-routing/IMPLEMENTATION.md` is a sanitized generated-plan
+   excerpt showing a justified `fresh -> continue` relationship without changing
+   the indexed example batch's append-only history.
 
 `WORK_INDEX.md` may list planned batches whose folders do not exist yet. A batch folder is created when that batch moves from intake into feature planning.
