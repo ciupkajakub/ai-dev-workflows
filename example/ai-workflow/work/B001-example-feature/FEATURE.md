@@ -2,139 +2,63 @@
 
 Batch: `B001`
 Source items: `NMI-001`
-Folder: `ai-workflow/work/B001-example-feature/`
-Status: `done`
 Completion level: `feature`
-Workflow schema: `2`
+Workflow schema: `3`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.4.0`
-Blueprint digest: `de5c2c52bb128c3337bc0c7c38c40833ac5badc84f13b8bbfa1d343b51ea7039`
+Blueprint revision: `3.0.0`
+Blueprint digest: `4ec4a15ff4b2718372b62fb42af6c10359f1c7028ea0c2e0820b9b2ae5eaaf4b`
 
-## 1. Problem / Context
+## 1. Outcome
 
-Users miss overdue tasks because the dashboard focuses on tasks due today.
+Authenticated users miss overdue tasks because the dashboard emphasizes tasks
+due today. Show their incomplete overdue tasks above today's tasks so they can
+find overdue work without changing the existing completion workflow.
 
-## 2. Goals
+## 2. Scope
 
-1. Show incomplete overdue tasks in a dedicated dashboard section.
-2. Keep overdue tasks visually distinct from today's tasks.
-3. Provide an empty state when there are no overdue tasks.
+Add overdue selection, ordering, display, and an empty state to the existing
+dashboard. Query and presentation share one user-visible outcome and validation
+story. Preserve today's section and existing selectors. Reminders, project-level
+filtering, task completion changes, and schema migrations are outside this batch.
 
-## 3. Non goals
+## 3. Acceptance criteria
 
-1. Do not add reminders.
-2. Do not change project-level task filtering.
-3. Do not change task completion behavior.
+AC1. Show only the current user's incomplete tasks whose due date precedes that
+user's local date. Exclude undated tasks and apply the local-date boundary.
+AC2. Exclude completed overdue tasks.
+AC3. Show a compact overdue empty state when no overdue tasks exist.
+AC4. Tasks due today remain in the existing today section with unchanged behavior.
+AC5. Sort multiple overdue tasks by due date ascending.
+AC6. Use the existing indexed user/due-date query path or equivalent query-plan
+proof and introduce no N+1 query during overdue rendering.
+AC7. Render overdue above today in populated/empty desktop and mobile states.
+Preserve the dashboard's hierarchy, identity, density, spacing, and primary
+commands; prevent clipping and maintain keyboard access, legibility, and reduced
+motion. This is the visual rubric for the change.
 
-## 4. Users and roles
+## 4. Decisions and constraints
 
-Authenticated users viewing their own dashboard.
+C1. Use the existing user-timezone setting and fixture as the local-date authority.
+Timezone boundaries and query shape require focused regression proof.
+C2. Preserve the dashboard task-query result and section-ordering contract for
+existing today-section consumers. The illustrative repository search covered
+the query entrypoint, section labels, stable selectors, task-query/today tests,
+and synthetic dashboard fixture. Assign proof for these consumers in the plan.
+C3. The existing today-section component defines the visual direction. Use a
+synthetic interactive fixture for inspection; authenticated browser automation
+requires the project's recorded approval. The apple-design skill is advisory
+for UI implementation/review when available; AC7 is the portable visual contract.
 
-## 5. UX and flows
+Legacy reference mapping, retained for the unchanged historical evidence:
+FR1/Edge3/Permission1 -> AC1; FR2/Edge2 -> AC2; FR3 -> AC5; FR4 -> AC4;
+Edge1 -> AC1; NFR1 -> AC6; Assumption1/Risk1 -> C1; Risk2 -> AC6;
+VIS1/VIS2/VIS3 -> AC7/C3. Existing AC1-AC6 identifiers retain their meaning.
 
-When a user opens the dashboard, the overdue section appears above today's tasks if overdue tasks exist. If none exist, the section shows a compact empty state.
+## 5. Verification
 
-## 6. Functional requirements
-
-FR1. A task is overdue when it is incomplete and its due date is before the user's current local date.
-FR2. Completed tasks must not appear in the overdue section.
-FR3. Overdue tasks must be sorted by due date ascending.
-FR4. Tasks due today remain in the existing today section.
-
-## 7. Non functional requirements
-
-NFR1. The dashboard query must use the existing indexed task due-date/user filtering path or an equivalent query plan; it must not introduce an N+1 query for overdue task rendering.
-
-## 8. Data and system impact
-
-No schema changes are required.
-
-### Changed contracts and consumer inventory
-
-| Changed seam | Known consumers and search evidence | Compatibility decision | Regression proof |
-| --- | --- | --- | --- |
-| Dashboard task-query result and section ordering | Existing today-section component, dashboard task-query tests, today-section tests, and dashboard smoke fixture; repository searches covered the query entrypoint, section label, and existing selectors. | Preserve the today-section contract and add overdue results without renaming existing selectors. | T001 query/query-plan checks plus T002 today-section and rendered-state checks. |
-
-## 9. Edge cases and failure modes
-
-Edge1. Tasks with no due date are not overdue.
-Edge2. Completed overdue tasks are excluded.
-Edge3. Timezone handling must use the user's local date boundary.
-
-## 10. Acceptance criteria
-
-AC1. Given incomplete tasks due before today, they appear in the overdue section.
-AC2. Given completed tasks due before today, they do not appear in the overdue section.
-AC3. Given no overdue tasks, the dashboard shows an overdue empty state.
-AC4. Given tasks due today, they remain in the today section.
-AC5. Given multiple overdue tasks, they are sorted by due date ascending.
-AC6. Given overdue tasks render on the dashboard, the implementation uses the existing indexed user/due-date query path or equivalent evidence shows no N+1 query was introduced.
-
-## 11. Permissions and visibility rules
-
-Permission1. Users can only see their own tasks.
-
-## 12. Rollout and verification
-
-Verify with targeted dashboard query tests, dashboard UI tests, a query-plan or
-equivalent no-N+1 check, and a local smoke check of the affected responsive,
-populated, and empty states. The UI review must also check keyboard access,
-legibility, and reduced-motion behavior.
-
-## 13. Risks and open questions
-
-Risk1. Timezone boundaries are the main behavior risk.
-Risk2. Query shape is the main performance risk.
-
-## 14. Assumptions
-
-Assumption1. The app already has a reliable user timezone setting.
-
-## 15. References and applicable skills
-
-References:
-
-1. Existing today-section component and its dashboard tests define placement,
-   typography, spacing, and unchanged behavior.
-2. Existing user-timezone fixture defines the local-date boundary.
-3. A small interactive dashboard fixture with populated and empty overdue states
-   is the preferred visual reference; screenshots are supporting evidence only.
-
-Applicable skills:
-
-1. `apple-design`
-   - Reason: the batch changes dashboard hierarchy, feedback, responsive states,
-     and visual integration with an existing surface.
-   - Required: no; advisory when available.
-   - Phases: feature contract, T002 implementation, visual review.
-   - Required evidence: affected desktop/mobile and populated/empty states,
-     keyboard access, legibility, reduced motion, and consistency with existing
-     dashboard patterns.
-   - Portable fallback: apply the Visual contract below directly and record the
-     same rendered-state, accessibility, and reduced-motion evidence.
-
-Not applicable:
-
-- `conversion-optimization`: this batch improves operational clarity and does not
-  define a conversion funnel, conversion goal, experiment, or uplift claim.
-
-### Visual contract
-
-- VIS1 Direction status: `repo_reference`.
-- VIS2 Rendered direction: preserve the existing dashboard identity and place the
-  overdue section above today's tasks in the interactive populated/empty fixture.
-- VIS3 Rubric: coherent hierarchy, existing-product identity, consistent density and
-  spacing, obvious overdue/today distinction, unchanged primary actions,
-  responsive populated/empty states, keyboard access, legibility, and reduced
-  motion.
-
-## 16. Backlog and batch updates
-
-NMI-001 and B001 were marked done after verification.
-
-Feature scope gate:
-- Source NMI count: 1
-- Estimated acceptance criteria count: 6
-- Risk areas: task query layer, dashboard UI
-- Result: coherent
-- Reason: the query and dashboard presentation share one user-visible outcome, one permission model, related risks, and one integrated validation story.
+Prove query inclusion/exclusion, local dates, user isolation, sorting, and query
+shape with focused query tests. Prove overdue/empty and unchanged today behavior
+with component tests. Inspect the synthetic populated/empty fixture at desktop
+and mobile widths against AC7. Run the broader local suite once after task proof.
+Local feature delivery needs this evidence and consumer compatibility; this
+fictional batch requires no external CI or deployment proof.

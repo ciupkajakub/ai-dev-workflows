@@ -190,7 +190,9 @@ def _executable_next_actions(workspace: Path, roots: list[Path]) -> list[str]:
                 line,
                 flags=re.IGNORECASE,
             )
-            if match and match.group(1).lower() not in {"none", "not applicable"}:
+            if match and match.group(1).lower().rstrip(".").strip() not in {
+                "none", "not applicable"
+            }:
                 actions.append(f"{path.relative_to(workspace)}: {match.group(1)}")
     return actions
 
@@ -200,11 +202,25 @@ def _declared_validation_capabilities(
 ) -> list[str]:
     capabilities = set()
     for path in _scoped_files(workspace, roots, "IMPLEMENTATION.md"):
-        for raw in re.findall(
-            r"(?m)^\s*required_capabilities:\s*\[([^]]+)\]\s*$",
+        section = re.search(
+            r"(?ms)^## Batch validation[ \t]*\n(.*?)(?=^## |\Z)",
             path.read_text(encoding="utf-8"),
-        ):
-            for item in raw.split(","):
+        )
+        if not section:
+            continue
+        blocks = re.split(r"(?m)^[ \t]*- command:[ \t]*", section.group(1))[1:]
+        for block in blocks:
+            if not re.search(r"(?m)^[ \t]+required:[ \t]*true[ \t]*$", block):
+                continue
+            if not re.search(r"(?m)^[ \t]+scope:[ \t]*batch[ \t]*$", block):
+                continue
+            declaration = re.search(
+                r"(?m)^[ \t]+required_capabilities:[ \t]*\[([^]\n]*)\][ \t]*$",
+                block,
+            )
+            if not declaration:
+                continue
+            for item in declaration.group(1).split(","):
                 capability = item.strip().strip("'\"")
                 if re.fullmatch(r"[a-z][a-z0-9_-]*", capability):
                     capabilities.add(capability)
@@ -300,6 +316,8 @@ def _planned_session_contracts(workspace: Path) -> list[dict]:
                 r"(?ms)^  session:\s*\n(?P<body>(?:^    .*\n?)*)", block
             )
             if not session:
+                if re.search(r"(?m)^Workflow schema:\s*`?3`?\s*$", text):
+                    sessions[match.group(1)] = {"mode": "fresh", "from_task": ""}
                 continue
             body = session.group("body")
             mode = re.search(r"(?m)^    mode:\s*(fresh|continue)\s*$", body)

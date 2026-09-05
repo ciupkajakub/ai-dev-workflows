@@ -1,146 +1,53 @@
 #!/bin/sh
-
-# shellcheck disable=SC2016 # Backticks below are literal Markdown syntax.
-
 set -eu
 
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-blueprint="$repo_root/feature_execution_blueprint.md"
-readme="$repo_root/README.md"
+export PYTHONDONTWRITEBYTECODE=1
+python3 -B - "$repo_root" <<'PY'
+import hashlib
+import json
+from pathlib import Path
+import re
+import sys
 
-require_text() {
-  expected=$1
-  if ! grep -Fq -- "$expected" "$blueprint"; then
-    echo "missing v2 contract: $expected" >&2
-    exit 1
-  fi
-}
-
-reject_text() {
-  retired=$1
-  if grep -Fq -- "$retired" "$blueprint"; then
-    echo "retired stop policy still present: $retired" >&2
-    exit 1
-  fi
-}
-
-require_text 'Blueprint revision: `2.4.0`'
-require_text 'Workflow schema: `2`'
-require_text 'Blueprint digest: `<sha256>`'
-require_text 'continuation_mode: batch_to_verified_outcome'
-require_text 'mode: fresh'
-require_text 'mode: continue'
-require_text 'from_task: T001'
-require_text 'repair-mandatory'
-require_text 'Executable next action'
-require_text 'required_capabilities'
-require_text 'A missing implementation, required test,'
-require_text 'Commit packaging is optional'
-require_text 'progress_checkpoint_minutes: 10'
-require_text 'same_root_cause_no_progress_limit: 3'
-require_text 'Do not ask the user to say `continue`, `fix`, or invoke'
-require_text 'Final verification and repair:'
-require_text 'Mode: repair_existing_batch unless the request explicitly says audit_only.'
-require_text '## 14. Evaluate Blueprint, Model, And Harness Changes (Maintainer Only)'
-require_text 'Do not add a reduced "fast lane" to this blueprint'
-require_text '## Impact map'
-require_text 'visual rubric'
-require_text 'Integration evidence values:'
-require_text 'Release evidence values:'
-require_text 'does not run'
-require_text 'only sanitized, reproducible failure classes.'
-require_text 'A passing structure test alone is insufficient.'
-require_text 'only the comparable baseline-versus-candidate'
-require_text 'they are not behavioral agent evidence'
-require_text 'usability without steering, and regression evaluability'
-require_text 'the agent under evaluation cannot be its own judge'
-require_text 'more than one declared variable group changed'
-require_text 'Anchor provider identity to an operator-supplied'
-require_text 'mean absolute error no'
-require_text 'Before acceptance, reopen retained'
-require_text 'evidence, verify every recorded hash'
-require_text 'avoidable user-intervention rate is at most 10%'
-require_text 'target 220 lines or fewer for FEATURE.md'
-require_text 'IMPLEMENTATION.md targets 360 lines or fewer'
-require_text 'Keep the result near'
-require_text '60 lines or fewer'
-require_text 'approaches 300 lines'
-
-reject_text 'max_turn_elapsed_minutes'
-reject_text 'max_task_estimated_minutes'
-reject_text 'max_environment_recovery_cycles'
-reject_text 'max_validation_remediation_cycles'
-reject_text 'long_running_task_requires_approval'
-reject_text 'Never continue to another task in the same turn.'
-reject_text 'section 13 pending'
-reject_text 'Delivery lane:'
-
-if grep -Eq 'B[0-9]{3}-like|[0-9]+% B[0-9]{3}/B[0-9]{3} baseline' "$blueprint"; then
-  echo "project-specific evaluation history leaked into section 14" >&2
-  exit 1
-fi
-
-section_11_count=$(grep -c '^## 11\. Execute Batch To A Verified Outcome$' "$blueprint")
-if [ "$section_11_count" -ne 1 ]; then
-  echo "expected one canonical section 11, found $section_11_count" >&2
-  exit 1
-fi
-
-if grep -Eq 'hard 12-minute|one task per turn|section 13 pending' "$readme"; then
-  echo "README still documents retired runtime behavior" >&2
-  exit 1
-fi
-
-example_root="$repo_root/example/ai-workflow"
-example_files="
-$example_root/AGENTS.md
-$example_root/work/B001-example-feature/FEATURE.md
-$example_root/work/B001-example-feature/IMPLEMENTATION.md
-$example_root/work/B001-example-feature/PROGRESS.md
-$example_root/work/B001-example-feature/PROGRESS_STATE.md
-"
-blueprint_digest=$(shasum -a 256 "$blueprint" | awk '{print $1}')
-for example_file in $example_files; do
-  if ! grep -Fq -- 'Workflow schema: `2`' "$example_file" &&
-     ! grep -Fq -- 'Workflow schema: 2' "$example_file"; then
-    echo "example lacks workflow schema: $example_file" >&2
-    exit 1
-  fi
-  if ! grep -Fq -- "$blueprint_digest" "$example_file"; then
-    echo "example has stale blueprint digest: $example_file" >&2
-    exit 1
-  fi
-done
-
-if ! grep -Fq -- 'continuation_mode: batch_to_verified_outcome' \
-  "$example_root/work/B001-example-feature/IMPLEMENTATION.md"; then
-  echo "example implementation lacks v2 continuation policy" >&2
-  exit 1
-fi
-
-check_line_budget() {
-  file=$1
-  max_lines=$2
-  actual=$(wc -l < "$file" | tr -d ' ')
-  if [ "$actual" -gt "$max_lines" ]; then
-    echo "example exceeds line budget ($actual > $max_lines): $file" >&2
-    exit 1
-  fi
-}
-
-check_line_budget "$example_root/work/B001-example-feature/FEATURE.md" 220
-check_line_budget "$example_root/work/B001-example-feature/IMPLEMENTATION.md" 360
-check_line_budget "$example_root/work/B001-example-feature/PROGRESS_STATE.md" 70
-check_line_budget "$example_root/work/B001-example-feature/PROGRESS.md" 300
-
-if [ ! -x "$repo_root/bin/feature-execution" ]; then
-  echo "reference harness entry point is not executable" >&2
-  exit 1
-fi
-
-"$repo_root/bin/feature-execution" doctor "$example_root" \
-  --blueprint "$blueprint" >/dev/null
-python3 -m json.tool "$repo_root/schemas/agent_turn.schema.json" >/dev/null
-python3 -m json.tool "$repo_root/eval/cases/v1/catalog.json" >/dev/null
-
-echo "v2 outcome-driven runtime contract present"
+root = Path(sys.argv[1])
+blueprint = root / "feature_execution_blueprint.md"
+text = blueprint.read_text()
+# Public section numbers and generated provenance are executable interfaces.
+outside_fences = []
+fence_size = 0
+for line in text.splitlines():
+    fence = re.match(r"^(`{3,})", line)
+    if fence:
+        size = len(fence[1])
+        if not fence_size:
+            fence_size = size
+        elif size >= fence_size:
+            fence_size = 0
+    elif not fence_size:
+        outside_fences.append(line)
+assert not fence_size, "unclosed blueprint code fence"
+sections = re.findall(r"^## (\d+)\. ", "\n".join(outside_fences), re.MULTILINE)
+for number in range(1, 15):
+    assert sections.count(str(number)) == 1, f"ambiguous public section {number}"
+revision = re.search(r"^Blueprint revision: `([^`]+)`", text, re.MULTILINE)[1]
+schema = re.search(r"^Workflow schema: `([^`]+)`", text, re.MULTILINE)[1]
+digest = hashlib.sha256(blueprint.read_bytes()).hexdigest()
+example = root / "example/ai-workflow"
+current = [example / "AGENTS.md"] + [
+    example / "work/B001-example-feature" / name
+    for name in ("FEATURE.md", "IMPLEMENTATION.md", "PROGRESS_STATE.md")
+]
+for path in current:
+    content = path.read_text()
+    assert f"Blueprint revision: `{revision}`" in content, path
+    assert f"Workflow schema: `{schema}`" in content, path
+    assert digest in content, f"stale blueprint digest: {path}"
+# Progress is historical: only its appended migration references current bytes.
+assert digest in (example / "work/B001-example-feature/PROGRESS.md").read_text()
+for name in ("schemas/agent_turn.schema.json", "eval/cases/v1/catalog.json"):
+    json.loads((root / name).read_text())
+print("Public section interface, current provenance, and JSON formats pass")
+PY
+"$repo_root/bin/feature-execution" doctor "$repo_root/example/ai-workflow" \
+  --blueprint "$repo_root/feature_execution_blueprint.md" --batch B001 >/dev/null

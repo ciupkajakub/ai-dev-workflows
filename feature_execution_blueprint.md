@@ -1,9 +1,9 @@
 # Feature Execution Blueprint
 
 Blueprint id: `feature-execution-blueprint`
-Blueprint revision: `2.4.0`
-Workflow schema: `2`
-Revision date: `2026-08-24`
+Blueprint revision: `3.0.0`
+Workflow schema: `3`
+Revision date: `2026-09-05`
 
 This blueprint creates a small file-based workflow for AI-assisted software development. It is model-agnostic: use the prompts with any capable coding assistant that can read and edit files.
 
@@ -42,12 +42,11 @@ outcome; `SECURITY.md`, `TESTING_POLICY.md`, references, and skills load only
 when the selected work needs them. State a rule once at its canonical seam and
 refer to it elsewhere instead of copying it.
 
-Prompt maintenance rule: for future prompt, policy, tool-guidance, model, or harness
-migrations after adopting this blueprint revision, treat the change as a behavior
-change. Establish representative baseline cases, change one instruction group at a
-time, and keep a change only when it preserves the workflow gates and improves
-measured behavior. If no baseline exists yet, establish it before removing or
-simplifying existing gates. Use section 14 for the evaluation procedure.
+Prompt maintenance rule: separate technical acceptance from evidence of better
+agent behavior. Use local regression checks for an implementation change and
+section 14 for a deliberate behavioral comparison. A change can be technically
+verified without a measured productivity claim. Preserve correctness, evidence,
+and authorization gates while removing duplicated instructions.
 
 This workflow is intentionally complete in one source file. Its public interface
 is a section number plus the user's current input or target batch. Generated
@@ -68,11 +67,11 @@ Stable section contract:
 
 | Request | Section | Outcome |
 | --- | --- | --- |
-| Initialize a repository | 2–7 | Base `ai-workflow/` files |
+| Initialize a repository | 2–6; optional 7 | Base `ai-workflow/` files; optional commit helper |
 | Capture feedback or a feature idea | 8 | Backlog items and coherent batch rows |
 | Grill and contract a batch | 9 | `FEATURE.md` |
 | Turn the contract into execution work | 10 | `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md` |
-| Execute the next task | 11 | The next task starts in its planned fresh or continued session, dependency-ready tasks continue internally, and repair-mandatory finalization runs until a verified batch outcome or real blocker |
+| Execute the next task | 11 | Reconstruct task context, continue dependency-ready tasks, and perform repair-mandatory finalization until a verified outcome or real blocker |
 | Execute a named task | 12 | One named task is implemented and task-validated without silently selecting another task |
 | Repair or audit an existing batch | 13 | Compatibility alias for section 11 final verification, or an explicitly read-only audit |
 | Evaluate a model, prompt, tool, or harness change | 14 | Maintainer-only comparable baseline and candidate evidence |
@@ -92,9 +91,9 @@ Use section 11 of feature_execution_blueprint.md for batch B### and execute the
 batch to a verified outcome, starting from the next task.
 ```
 
-Section loading rule: read the requested section in full, plus any earlier
-section it explicitly names and only the generated project artifacts needed for
-that phase. Do not load the whole blueprint into every execution turn. Sections
+Section loading rule: read the requested section in full, the common provenance
+preflight, any earlier section it explicitly names, and only the generated
+project artifacts needed for that phase. Do not load the whole blueprint into every execution turn. Sections
 2–7 are setup instructions; after their files exist, sections 8–13 use those
 generated files as compact durable context. Every section 8–13 prompt explicitly
 invokes the common provenance preflight below so section-only use does not depend
@@ -102,20 +101,55 @@ on reading an unreferenced preamble.
 
 Workflow provenance preflight for sections 8–13:
 
-1. resolve the exact blueprint path or URL supplied for this run; do not replace
-   it with a same-named project copy
-2. read its declared id, revision, and schema and compute a SHA-256 digest with
-   an available local tool
-3. compare them with `ai-workflow/AGENTS.md` and the selected batch artifacts
-4. when the schema is compatible, update provenance plus only the runtime fields
-   affected by the newer contract and continue; preserve history and completed
-   evidence
-5. when the schema is incompatible or two sources claim the same revision with
-   materially different behavior, stop with the exact source conflict and the
-   smallest migration needed
+1. Resolve the exact blueprint source supplied by the user, read its id/revision/
+   schema, and compute its SHA-256 digest. Do not substitute a project copy.
+2. Inspect AGENTS.md and only the selected batch's current contract, plan, and
+   restart state when those artifacts exist. Compare metadata and operational
+   rules even when hashes match.
+   Look for obsolete hard count/time limits, extra approvals at task boundaries,
+   stopping after an ordinary red check, mandatory provider-session creation,
+   duplicated batch statuses, and mirrored evidence. Preserve real project
+   commands, product constraints, and authorization boundaries. A project-specific
+   constraint is not obsolete merely because the blueprint has no such default.
+3. Patch affected generated rules and fields under the supplied canonical
+   contract. Remove copied phase procedures from AGENTS.md and keep routing plus
+   real repo facts. Update metadata only after reconciling behavior. Do not claim
+   semantic migration from a metadata-only edit.
+4. For schema 2 -> 3, apply the migration below to the selected work. This known
+   migration needs no extra approval within an authorized execution request.
+   Unknown schemas or conflicting product requirements need the smallest exact
+   resolution; continue independent authorized work where possible.
+5. In audit_only mode, report differences without editing anything. The optional
+   doctor checks structure and provenance, not semantic equivalence of prose.
+   A digest mismatch alone is a synchronization signal, not a product blocker.
 
-This preflight is the workflow doctor. A digest mismatch is a synchronization
-signal, not by itself a product or implementation blocker.
+Schema 2 -> 3 migration:
+- WORK_INDEX.md retains batch status and integration/release state; task status
+  remains on each IMPLEMENTATION.md task; PRODUCT_BACKLOG.md retains NMI status.
+  Reconcile conflicting copies from recorded evidence before removing them. Never
+  choose done merely because one copy claims it. FEATURE.md and PROGRESS_STATE.md
+  become contract and restart pointers, with no mirrored batch Status field.
+- Convert FEATURE.md to the five required sections in section 9 on its next
+  contract edit. Preserve every requirement, resolved decision, meaningful
+  reference, and legacy stable id used by existing tasks or evidence. New
+  contracts use AC/C ids. Do not renumber history or generate empty optional fields.
+- Existing schema 2 task descriptions remain usable. Merge duplicate completion
+  descriptions into outcome and duplicate checks into validation_commands when
+  editing an affected task; preserve ids, dependencies, explicit session reuse,
+  check scope/timeouts, and every material constraint. Omitted session in schema 3
+  means fresh context. When migrating a plan to schema 3, use the section 10 YAML
+  task layout so the doctor and runner can read task ids and statuses; keep the
+  content of unaffected tasks intact. Do not split tasks to fit the new format.
+- Combine impact/traceability rows into Coverage when editing the active plan.
+  Keep existing consumer and proof links. Detailed results remain in PROGRESS.md;
+  state contains the next action, open check ids, and needed recovery facts.
+- Append a migration entry to PROGRESS.md, with new provenance and a description
+  of the actual rule changes. Leave earlier log contents and provenance intact.
+  Update current AGENTS.md and selected artifacts only. Do not migrate unrelated
+  or archived batches or regenerate completed evidence to synchronize versions.
+- The reference doctor supports schemas 2 and 3. Known legacy provenance drift is
+  reported as a migration warning; unsupported schemas and conflicting current
+  owners remain errors. Its pass is not proof that an agent applied these rules.
 
 The section numbers above are the blueprint's public interface. Do not renumber
 or repurpose them without treating that as a breaking change for saved prompts,
@@ -132,7 +166,7 @@ ai-workflow/
   TESTING_POLICY.md
   PRODUCT_BACKLOG.md
   WORK_INDEX.md
-  COMMIT_MESSAGE.md
+  COMMIT_MESSAGE.md  (optional)
   work/
     B001-short-feature-name/
       FEATURE.md
@@ -144,17 +178,17 @@ ai-workflow/
 Rules:
 
 1. `PRODUCT_BACKLOG.md` is the source of truth for product backlog item status and history.
-2. `WORK_INDEX.md` maps backlog items to executable batches.
+2. `WORK_INDEX.md` owns batch status, integration/release state, and the mapping to backlog items.
 3. Each batch `FEATURE.md` is the product and technical contract.
-4. Each batch `IMPLEMENTATION.md` is the task plan.
+4. Each batch `IMPLEMENTATION.md` owns tasks, task statuses, validation, and Coverage.
 5. Each batch `PROGRESS.md` is append-only runtime evidence.
 6. Each batch `PROGRESS_STATE.md` is compact restart state.
 7. `AGENTS.md` contains the compact repo map, real commands, local gotchas, and
    routing to core workflow gates.
 8. `SECURITY.md` contains security and tool permission discipline.
 9. `TESTING_POLICY.md` contains test discipline.
-10. `COMMIT_MESSAGE.md` contains the commit message prompt.
-11. If workflow artifacts conflict with repo evidence, stop and report the conflict.
+10. Optional `COMMIT_MESSAGE.md` contains the commit message prompt.
+11. Reconcile stale workflow state against repo evidence; ask only when the conflict changes the authorized product outcome or cannot be resolved safely.
 12. `ai-workflow/AGENTS.md` is a compact router for repo-specific facts and core
     workflow gates. It must not duplicate the phase prompts or the full security
     and testing policies.
@@ -199,16 +233,12 @@ Optional helpers:
 - Batch: a coherent execution unit that groups one or more NMI items small enough to plan, validate, review, and hand off safely.
 - Feature contract: the selected batch `FEATURE.md`; it defines scope, non-goals, requirements, acceptance criteria, assumptions, risks, and verification expectations.
 - Task plan: the selected batch `IMPLEMENTATION.md`; it maps the feature contract to small implementation tasks and validation.
-- done_when: objective task-level facts that must be true before the task can be considered implemented.
 - validation scope: the seam where a check may run. `task` is a focused check
   required to complete one T* task, `batch` is a broader local check run once by
   section 11 final verification after all tasks, and `ci` is an externally enforced check that local
   execution must not launch.
 - validation_commands: exact task-scoped commands or checks that must be run,
   with purpose, required/optional status, and timeout.
-- existing_checks_to_rerun: focused existing task-scoped checks nearest to the
-  touched behavior, rerun to prove regression safety; use `none` only with a
-  reason.
 - batch_validation_commands: exact broader local commands run once by section 11 final verification,
   such as a full suite, repo-wide build, dependency audit, or repository security
   scan.
@@ -219,17 +249,12 @@ Optional helpers:
   same-root-cause no-progress watchdog, repeat limit, permission for repo-wide
   commands, and automatic continuation mode declared once in the selected
   IMPLEMENTATION.md. It contains no wall-clock task or turn deadline.
-- execution_guidance: an honest, evidence-backed duration range and confidence
-  used for scheduling and complexity review. It is advisory: it cannot stop,
-  split, approve, block, or supersede a coherent task.
 - related validation: a required check at its declared scope that exercises
   touched behavior, directly related code, or a previously failing path in the
   same batch.
 - open validation list: task, batch, or CI commands, checks, proofs, or user
   decisions still needed before the owning task, feature delivery, integration,
   or release-readiness claim can be made.
-- validation_level: the strength of the planned validation, such as targeted_tests, typecheck, lint, build, migration_check, smoke_test, visual_check, manual_check, or accepted_gap.
-- context_budget: expected context size for one task. Use small when the task can be executed from compact artifacts plus a few files, medium when several touchpoints are needed, and large only when the task likely needs broad repo exploration.
 - references: the smallest set of code, tests, contracts, mockups, prototypes,
   screenshots, or external sources that materially constrain the selected batch
   or task. Prefer executable or inspectable references over repeated prose.
@@ -239,12 +264,10 @@ Optional helpers:
   a portable fallback. Do not load a skill merely because it is available.
 - feature_refs: exact stable ids from FEATURE.md that bound one task's contract
   context and keep progressive loading from dropping material requirements.
-- impact map: a compact inventory of changed shared contracts, known consumers,
-  search evidence, compatibility decisions, owning tasks, and regression proof.
-- traceability closure: grouped proof that every implementation-affecting
-  feature item is mapped to tasks and evidence, explicitly blocked, or accepted
-  by the user as a gap. Items sharing the same implementation and proof should
-  share one row instead of producing duplicate bookkeeping.
+- Coverage: one IMPLEMENTATION.md table mapping required contract items and
+  known consumers to task owners, validation ids, and PROGRESS.md evidence links.
+  It provides downstream-impact and traceability closure without separate maps
+  or copied results. An accepted gap always links explicit user acceptance.
 - delivery evidence: task and local batch proof that the requested feature works.
 - integration evidence: proof that known downstream consumers and shared
   contracts still work together.
@@ -284,9 +307,9 @@ Use this structure:
 
 # Agent rules
 
-Workflow schema: `2`
+Workflow schema: `3`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.4.0`
+Blueprint revision: `3.0.0`
 Blueprint digest: `<sha256>`
 
 ## Repository map
@@ -499,7 +522,7 @@ Do not expose repository secrets to workflows triggered from forks or untrusted 
 This workflow prefers small verified task commits. Stage or commit only when the
 user's request or repo policy includes commit packaging and the active environment
 permits it. If authorization is absent or staging fails, draft the message using
-COMMIT_MESSAGE.md. This packaging failure does not block task or batch delivery
+COMMIT_MESSAGE.md when that helper exists. This packaging failure does not block task or batch delivery
 unless a commit is explicitly required by the feature contract; report delivery
 and packaging as separate states.
 
@@ -709,7 +732,7 @@ Status values:
 - rolled_back
 
 Use `done` only when all batch tasks are done, required task and local batch
-validation passed, the impact map is closed, and every required local open
+validation passed, Coverage is closed, and every required local open
 validation item is resolved. Use `failed_validation` only when execution stops
 with unresolved required local validation after the same-root-cause no-progress
 limit or a real verification blocker; an ordinary red check inside an active
@@ -754,6 +777,9 @@ Rules:
 ```
 
 ## 7. Create `COMMIT_MESSAGE.md`
+
+This helper is optional. Create it only when requested or required by project
+policy; its absence is valid during initialization, execution, and doctor checks.
 
 Use this prompt to create `ai-workflow/COMMIT_MESSAGE.md`:
 
@@ -865,301 +891,123 @@ Feedback:
 Use this prompt:
 
 ```text
-You are my senior product and technical lead partner.
+Create a reliable feature contract for the selected batch. Run the common
+provenance preflight from this blueprint, then read AGENTS.md, the selected
+WORK_INDEX.md row, its source NMI entries, and the relevant code and tests.
+Use the supplied Target batch; otherwise select the first planned/spec batch.
+Do not implement code in this phase.
 
-First run the common provenance preflight from this blueprint for section 9.
+Resolve only decisions that affect scope, behavior, permissions, data, or proof.
+Ask when repository evidence and the user's request cannot resolve them safely.
+Record assumptions as assumptions. Preserve the user's terminology and supplied
+references. Continue to writing once the contract is clear; no confirmation
+phrase is required unless the user requested interview-only work.
 
-Your job is to create a production-grade batch feature contract for autonomous implementation.
+Keep one coherent outcome with a shared completion and rollback story. Counts
+of NMI items, acceptance criteria, tasks, and estimated minutes are advisory,
+not split thresholds or approval conditions. Split only along genuinely
+independent outcomes. Ask before changing authorized scope. For a small local
+reversible change, recommend direct agent work instead of creating artifacts.
 
-Inputs:
-1. the exact blueprint source used for this run and its declared metadata
-2. ai-workflow/WORK_INDEX.md selected batch row
-3. ai-workflow/PRODUCT_BACKLOG.md source NMI rows and detail sections for that batch
-4. ai-workflow/AGENTS.md for the compact repo map, commands, and local gotchas
-5. optional user notes, screenshots, tickets, specs, or implementation feedback
-6. optional code, tests, mockups, prototypes, external sources, or named skills
-   that materially constrain the batch
+Write ai-workflow/work/B###-short-name/FEATURE.md using exactly the five required
+sections below. Every section contains concrete information. Do not generate
+optional sections, nullable fields, empty headings, or 'not applicable' entries.
 
-Batch selection:
-1. If I provide `Target batch: B###`, use that batch.
-2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to select the first batch in execution order whose status is `planned` or `spec`.
-3. If no eligible batch exists, stop and say PRODUCT_BACKLOG.md or WORK_INDEX.md needs intake first.
-
-Feature scope gate:
-Record source NMI count, estimated acceptance criteria count, risk areas,
-completion level (`feature` or `release_ready`), result (`coherent`,
-`split_recommended`, `scope_expansion_requires_approval`, or
-`direct_agent_work_recommended`), and reason. Use
-`direct_agent_work_recommended` when the request is a small local reversible
-change that does not justify durable workflow artifacts; stop without creating
-a batch contract and recommend direct agent execution.
-
-Recommend a split when one contract cannot provide one coherent user-visible
-outcome and completion bar, requirements that should ship and roll back
-together, a comprehensible permission model, one credible validation story, or
-enough reliable context to resolve material decisions. Counts are advisory, not
-automatic blockers. Ask only when continuing would materially expand the
-authorized outcome.
-
-Phase 1, grill the requirements:
-1. identify the target batch id and folder from the selected WORK_INDEX.md row
-2. identify the source NMI-* rows and detail sections for that batch from PRODUCT_BACKLOG.md
-3. summarize the request in plain language
-4. list explicit requirements
-5. list inferred assumptions
-6. identify domain terms that need stable names
-7. challenge fuzzy, overloaded, or inconsistent language
-8. check whether the requested behavior matches existing code, product, and backlog language
-9. discuss concrete scenarios and edge cases
-10. identify ambiguities that could affect implementation, data, permissions, UX, failure modes, or tests
-11. apply this section's feature scope gate before writing FEATURE.md
-12. stop and recommend a split if the feature scope gate requires it
-13. ask only targeted questions that block a reliable FEATURE.md
-14. offer concrete options for underspecified decisions
-15. recommend defaults where safe
-16. record resolved decisions and assumptions
-17. identify the smallest useful reference set and any applicable skills; for
-    each skill record why it applies, whether it is advisory, the phases in which
-    it should load, and the evidence it should produce. Mark it required only
-    when the contract also contains a complete provider-neutral fallback
-18. do not add a skill merely because it is installed or generally useful
-19. for user-visible UI work, decide whether a UI/design skill is relevant and
-    identify responsive, loading, empty, error, interaction, accessibility, and
-    reduced-motion expectations that materially affect the contract
-20. before locking a change to visual hierarchy, layout, navigation, or
-    interaction direction, inspect the current rendered surface and available
-    visual references. Create one recommended rendered prototype or, when the
-    direction is genuinely ambiguous, two or three materially different
-    rendered directions. Use text-only descriptions only when rendering is not
-    possible. Record a visual rubric covering hierarchy, identity, density and
-    spacing, primary-action clarity, responsive behavior, required states,
-    accessibility, and reduced motion. Ask for one batched visual-direction
-    decision only when taste or product direction cannot be inferred safely;
-    otherwise record `repo_reference` or `agent_discretion` and continue.
-21. for every proposed change to a route, public API, schema, event, service
-    contract, permission rule, shared component, user-visible copy used by tests,
-    or stable selector, search the repository for downstream consumers before
-    contract lock. Record the changed seam, known consumers, search evidence,
-    compatibility decision, and required regression proof. `None` is valid only
-    with the search or reasoning that supports it
-22. for conversion work, define the funnel stage, conversion goal, baseline or
-    explicit unknown, audience/device segment, testable hypothesis, primary
-    metric, and guardrails; when an experiment is planned, also define traffic
-    assumptions, sample-size method, and duration; do not invent a baseline or
-    promise uplift
-23. when no blocking question remains and the feature scope gate permits the work,
-    proceed directly to Phase 2 unless I explicitly requested interview-only mode
-
-Do not write FEATURE.md until requirements are stable enough.
-
-Phase 2, synthesize FEATURE.md:
-
-When requirements are stable enough and the feature scope gate permits the work,
-write Markdown to:
-ai-workflow/work/B###-short-name/FEATURE.md
-
-Do not require a separate confirmation phrase before writing FEATURE.md. If a
-blocking decision remains, ask the smallest useful question and stop.
-
-Do not reopen the interview unless the resolved context contradicts the repo, backlog, or selected batch scope.
-
-Use this exact structure:
-
-# Feature: <Batch title>
+# Feature: <title>
 
 Batch: `B###`
-Source items: `NMI-###`, `NMI-###`
-Folder: `ai-workflow/work/B###-short-name/`
-Status: `spec`
+Source items: `NMI-###`
 Completion level: `feature` or `release_ready`
-Workflow schema: `2`
+Workflow schema: `3`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.4.0`
+Blueprint revision: `3.0.0`
 Blueprint digest: `<sha256>`
 
-## 1. Problem / Context
-## 2. Goals
-## 3. Non goals
-## 4. Users and roles
-## 5. UX and flows
-## 6. Functional requirements
-## 7. Non functional requirements
-## 8. Data and system impact
-### Changed contracts and consumer inventory
-## 9. Edge cases and failure modes
-## 10. Acceptance criteria
-## 11. Permissions and visibility rules
-## 12. Rollout and verification
-## 13. Risks and open questions
-## 14. Assumptions
-## 15. References and applicable skills
-### Visual contract
-## 16. Backlog and batch updates
+## 1. Outcome
+<Who has the problem, what happens today, and the observable result requested.>
 
-Rules:
-1. acceptance criteria must be objective and testable
-2. non-functional requirements must be measurable or tied to an existing repo validation convention
-3. list assumptions and non-goals explicitly
-4. keep scope inside the selected B* batch
-5. write implementation-affecting functional requirements, non-functional
-   requirements, acceptance criteria, permissions, edge cases, assumptions, and
-   risks as stable numbered items. Group prose that shares one behavior and proof;
-   do not manufacture separate items solely to increase traceability detail
-6. include the exact feature scope gate result
-7. if the feature scope gate requires a split, wait for user approval before writing FEATURE.md
-8. if new work is discovered, propose new NMI-* entries instead of expanding scope silently
-9. include exact status updates needed for PRODUCT_BACKLOG.md and WORK_INDEX.md
-10. update WORK_INDEX.md selected batch status to `spec`
-11. change every source NMI row status to `spec`
-12. append history rows for material changes in both ledgers
-13. perform the contract-lock lifecycle updates only after FEATURE.md exists with status `spec`
-14. do not include secrets, credentials, private customer data, proprietary logs, or production data in FEATURE.md; use redacted examples or synthetic cases
-15. list only references that can change implementation or validation; say
-    `None` when no external reference is needed
-16. for every applicable skill record `name`, `reason`, `advisory|required`,
-    `phases`, `required evidence`, and a provider-neutral fallback when required;
-    say `None` when no skill is needed
-17. when a conversion skill applies, keep user agency, accessibility, privacy,
-    product trust, and existing product constraints as guardrails
-18. include the changed-contract consumer inventory and exact repo-search
-    evidence, or `None` with a reason
-19. for material UI direction changes, include the visual rubric, rendered
-    reference or prototype, and direction status: `user_approved`,
-    `repo_reference`, or `agent_discretion`
-20. target 220 lines or fewer for FEATURE.md. Exceed the target only when a
-    material contract decision would otherwise be lost; record the reason and
-    compress duplication before adding more structure
+## 2. Scope
+<Included behavior and explicit boundaries/non-goals. Explain why this is one
+coherent batch. Keep existing behavior that must remain unchanged explicit.>
+
+## 3. Acceptance criteria
+AC1. <An observable, testable requirement, including its relevant failure cases.>
+AC2. <The next independent requirement.>
+
+## 4. Decisions and constraints
+C1. <A resolved technical/product decision or explicit assumption grounded in
+repository evidence, with the relevant code/test/reference and its implication.>
+
+## 5. Verification
+<How the AC and constraints will be proved; the important regression risks;
+what local delivery means and what external evidence release_ready needs.>
+
+Contract rules:
+- Put every required behavior in an AC, including relevant permissions, data
+  isolation, timezone/error cases, performance limits, and visual behavior.
+  Do not repeat it as FR, NFR, edge-case, and task acceptance lists.
+- Give implementation-affecting decisions stable C ids. Link an AC when a
+  constraint needs behavioral proof. Requirements stay in this contract;
+  execution status belongs only to WORK_INDEX.md.
+- Before locking a changed route, API, schema, event, service, permission,
+  shared component, copy contract, or selector, search for consumers. Record
+  the search evidence and compatibility decision under Decisions and constraints.
+  Planning will assign owners and checks without copying the requirement text.
+- For material UI changes, inspect the current rendered states and relevant
+  references. Express the visual rubric as AC covering the actual hierarchy,
+  responsive/interaction states, accessibility, and reduced-motion requirements.
+  Use the existing design when it resolves direction. Create a rendered prototype
+  and ask a batched direction question only when a material decision remains.
+- For conversion work, include the audience, baseline or explicit unknown,
+  hypothesis, primary metric, and guardrails in these same sections. A planned
+  experiment also needs a sample-size method and duration; never invent uplift.
+- Place useful references next to the decision or verification they constrain.
+  Mention a skill only when it contributes relevant judgment; record when to
+  use it and what evidence it adds. A required provider-specific skill needs
+  a complete portable fallback. Do not list unused skills.
+- Target 220 lines or fewer; compress repetition before exceeding that target.
+  Length is a review signal, not a completion or product blocker.
+
+Before locking, check that the requested outcome is fully covered by testable
+AC, material decisions are resolved, assumptions and boundaries are visible,
+and verification is feasible. Fix omissions in these five sections.
+Then set the WORK_INDEX.md batch row and source NMI rows to spec, append the
+material transition to ledger history, and report the created contract.
+Do not put lifecycle updates or mirrored statuses in FEATURE.md.
 ```
-
-Contract lock checklist:
-
-1. behavior is unambiguous
-2. roles and visibility rules are explicit
-3. edge cases are defined
-4. failure modes are defined
-5. acceptance criteria are objective and testable
-6. non-goals are listed
-7. data impact is clear
-8. migration needs are clear
-9. rollout and verification expectations are clear enough to plan against
-10. assumptions are visible
-11. this section's feature scope gate is satisfied, explicitly approved, or split
-12. each implementation-affecting item is numbered or otherwise stable enough to trace from IMPLEMENTATION.md
-13. references and applicable skills are scoped and justified rather than loaded globally
-14. conversion claims, when present, have a measurable hypothesis and guardrails;
-    planned experiments also have a sample-size method and duration
-15. every changed shared contract has a consumer inventory and compatibility
-    decision before implementation
-16. material UI work has a rendered direction and an explicit visual rubric;
-    a required user-direction decision is resolved before contract lock
-17. completion level is explicit and the work justifies the complex-feature workflow
-
-Fix `FEATURE.md` before planning if any item is missing.
 
 ## 10. Turn Batch `FEATURE.md` Into `IMPLEMENTATION.md`, `PROGRESS.md`, And `PROGRESS_STATE.md`
 
 Use this prompt:
 
 ````text
-You are a senior engineer preparing this feature for autonomous implementation.
+Plan the selected feature without implementing application code. Run the common
+provenance preflight from this blueprint. Read AGENTS.md, the selected batch row,
+FEATURE.md, relevant code/tests, and policies or references needed by this work.
+Use the supplied Target batch; otherwise choose the first spec/ready batch.
 
-First run the common provenance preflight from this blueprint for section 10.
+Plan coherent, independently verifiable outcomes. Task count, estimates, and
+check count are not approval or stop conditions. Inspect the code before naming
+likely implementation seams. Keep a long coherent task together with useful
+restart points; do not manufacture time-sized or validation-only tasks.
 
-Inputs:
-1. the exact blueprint source used for this run and its declared metadata
-2. ai-workflow/WORK_INDEX.md selected batch row
-3. ai-workflow/PRODUCT_BACKLOG.md source NMI rows and detail sections for that batch
-4. selected batch FEATURE.md
-5. ai-workflow/AGENTS.md for the compact repo map, commands, and local gotchas
-6. ai-workflow/SECURITY.md when the planned batch crosses a security or permission boundary
-7. ai-workflow/TESTING_POLICY.md when the plan changes behavior or tests
-8. relevant repo structure if available
-9. FEATURE.md references and applicable skills, but only when they constrain
-   planning for this batch
+For an active-batch replan, patch only affected tasks and validation. Preserve
+completed work, stable task ids, historical evidence, and unrelated user changes.
+Record the repository evidence and rationale for changed task boundaries. A new
+product decision or expanded outcome needs user input; a task-count change alone
+does not. Do not return an active batch to ready or rewrite completed evidence.
 
-Batch selection:
-1. If I provide `Target batch: B###`, use that batch.
-2. If I do not provide a target batch, inspect WORK_INDEX.md only enough to
-   select the first batch in execution order whose status is `spec` or `ready`.
-3. An `active`, `blocked`, or `failed_validation` batch is eligible only when
-   section 11 recorded `no_progress`, repo evidence revealed a genuinely
-   independent implementation seam, or a validation scope must be reclassified.
-   Preserve completed implementation scope, task ids, task boundaries, and
-   historical evidence whenever possible. A task-count change inside the locked
-   feature scope needs evidence and a recorded rationale, not a user prompt.
-4. If no eligible batch exists, stop and say a batch FEATURE.md must be created
-   first or identify why the requested active-batch replan is not allowed.
+Write IMPLEMENTATION.md with this metadata:
 
-Implementation scope gate:
-Record source NMI count, task count, acceptance criteria count, required
-task-, batch-, and CI-scoped validation commands, estimated total task minutes,
-risk areas, result (`coherent`, `split_recommended`,
-`complexity_review_needed`, or `scope_expansion_requires_approval`), and
-reason. For an active-batch replan, also record the remaining executable task
-count before and after the proposal, the task-count delta, and the estimated
-remaining task minutes before and after.
-
-Recommend a split when tasks have independent deployment or rollback seams,
-require unrelated validation or risk areas, cannot share one completion bar,
-contain an unresolved implementation-changing decision, or cannot fit in
-reliable working context.
-
-Use elapsed-time estimates as planning signals, never runtime permission or stop
-conditions. When an estimate looks disproportionate to the repo surface or
-contains several independent outcomes, inspect the code, remove duplicate or
-broad validation, consider a small prototype, and split only at coherent,
-independently verifiable implementation outcomes. If a long task remains one
-coherent seam, keep it intact and add internal milestones and restart state;
-do not require approval merely because of elapsed time. A 420-minute estimate
-for a small change triggers `complexity_review_needed` and plan simplification,
-not a ready-made mega-task and not arbitrary ten-minute fragments.
-
-Preserve existing task ids and task boundaries during an active-batch replan
-unless changed feature scope or newly discovered repo evidence creates a
-genuinely independent implementation, deployment, rollback, or verification
-seam. Record any task-count change and reconcile existing progress. Ask the user
-only when the proposed work expands the locked FEATURE.md outcome or requires a
-new product decision. A lower per-task duration alone never justifies a higher
-task count or a higher estimated total.
-
-Patch an active plan minimally: update the Execution policy, validation scopes,
-and only directly affected task/state fields. Do not regenerate the full task
-list, renumber tasks, duplicate traceability rows, or rewrite unchanged
-evidence. If the current plan already contains replacements created solely for
-retired elapsed-time or check-count ceilings, use the last pre-split plan from
-version history as the semantic baseline and reduce bookkeeping without
-inventing more ids. Preserve historical evidence and report any
-implemented replacement work that must be reconciled before merging boundaries.
-
-Task:
-Produce ai-workflow/work/B###-short-name/IMPLEMENTATION.md.
-
-IMPLEMENTATION.md must begin with:
-
-# Implementation plan: <batch title>
+# Implementation plan: <title>
 
 Batch: `B###`
-Source items: `NMI-###`
-Status: `ready` for normal planning; preserve the current batch status during an
-eligible active-batch replan
-Completion level: `<copy from FEATURE.md>`
-Workflow schema: `2`
+Workflow schema: `3`
 Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.4.0`
+Blueprint revision: `3.0.0`
 Blueprint digest: `<sha256>`
 
-Before writing the plan, apply the implementation scope gate defined in this
-section. If the gate requires a split and the user has not approved the larger
-scope, stop and propose the split instead of planning implementation.
-
-Include the exact implementation scope gate result in IMPLEMENTATION.md so
-execution agents do not need to recalculate it unless artifacts change.
-
-Also include these sections before the task list:
-
 ## Execution policy
-
-Declare the task runtime policy once for the whole plan:
 
 ```yaml
 task_execution_policy:
@@ -1171,828 +1019,363 @@ task_execution_policy:
   allow_repo_wide_commands: false
 ```
 
-`continuation_mode` makes normal section 11 execution proceed through
-dependency-ready tasks and repair-mandatory finalization without a user prompt at
-task boundaries. `progress_checkpoint_minutes` triggers a concise user-visible
-and artifact checkpoint; it is not a deadline or stop condition.
-`max_command_seconds`, `same_root_cause_no_progress_limit`, and
-`max_same_check_retries_without_change` are hard safety bounds. Environment and
-validation recovery may continue while each meaningful cycle uses a new
-falsifiable hypothesis and narrows the failure; three consecutive no-progress
-cycles on the same root cause are a blocker. User-supplied budgets override
-continuation only when explicitly stated.
-
-This batch-level continuation policy controls autonomy, not provider-session
-reuse. Each executable task separately declares `session.mode`. The default is
-`fresh`: durable repository state is primary memory and conversation history is
-only an optimization. Use `continue` only when the planner can name a preceding
-task whose implementation discoveries or local debugging state would otherwise
-require substantial redundant reconstruction. Dependency, adjacency, or task
-order alone is not sufficient justification. The workflow remains
-model/provider agnostic and does not prescribe different models, pricing, an
-agent pool, parallel execution, or a general orchestration framework.
+A checkpoint means report progress and continue. Time estimates never stop or
+split a task. Per-command cancellation, the same-root-cause watchdog, and the
+no-change retry bound apply during both implementation and final repair.
 
 ## Batch validation
 
-Use this YAML shape:
-
 ```yaml
 validation_commands:
-  - command: "<exact broader local command, or none>"
-    purpose: "<what batch-level risk this proves, or why none is needed>"
-    required: <true or false>
+  - command: <exact broader local command>
+    id: V001
+    purpose: <risk this proves>
+    required: true
     scope: batch
-    timeout_seconds: <integer timeout for this command>
-    required_capabilities: [<filesystem, database, browser, or another local resource>]
+    timeout_seconds: <enforceable timeout>
+    required_capabilities: [filesystem]
 ```
 
-Every required local batch command must declare the capabilities its executor
-needs. Use stable provider-neutral ids such as `filesystem`, `database`, and
-`browser`; add a specific local resource id only when those do not describe it.
-This inventory drives the final-verification capability preflight. It does not
-authorize external access, credentials, downloads, or broader validation.
+List commands at the correct scope once, with unique V ids within the batch.
+Use this same command-first shape for task and CI checks. Capability ids are
+provider-neutral local resources, such as filesystem, database, and browser;
+list all resources the command actually needs. Keep the capability list inline
+so the optional runner can read it. The list declares needs, not availability
+or permission. A check that is both new proof and a regression check is one entry.
 
 ## CI validation
 
-Use this YAML shape:
+Record exact externally owned checks and how their evidence will be obtained;
+use scope: ci. Never run CI-scoped commands locally. If there is no batch or CI
+check, write one short reason in that section, not a dummy 'command: none' item.
+Pending external proof affects release readiness; it blocks feature completion
+only when FEATURE.md requires completion level release_ready.
+
+## Coverage
+
+| Feature refs | Consumers and compatibility | Owner / validation ids | Evidence |
+| --- | --- | --- | --- |
+| AC1, C1 | <consumer and compatibility decision; link contract search evidence> | T001 / V002 | pending |
+
+This single table replaces separate impact and traceability tables. Cover every
+AC and implementation-affecting C item. Group references with the same owners
+and proof. For changed shared contracts, include every known consumer and its
+regression check, using the contract's search evidence instead of copying it.
+For other work, name the directly affected behavior. Put results in PROGRESS.md;
+replace 'pending' with a precise evidence link, including any user-accepted gap.
+Do not copy commands, requirements, task statuses, or test results into the table.
+
+## Tasks
 
 ```yaml
-validation_commands:
-  - command: "<exact CI check name/command, or none>"
-    purpose: "<what externally enforced risk this proves, or why none is needed>"
-    required: <true or false>
-    scope: ci
+- id: T001
+  status: planned
+  outcome: <one concrete result and its implementation boundary>
+  feature_refs: [AC1, C1]
+  dependencies: []
+  validation_commands:
+    - command: <exact focused command or observable check>
+      id: V002
+      purpose: <AC and related regression behavior this proves>
+      required: true
+      scope: task
+      timeout_seconds: 120
+      required_capabilities: [filesystem]
 ```
 
-Broad checks belong in one of those two sections, not inside T* tasks. Full test
-suites, repo-wide lint/typecheck/build, repository or full-history security
-scans, dependency audits, and checks requiring remote CI, credentials, or a
-long-lived environment are never task-scoped. Prefer `ci` when the check is
-already enforced there, requires external infrastructure, or cannot fit the
-batch-validation budget.
+These six task fields are required. A task is done when its outcome, referenced
+AC/constraints, and declared validation are satisfied. Do not add duplicate goal,
+done_when, acceptance_criteria, tests_required, existing_checks_to_rerun, or
+source_items fields. Put a useful code/test/reference beside the outcome or
+check it constrains. Do not generate empty planning metadata.
 
-CI validation updates release evidence. It does not block feature delivery by
-default. It blocks only a `release_ready` claim or a batch whose FEATURE.md
-completion level is explicitly `release_ready`.
+Dependencies use [] for no predecessors, or a block list of T ids:
 
-Then include the compact impact map copied and refined from FEATURE.md:
-
-```md
-## Impact map
-
-| Changed seam | Change | Known consumers and search evidence | Compatibility decision | Owner | Regression proof | State |
-| --- | --- | --- | --- | --- | --- | --- |
-| <route/API/schema/event/service/copy/selector/shared component> | <change> | <consumers plus exact searches> | <preserve/migrate/break with approval> | T001 | <declared check or observation> | planned |
+```yaml
+  dependencies:
+    - T001
 ```
 
-Use `None` only when repo search or architecture evidence shows there is no
-shared contract. Every known consumer must have an owning task or explicit
-compatibility decision and regression proof. Update the map when implementation
-discovers another consumer.
+Fresh context reconstructed from durable files is the default. Omit per-task
+session metadata for that default. Use the following exception only for specific
+implementation discoveries or debugging context expensive to reconstruct:
 
-Then include a traceability closure table:
-
-```md
-## Traceability closure
-
-| Feature reference | Required item | Covered by | Validation or evidence | State |
-| --- | --- | --- | --- | --- |
-| Functional requirement 1 | <requirement text> | T001 | <command/check/evidence> | planned |
+```yaml
+  session:
+    mode: continue
+    from_task: T001
+    reason: <what conversational context is worth reusing>
 ```
 
-Traceability table rules:
-1. include every implementation-affecting functional requirement,
-   non-functional requirement, acceptance criterion, permission rule,
-   assumption, risk, edge case, and failure mode from FEATURE.md
-2. use stable references such as `FR1, AC1, Edge1`; group references in one row
-   when they share the same owning task, behavior, and proof
-3. `Covered by` must name one or more T* tasks, or an explicit non-code decision
-4. `Validation or evidence` must name exact commands/checks where possible, or explain why validation is impossible
-5. initial state is usually `planned`
-6. allowed row states are `planned`, `verified`, `blocked`, and `accepted_gap`
-7. use `accepted_gap` only when the user explicitly accepts an unvalidated or partially validated state
-8. do not mark the batch `ready` if any required feature-contract item is missing from the table
-9. target no more than `max(8, 2 * task_count)` rows. This is a compression
-   target, not permission to omit contract items: merge duplicate proof paths or
-   simplify an overgrown contract, and record why genuinely independent rows
-   exceed the target
+A dependency or adjacent task does not itself justify continuation. A manual
+client need not create provider sessions: it can reconstruct the selected task
+context in the current session. Do not pause for a new conversation. The optional
+runner implements fresh/continue when available and owns provider handles.
 
-Before marking the batch `ready` or accepting an eligible active-batch replan,
-run this planning audit:
-1. FEATURE.md exists and has stable numbered items for requirements, acceptance criteria, permissions, assumptions, risks, edge cases, and failure modes
-2. every implementation-affecting FEATURE.md item appears in the traceability table
-3. every traceability row maps to T* tasks, a non-code decision, or a blocked/accepted gap path
-4. every T* task has status, objective `done_when`, exact `feature_refs`, session, execution_guidance,
-   validation_commands, existing_checks_to_rerun, stop_conditions, source_items,
-   references, and applicable_skills
-5. every task represents a coherent, independently verifiable outcome seam;
-   disproportionate estimates have an evidence-backed complexity review,
-   prototype, simplification, or internal milestones
-6. every validation item has exactly one scope and is placed at that scope
-7. no full suite, repo-wide check, full-history scan, dependency audit, or
-   external CI check appears at task scope
-8. Execution policy, Batch validation, and CI validation sections exist; the
-   execution policy uses this section's continuation mode, progress checkpoint,
-   command timeout, same-root-cause no-progress bound, and no-change retry bound,
-   and empty validation sections use `none` with a reason
-9. no task exists only as bookkeeping unless it supports a mapped traceability row
-10. implementation scope gate result is recorded and does not require an unapproved split
-11. PROGRESS.md and PROGRESS_STATE.md exist
-12. PROGRESS_STATE.md identifies the next task, task/batch open validation,
-    impact-map state, and separate integration and release evidence
-13. an active-batch replan records before/after remaining task counts and
-    estimated minutes plus the repo evidence and rationale for any delta
-14. an active-batch replan is a minimal patch: unchanged tasks, traceability rows,
-    and historical evidence were not regenerated or duplicated
-15. IMPLEMENTATION.md targets 360 lines or fewer; exceeding that target requires
-    a recorded reason and a compression pass over duplicated task, impact, and
-    traceability prose
-16. every new executable task declares `session.mode`; `fresh` is the default,
-    and every `continue` names an earlier task plus a concrete context-reuse
-    reason that is stronger than dependency or adjacency
-17. every required local validation command declares provider-neutral
-    `required_capabilities`, and the combined batch inventory covers final
-    verification without implying authorization for unavailable resources
+Task statuses: planned, in_progress, blocked, failed_validation, validated, done,
+superseded, rolled_back. Use in_progress while an ordinary failure is being
+repaired. A superseded task must link its replacements and preserve its evidence.
 
-Each task must include:
-1. id, formatted as T001, T002, T003
-2. status: `planned` for a new task; during an active-batch replan preserve
-   completed task statuses and existing unfinished task ids and boundaries
-3. title
-4. goal
-5. done_when
-6. acceptance_criteria
-7. feature_refs: exact stable ids from FEATURE.md that this task implements or
-   validates; use `none` with a reason only for pure setup owned by a mapped row
-8. tests_required
-9. areas
-10. risk
-11. dependencies
-12. session
-13. batch_group
-14. validation_level
-15. execution_guidance
-16. validation_commands
-17. existing_checks_to_rerun
-18. likely_files
-19. context_budget
-20. stop_conditions
-21. source_items
-22. references
-23. applicable_skills
+Checks must prove behavior or a material invariant. A missing required test,
+fixture, or assertion belongs to the owning implementation task. Full suites,
+repo-wide lint/build/typecheck, dependency audits, and whole-history scans belong
+only at batch or CI scope. Record newly discovered checks at their proper scope
+before running them. Policies and skills do not implicitly add commands.
 
-Use this validation field shape:
-session:
-  mode: fresh
-  reason: durable task contract and repository state are sufficient
+Create PROGRESS.md as an append-only evidence log with a dated initialization
+entry recording the blueprint source, revision, schema, and digest used. Record
+material decisions, command ids and exact invocations/results, failures, repairs,
+observations, accepted gaps, and closure evidence here. Link bulky safe evidence
+instead of pasting it. At about 300 lines, archive an entire unchanged log volume
+and start a linked new one; never rewrite individual historical entries.
 
-# Use this alternative only for concrete conversational-context reuse:
-session:
-  mode: continue
-  from_task: T001
-  reason: <specific discoveries or debugging state from T001 that are expensive to reconstruct>
-
-execution_guidance:
-  estimated_minutes: <honest range such as 20-35>
-  confidence: <low, medium, or high>
-  rationale: <repo evidence and uncertainty behind the range>
-  internal_milestones: <none, or compact restart points for a long coherent task>
-validation_commands:
-  - command: "<exact command>"
-    purpose: "<what this proves>"
-    required: true
-    scope: task
-    timeout_seconds: <integer no greater than task_execution_policy.max_command_seconds>
-    required_capabilities: [<provider-neutral local resource ids>]
-existing_checks_to_rerun:
-  - command: "<exact command, or none>"
-    reason: "<why this existing check is needed, or why none exists>"
-    scope: task
-    timeout_seconds: <integer no greater than task_execution_policy.max_command_seconds>
-references:
-  - item: "<path, URL, test, mockup, prototype, or none>"
-    reason: "<what decision or validation this constrains>"
-applicable_skills:
-  - name: "<skill name, or none>"
-    reason: "<why it applies to this task>"
-    required: <true or false>
-    load_when: "<planning, implementation, visual review, experiment analysis>"
-    required_evidence: "<what must be recorded in PROGRESS.md>"
-    portable_fallback: "<provider-neutral instructions/evidence, or not_required>"
-
-Task rules:
-1. each task must have one primary outcome and one coherent, independently
-   verifiable implementation seam; estimate a range honestly. Use internal
-   milestones for restartability when a coherent task is long, and split only
-   when the resulting outcomes are independently meaningful and verifiable
-2. each done_when must be objectively checkable
-3. each task must map to FEATURE.md acceptance criteria
-   and every `feature_refs` id must exist in FEATURE.md; never invent a synthetic
-   requirement id to summarize prose
-4. each task must identify a practical validation signal
-5. tests_required must be specific
-6. validation_commands must list only focused task-scoped commands, what each
-   command proves, whether it is required for done, and a timeout no greater than
-   the task command timeout
-7. existing_checks_to_rerun must list exact focused task-scoped commands nearest
-   to the touched behavior, or `none` with a reason. If a command is already
-   listed in validation_commands because it is both required validation and the
-   nearest existing regression check, repeat it here, say that explicitly in the
-   reason, and run the duplicate only once.
-8. task order should reduce integration risk
-9. decision tasks must produce an explicit product decision before code changes
-10. do not include unrelated backlog items just because nearby code is touched
-11. every T* task must correspond to at least one traceability row unless it is pure setup needed by a mapped row
-12. if this section's implementation scope gate recommends a split, stop unless
-    the larger scope is explicitly approved
-13. task validation must account for prior related failures recorded in PROGRESS.md
-14. allowed task statuses are `planned`, `in_progress`, `blocked`,
-    `failed_validation`, `validated`, `done`, `superseded`, and `rolled_back`.
-    Keep an ordinary failing check `in_progress` while an evidence-backed
-    diagnosis-and-fix path is active; use `failed_validation` only when execution
-    stops with the required check unresolved
-15. every user-visible UI task must name the responsive and interaction states to
-    render, inspect, and record before completion, plus the FEATURE.md visual
-    rubric and direction status
-16. references must contain only items that can change implementation or
-    validation; use `none` with a reason when no reference is needed
-17. applicable_skills must contain `name`, `reason`, `required`, `load_when`,
-    `required_evidence`, and `portable_fallback`; use `none` when no skill applies
-18. do not load all FEATURE.md skills for every task; route each skill only to the
-    tasks and phases where it adds relevant judgment
-19. when a UI/design skill applies, include accessibility and reduced-motion
-    evidence; when a conversion skill applies, include baseline/hypothesis/metric
-    evidence and, for experiments, sample-size/duration evidence or an explicit
-    blocker
-20. loading SECURITY.md, TESTING_POLICY.md, a reference, or a skill does not add
-    validation by itself; every executable check must be declared during planning
-    or recorded with discovery evidence at exactly one task, batch, or CI scope
-21. even a security, dependency, build, or CI tooling task must use focused
-    fixtures or configuration tests at task scope; move whole-repo proof to
-    batch or CI scope rather than splitting the implementation around checks
-22. do not create validation-only recovery tasks; section 11's integrated batch
-    validation and repair loop is the final proof for the combined implementation
-23. during an active-batch replan, preserve existing task ids and boundaries.
-    If changed scope or new repo evidence warrants a split, mark the unfinished
-    source task `superseded`, link its replacement task ids, preserve historical
-    evidence, and ask the user only if the locked feature outcome expands
-24. every changed seam in the impact map must have a task owner and regression
-    proof; task discovery updates the map rather than leaving a consumer implicit
-25. if the work no longer justifies durable multi-session state, stop and
-    recommend direct agent execution instead of preserving ceremonial tasks
-26. default every new executable task to `session.mode: fresh`. Use
-    `session.mode: continue` only with `from_task` naming an earlier task and a
-    concrete reason to reuse its execution context. A dependency, shared batch,
-    adjacent ordering, or backend-to-frontend handoff does not imply continuation
-27. plan fresh tasks so a new worker can reconstruct the minimum context from
-    AGENTS.md, PROGRESS_STATE.md, the selected task and Execution policy, exact
-    feature_refs, completed dependency outcomes, routed references and skills,
-    repository code/tests, and task validation. Do not duplicate that durable
-    information in PROGRESS_STATE.md or load unrelated history
-
-Also create:
-1. ai-workflow/work/B###-short-name/PROGRESS.md
-2. ai-workflow/work/B###-short-name/PROGRESS_STATE.md
-
-Initialize PROGRESS.md as:
-
-# Progress log
-
-Append-only within each complete log volume.
-Use this file for detailed evidence. Do not include secrets, credentials, private customer data, proprietary logs, or production data.
-When the active file approaches 300 lines, close and rename the whole unchanged
-volume to `ai-workflow/archive/B###-PROGRESS-<date>-NN.md`, then create a new
-`PROGRESS.md` with a pointer to the closed volume. Never extract, reorder, delete,
-or rewrite individual historical entries.
-
-Workflow schema: `2`
-Blueprint source: `<exact path or URL used>`
-Blueprint revision: `2.4.0`
-Blueprint digest: `<sha256>`
-
-## <YYYY-MM-DD>
-
-Initialized feature execution.
-
-Initialize PROGRESS_STATE.md as:
+Create PROGRESS_STATE.md with current provenance and these compact sections:
 
 # Compact progress state
 
-Updated: <YYYY-MM-DD>
+Updated: <date>
+Workflow schema: `3`
+Blueprint source: `<exact path or URL used>`
+Blueprint revision: `3.0.0`
+Blueprint digest: `<sha256>`
 
-## Workflow provenance
-- Workflow schema: 2
-- Blueprint source: <exact path or URL used>
-- Blueprint revision: 2.4.0
-- Blueprint digest: <sha256>
-
-## Current batch
-- Batch: B###
-- Source items: NMI-###
-- Status: ready
-- Completion level: feature | release_ready
-- Integration evidence: pending | not_required
-- Release evidence: pending | not_required
-
-## Completed
-- None yet.
+## Current work
+- Batch: B###; lifecycle and integration/release state: WORK_INDEX.md row B###.
+- Task: T001; status and dependencies: IMPLEMENTATION.md task T001.
 
 ## Next
-- T001:
-- Executable next action: <the next safe in-scope edit, diagnostic, focused check,
-  or rerun; use `none` only when no such action remains>
+- Executable next action: <one specific safe authorized action, or none>
 
-## Active guidance
-- Skills: None yet.
-- References: None yet.
+## Recovery
+- <Root-cause hypothesis, meaningful attempts/no-progress count, and any actual
+  blocker or known pre-existing work that a new session must preserve.>
 
-## Active task runtime
-- Task: None yet.
-- Session fallback: none; when continuation falls back, record requested source task, effective fresh mode, and reason.
-- Started:
-- Next progress checkpoint:
-- Last progress checkpoint:
-- Current root cause or hypothesis: none.
-- Consecutive same-root-cause no-progress cycles: 0/<task_execution_policy.same_root_cause_no_progress_limit>.
-- Same-check retries without a relevant change: 0/<task_execution_policy.max_same_check_retries_without_change>.
+## Evidence and open checks
+- <Links to the relevant PROGRESS.md entries and outstanding validation ids.>
 
-## Validation evidence
-- None yet.
+Replace the placeholders with real starting state. Keep this file near 70 lines
+or fewer. It is a restart pointer, not another results log, lifecycle ledger,
+completed-task list, or copy of Git status. Record only recovery facts that Git
+and the selected task cannot reconstruct reliably.
 
-## Open validation list
-- Task: T001 task-scoped validation.
-- Batch: declared batch validation.
-
-## Integration and release evidence
-- Impact map: pending.
-- Integration: pending or not_required.
-- Release/CI: pending or not_required.
-
-## Open risks or blockers
-- None yet.
-
-## Traceability state
-- Not started yet.
-
-## Final batch check
-- Not run yet.
-
-## Dirty repo and recovery state
-- Branch:
-- Intended base:
-- Pre-existing modified files:
-- Agent-touched files:
-- Rollback needed: no
-
-## Context notes
-- Keep this file near 70 lines or fewer and remove stale narrative when state
-  changes; detailed history belongs in PROGRESS.md.
-- Read PROGRESS.md only when prior blockers, validation evidence, or history are needed.
-
-Lifecycle update:
-1. For normal planning, keep FEATURE.md and every source NMI row at `spec`.
-2. For normal planning, set IMPLEMENTATION.md, WORK_INDEX.md selected batch row,
-   and PROGRESS_STATE.md to `ready` as one operation when IMPLEMENTATION.md has
-   objective T* tasks and both progress files exist.
-3. For an eligible active-batch replan, preserve completed tasks, existing
-   unfinished task ids and boundaries, and historical evidence. Reclassify
-   validation at the existing seams first. Supersede an unfinished task only
-   when changed scope or newly discovered repo evidence creates an independent
-   outcome seam. Keep current
-   batch/source lifecycle states and update only affected task/validation
-   scopes, PROGRESS.md, and PROGRESS_STATE.md. Never regress the batch to
-   `ready` or source NMI rows to `spec`.
-   If the plan was expanded solely by retired elapsed-time or validation-count
-   ceilings, use version history to restore its prior semantic boundaries as a
-   minimal task-count-reducing repair instead of adding another generation of
-   replacement ids.
-4. Set Updated date to today's date.
-5. Append a Batch history row for the transition or eligible replan.
-6. Do not mark ready or accept the replan if FEATURE.md is missing, tasks are not
-   objective, or progress files were not created.
-7. Do not mark ready or accept the replan if this section's implementation scope
-   gate requires an unapproved split.
-8. Do not mark ready or accept the replan if any task lacks a status, execution_guidance, scoped
-   validation_commands, or scoped existing_checks_to_rerun.
-9. Do not mark ready or accept the replan if Execution policy, Batch validation,
-   or CI validation is absent or the execution policy weakens automatic
-   continuation, the progress checkpoint, command timeout,
-   same-root-cause no-progress bound, or no-change retry bound.
-10. Do not mark ready or accept the replan if the impact map or traceability
-    closure table is missing required FEATURE.md items or contains an unmapped
-    changed contract or required item.
-11. Do not mark ready or accept the replan if the planning audit fails.
-12. Do not implement application code in this step.
-13. Ask for approval only when the replan expands the locked FEATURE.md outcome,
-    introduces a new permission/side-effect boundary, or requires a new product
-    decision; task-count change alone is not an approval boundary.
+Before setting the WORK_INDEX.md batch row to ready, verify complete AC/C and
+consumer coverage, valid task dependencies, concrete outcomes, scoped checks,
+and the existence of both progress files. Keep source NMI items at spec until
+execution starts. Append the planning transition to ledger history. FEATURE.md,
+IMPLEMENTATION.md, and PROGRESS_STATE.md have no batch Status field.
 ````
 
 ## 11. Execute Batch To A Verified Outcome
 
-Use this default runtime prompt:
+Use this runtime prompt:
 
 ```text
-Execute the selected `ai-workflow` batch to a verified outcome, starting with
-the next unfinished task.
+Execute the selected batch through implementation, verification, and repair.
+Run the common provenance preflight from this blueprint for section 11.
+Use the supplied Target batch; otherwise choose the first ready/active batch.
+A supplied blocked/failed_validation batch can resume with a new concrete
+hypothesis, changed access, or new evidence. Resolve an unknown or ambiguous
+target before editing; never scan or repair unrelated batches.
 
-First run the common provenance preflight from this blueprint for section 11.
+Context:
+Read AGENTS.md, PROGRESS_STATE.md, the selected task and Execution policy in
+IMPLEMENTATION.md, and its exact FEATURE.md references. Read completed dependency
+outcomes in code/tests and the Coverage rows for affected consumers. Load the
+relevant log entries, policies, references, and skills only when needed. Read
+WORK_INDEX.md and source NMI rows for selection and lifecycle transitions.
+This section and the selected artifacts are sufficient; do not load section 10,
+the entire blueprint, full backlog, or all progress history to execute a task.
 
-Outcome:
-Complete the next task with the smallest coherent change and objective
-task-scoped validation. Then continue internally through dependency-ready tasks
-and this section's final verification and repair phase until the batch is locally
-delivered and its integration/release evidence is truthful, or a real blocker
-requires user input. Do not ask the user to say `continue`, `fix`, or invoke
-another section at ordinary task boundaries.
+Runtime contract:
+Use the plan's task_execution_policy. Its defaults are batch_to_verified_outcome,
+a 10-minute progress checkpoint, a 120-second task-command timeout, three
+consecutive cycles without progress on the same root cause, zero unchanged-check
+retries, and no repo-wide task commands. Broad checks use their own declared
+timeouts. User-supplied budgets and the active environment's controls take
+precedence. Establish a cancellation path before each command and stop it at its
+timeout. Do not leave unbounded commands running in the background.
 
-Start with only:
-1. batch `PROGRESS_STATE.md`
-2. batch `IMPLEMENTATION.md` Execution policy and the selected task
-3. the exact FEATURE.md ids listed in the task's `feature_refs`
-4. `ai-workflow/AGENTS.md`
-5. completed dependency outcomes named by the selected task, using their compact
-   current code/tests/artifacts and PROGRESS_STATE.md summary before opening
-   detailed PROGRESS.md history
+A checkpoint is an update, not a deadline. Count no-progress only when a cycle
+satisfies no requirement, narrows no failure, and produces no decisive evidence.
+Reset on concrete progress or a materially different hypothesis; renaming a
+failure or collecting more of the same logs is not progress. Never split tasks
+or create recovery tasks merely to reset a bound.
 
-Load conditionally:
-1. task references that can change implementation or validation
-2. task `applicable_skills` when their `load_when` phase matches the current work
-3. `TESTING_POLICY.md` when behavior or tests change
-4. `SECURITY.md` when the task crosses a security, permission, external-system,
-   untrusted-content, sensitive-data, dependency, browser/MCP/app, CI, production,
-   destructive-action, or data-transmission boundary
-5. `PROGRESS.md` for prior failures, blockers, accepted gaps, or evidence history
-6. selected `WORK_INDEX.md` and `PRODUCT_BACKLOG.md` rows only for selection or
-   lifecycle updates
+Selection and implementation:
+1. Select the next dependency-ready unfinished task. Repair an active related
+   failure before switching to another task. When one path is genuinely blocked,
+   finish independent authorized work that does not depend on it. If all tasks
+   are done or superseded with completed replacements, enter final verification.
+2. Read the task outcome, referenced AC/constraints, consumers, dependencies, and
+   validation. Inspect the actual code before editing and preserve unrelated
+   user changes. Treat suggested files and techniques as hypotheses.
+3. Set the task in_progress in IMPLEMENTATION.md. On first execution set the
+   batch active in WORK_INDEX.md and source NMI rows active in PRODUCT_BACKLOG.md.
+   These are separate entity owners. Do not mirror their statuses in other files.
+4. Implement the smallest change satisfying the contract. A missing implementation,
+   required test, fixture, assertion, or workflow correction is unfinished work.
+   Create or repair it within its existing owning task. Ask only for a missing
+   product decision or a new authority, scope, data, or side-effect boundary.
+5. Run the declared focused checks, including nearby regression coverage. Record
+   a newly discovered safe in-scope check and its reason before running it;
+   broader proof belongs in Batch validation or CI validation. Loading a policy,
+   skill, or reference does not authorize additional validation or resource use.
+6. Diagnose related failures, repair, and rerun affected proof after a relevant
+   change or new falsifiable hypothesis. Continue while making progress. Record
+   evidence for unrelated failures without editing unrelated application code.
+   A timeout or environment failure is one observation, not automatic permission
+   to abandon the rest of the batch. Use only permitted recovery paths; do not
+   bypass sandbox controls or introduce unapproved external resources.
+7. For UI work, render and interact with the states required by the contract's
+   visual rubric. Record observable evidence for responsive behavior,
+   accessibility, and reduced motion where required. DOM tests alone do not prove
+   visual quality. For experiments, distinguish observed metrics from estimates.
+8. Review the diff for scope, regressions, skipped tests, temporary code, and
+   sensitive data. Record material evidence once in PROGRESS.md, link it from
+   Coverage, and update PROGRESS_STATE.md with the next action and recovery facts.
+9. When the task outcome and required proof pass, move its task status through
+   validated to done. A user-accepted validation gap must identify the exact AC,
+   risk, and acceptance evidence; never infer acceptance from a request to finish.
+   Continue to the next executable task and then final verification without
+   asking the user to say continue, fix, or invoke another section.
 
-Do not read the full blueprint, backlog, work index, progress log, every
-reference, or every available skill. This section and the selected artifacts are
-the runtime interface.
+Context at task boundaries:
+Reconstruct the next task from durable state. Schema 3 defaults to fresh context;
+continue is an explicit exception naming from_task and its reason. With a manual
+client, narrow the context in the current session if session creation/resume is
+unavailable. Record an actual fallback once in PROGRESS.md and link it in state.
+Missing conversation history alone is not a blocker.
 
-Before editing, compare the workflow provenance in AGENTS.md, FEATURE.md,
-IMPLEMENTATION.md, and PROGRESS_STATE.md with the blueprint source used for this
-run. If the schema is compatible, patch only missing v2 runtime fields and
-continue. Stop only for an incompatible schema or a semantic conflict that
-could change implementation; a digest mismatch alone is not a product blocker.
-
-Batch selection:
-1. If I provide `Target batch: B###`, use that batch.
-2. Otherwise select the first batch in execution order whose status is `ready`
-   or `active`.
-3. If no eligible batch exists, stop and report which planning phase is missing.
-
-Task selection:
-1. Select the next dependency-ready task with status `planned`,
-   `in_progress`, `failed_validation`, or resolvable `blocked`.
-2. Do not start a different task while an earlier selected task has an unresolved
-   related validation failure.
-3. A task blocked by `no_progress` may resume only with a new concrete
-   hypothesis, newly available evidence, or a changed verification path. Do not
-   split it merely to reset the watchdog.
-4. If all tasks are done, enter this section's final verification and repair phase.
-   If unfinished tasks exist but none is executable, report the exact blocker.
-5. Read the selected task's declared `session`. `fresh` starts without prior
-   conversational history and reconstructs the minimum context from the durable
-   sources above. `continue` requests semantic continuity from `from_task`; it
-   does not follow from `dependencies` and must not be inferred at runtime.
-
-Runtime and validation preflight:
-1. Require the plan to declare every v2 `task_execution_policy` field from
-   section 10 and the selected task to declare `session`, `execution_guidance`, task-scoped
-   `validation_commands`, and task-scoped `existing_checks_to_rerun`. Upgrade a
-   compatible v1 policy in place by removing retired elapsed-time and one-cycle
-   limits and adding v2 continuation/no-progress fields; preserve tasks and
-   evidence. Stop only when validation scope is ambiguous.
-2. Enforce the per-command timeout, same-root-cause no-progress limit,
-   same-check retry limit, and task-scope prohibition on repo-wide commands.
-   Do not impose a task-estimate ceiling, turn deadline, environment-recovery
-   count, or validation-remediation count.
-3. Record the task start time, next progress checkpoint, current root cause or
-   hypothesis, consecutive same-root-cause no-progress cycles, and same-check
-   retries without a relevant change in `PROGRESS_STATE.md`.
-4. Before starting, remove exact duplicate checks and confirm that broad checks
-   remain batch- or CI-scoped. Do not create another T* task to make validation
-   fit a count or duration target.
-5. A command duplicated between validation_commands and
-   existing_checks_to_rerun runs once and counts once.
-6. Do not run batch- or CI-scoped validation while a T* task is active. Reading SECURITY.md,
-   TESTING_POLICY.md, references, skills, command catalogs, or repo scripts does
-   not promote a check into task scope.
-7. Before launching a command, establish an enforceable cancellation path at
-   its declared timeout using the active harness, process/session control, or
-   an available timeout wrapper. If no cancellation path exists, stop that
-   command path and use a safe alternative or record a real verification blocker.
-8. Treat dependency installation, package-manager repair, browser download or
-   selection, runtime switching, and comparable setup fallback as environment
-   recovery. Continue only with evidence-backed, meaningfully different
-   hypotheses inside the authorized tool/data boundary. Do not add an undeclared
-   package, registry, browser, download channel, or system fallback. Apply the
-   same-root-cause no-progress rule; a new resource name or reclassified error is
-   not progress by itself.
-9. Review the impact map before editing. Re-run its targeted repo searches when
-   the task changes a shared seam or when the working tree reveals a new one.
-   Add newly discovered consumers, owners, and regression proof before code
-   changes make them stale.
-10. Treat session routing only as context delivery. It cannot change task
-    selection, lifecycle ownership, validation scope, traceability, security,
-    authorization, no-progress bounds, or final-verification gates.
-11. Confirm that each required local validation command declares its
-    provider-neutral capabilities. Do not treat a capability inventory as proof
-    that the selected executor has those capabilities; final verification owns
-    that preflight after independent repair work is complete.
-
-Execution loop:
-1. Confirm the task's goal, `done_when`, `feature_refs`, acceptance criteria, validation,
-   session relationship, execution guidance, references, applicable skills, dependencies, and stop
-   conditions.
-2. Record branch, intended base when known, pre-existing modified files, selected
-   task id, task start time, next progress checkpoint, current root cause or
-   hypothesis, active references, and active skills in `PROGRESS_STATE.md`.
-   Preserve same-root-cause no-progress and same-check counters when resuming the
-   same path; reset only after concrete progress or a meaningfully new hypothesis.
-3. Apply this section's lifecycle ownership rules before editing. `WORK_INDEX.md`
-   is the authoritative batch-status owner; source NMI status belongs to
-   `PRODUCT_BACKLOG.md`; task status and current execution state must agree
-   between IMPLEMENTATION.md and PROGRESS_STATE.md. When a `ready` batch starts,
-   update those owners and then mirror the phase in batch artifacts.
-4. Explore the relevant repo seam before editing. Treat likely files and proposed
-   techniques as hypotheses; preserve unrelated user work.
-5. Load each applicable skill only at its declared phase. Follow it within task
-   scope and record the material decision or evidence it contributes. If a
-   required skill is unavailable, use its contract-defined provider-neutral
-   fallback. Stop only when both the capability and fallback are unavailable;
-   absence of a provider-specific skill name is not itself a blocker.
-6. Implement the smallest change that satisfies the task. If repo evidence
-   contradicts the contract, a stop condition occurs, or authorization is
-   missing, stop instead of expanding scope.
-7. Run declared task-scoped `validation_commands` and
-   `existing_checks_to_rerun`. When implementation reveals a previously unknown
-   risk, consumer, or nearer focused check, the agent may add and run one safe,
-   local, task-scoped check without user approval when it stays inside the locked
-   feature and current permission/data boundary. Record the command, scope,
-   purpose, discovery evidence, and plan update before running it. Reclassify
-   broader proof as pending batch or CI validation; never silently widen scope.
-   Previously failed task-scoped checks must be rerun after a relevant fix. Do
-   not rerun the same check without a related code/configuration change or a new
-   falsifiable hypothesis.
-   Diagnose and repair a failing task check when evidence ties it to the selected
-   task's diff, `done_when`, acceptance criteria, impact map, or a previously
-   passing related path. Keep the task `in_progress` while each cycle narrows the
-   failure or tests a meaningfully different hypothesis. For unrelated failures,
-   record the evidence without changing unrelated application code and classify
-   the owning integration or release evidence truthfully.
-8. Monitor each command and invoke the established cancellation path at its
-   declared timeout. A timeout is one failed hypothesis, not automatic batch
-   failure; diagnose it within scope or record a real verification blocker.
-   Never leave the command running unbounded or in the background.
-9. For user-visible UI work, render and interact with the affected responsive,
-   loading, empty, error, and interaction states. Compare them against the
-   approved/reference visual direction and each visual-rubric criterion. Record
-   screenshots or equivalent observable evidence, accessibility and
-   reduced-motion findings, and any discrepancy. Do not treat passing DOM tests
-   as proof of visual quality.
-10. For conversion work, report the tested hypothesis, primary metric, guardrails,
-    and baseline or explicit unknown. For experiments, preserve the planned
-    sample-size method and duration. Do not report estimated uplift as observed
-    evidence.
-11. Review the final diff for scope, regression risk, generated-file mistakes,
-    temporary code, focused/skipped tests, and sensitive data.
-12. At `progress_checkpoint_minutes`, make a concise progress checkpoint: record newly
-    satisfied `done_when` items, the narrowed failure set, the remaining
-    concrete path, and avoidable overhead removed. Continue working; the
-    checkpoint is not a deadline, approval point, split trigger, or final answer.
-13. After each material explore/edit/check cycle, increment the no-progress
-    counter for the current root cause only when no `done_when` item was newly
-    satisfied, no failure was narrowed, and no decisive repo evidence changed
-    the next action. Reset it on concrete progress or a meaningfully different
-    root-cause hypothesis. Mere failure reclassification, log collection, or
-    discovery of another failing resource does not reset it. When it reaches
-    `task_execution_policy.same_root_cause_no_progress_limit`, stop, preserve
-    work, record `no_progress`, and set the task to `blocked`. Report the last
-    hypotheses and the evidence or decision needed to resume; do not create a
-    replacement task to reset the watchdog.
-14. If the same check is requested again without a relevant change, enforce
-    `max_same_check_retries_without_change` and stop as `no_progress` when the
-    limit is exceeded.
-15. If every task completion gate passed, move the task through
-    `validated -> done`. If an evidence-backed repair path remains, keep it
-    `in_progress` and continue. A missing implementation, required test,
-    fixture, assertion, or workflow correction inside the locked scope is
-    unfinished work, never a blocker. Use `failed_validation` or `blocked` only
-    when execution must actually stop under the strict terminal gate below.
-16. At each completed task boundary, update `PROGRESS.md`, `PROGRESS_STATE.md`,
-    touched impact/traceability rows, and lifecycle owners before changing
-    provider context. Then select the next dependency-ready task and obey its
-    planned session relationship. For a harness that supports task-boundary
-    routing, return an `in_progress` result with the completed `task_id` and a
-    semantic `session_route` containing the selected batch id, next task id,
-    mode, and `from_task` when applicable. The harness must match it to one
-    unambiguous IMPLEMENTATION.md contract, require the completed task to be
-    `done`, and require the target task to be executable with completed
-    dependencies. A `done` source remains an attestation that its validation and
-    task-local traceability gates were closed; routing never weakens that meaning.
-    Omit `session_route`
-    during same-task repair or internal continuation. Do not emit a terminal
-    answer or wait for the user at a normal task boundary.
-17. For `fresh`, start a new provider session and reconstruct only the durable
-    context listed by this section. For `continue`, resume the provider session
-    associated with `from_task` when the active adapter can do so. Resume tokens,
-    thread ids, and provider-specific handles are adapter state, never workflow
-    artifact fields or part of the blueprint contract.
-18. If the declared source session is unavailable, the provider cannot guarantee
-    that specific continuation, or a manually invoked executor has no access to
-    it, fall back once to `fresh`. Record the requested relationship, effective
-    fresh mode, and reason in PROGRESS.md/PROGRESS_STATE.md, reconstruct durable
-    context, and continue autonomously. Stop only if durable state is itself
-    insufficient or another normal blocker applies; never guess missing facts.
+An optional runner may return in_progress with completed task_id and session_route
+for the next task. It checks the selected batch, planned relationship, completed
+source task, and target dependencies. Omit session_route during same-task repair.
+Provider tokens stay in adapter state. Session routing never changes scope,
+permissions, validation, or lifecycle rules and never requires a user pause.
 
 Final verification and repair:
-1. Enter this phase only when every T* task is `done` or a justified
-   `superseded` task links to completed replacements. Keep the batch `active`.
-2. Inspect the observable outcome, lifecycle artifacts, traceability, impact
-   map, declared commands, and existing evidence before running broad validation.
-   Build one repair list and record each safe executable item as `Executable next
-   action` in PROGRESS_STATE.md. A missing implementation, required test,
-   fixture, assertion, evidence record, or workflow correction inside the locked
-   scope is unfinished repair, not a blocker.
-3. Classify every finding before acting:
-   - related and inside locked scope: reopen the existing T* task that owns the
-     affected requirement or seam, keep the batch active, make the smallest
-     repair, and return that same task through its normal gates; never create a
-     validation-only or replacement task merely to perform finalization repair
-   - unrelated: do not edit unrelated application code; preserve truthful
-     integration or release state
-   - new scope, permission, destructive action, missing product decision, or
-     unsafe verification: record it as a blocker candidate, but continue every
-     independent safe in-scope repair first
-4. Complete every independent safe, authorized, in-scope edit, diagnostic,
-   focused check, rerun, and other executable action before considering a
-   blocker. A failed command caused by an unavailable capability does not erase
-   or convert remaining repair work into `blocked`. Keep the owning task
-   `in_progress` while a repair path remains and update `Executable next action`
-   after each material cycle.
-5. A newly discovered safe focused check follows the same recording rule as the
-   execution loop. A broader check must be added to Batch validation or recorded
-   as CI-scoped before it runs; never silently widen validation scope. Apply the
-   same-root-cause no-progress and no-change retry bounds without stopping after
-   the first ordinary red check.
-6. When the independent repair list is empty, combine `required_capabilities`
-   from every required local batch command and preflight the selected executor
-   before running final validation or mutating any batch, source-item, or final
-   task lifecycle owner. Provider-specific sandbox, permission, writable-root,
-   browser, database, and launcher configuration belongs in the adapter or
-   client, never in this blueprint or generated workflow artifacts.
-7. The adapter must select a profile that provides every declared capability or
-   route final verification to a capable adapter. If neither is available, fail
-   before final validation and lifecycle mutation. Record the exact missing
-   capability and the materially different permitted recovery paths considered.
-   Do not weaken checks, fabricate proof, or mark unfinished repair complete.
-8. After capability preflight passes, require explicit Batch validation and CI
-   validation sections. Deduplicate identical required batch commands, run each
-   local batch command once at its declared timeout, and never run CI-scoped
-   commands locally. Exercise the user-visible or externally observable
-   FEATURE.md outcome; material UI work requires rendered live states and every
-   visual-rubric criterion, not only source or DOM inspection.
-9. Diagnose and repair every related in-scope finalization defect without user
-   steering. Reopen its existing owning T* task, run the nearest focused proof,
-   rerun only affected failed batch proof, and repeat steps 2–8. A normal defect
-   is unfinished repair; it is not permission to stop or create another task.
-10. Record every command, observation, finding, repair, rerun, capability
-    preflight, impact consumer, and traceability result in PROGRESS.md and
-    PROGRESS_STATE.md before changing any batch or source status. Evidence added
-    after closure does not retroactively validate an earlier `done`; it requires
-    an explicit revalidation event.
-11. Confirm required task and batch validation is closed, every traceability row
-    and impact-map consumer is verified or explicitly accepted, material UI
-    evidence is complete, required approvals are recorded, and `Executable next
-    action` is `none`.
-12. Record release evidence independently as `not_required`, `pending`,
-    `verified`, `failed`, or `accepted_gap`. Pending release evidence blocks only
-    `release_ready` unless FEATURE.md explicitly requires it for completion.
-13. Only after steps 1–12 are evidenced, move the authoritative batch owner
-    through `validated -> done`, then move source NMI owners directly from
-    `active` or `blocked` to `done`. Mirror the final phase in batch artifacts and
-    record the closure event. Otherwise keep every owner truthfully non-done.
+1. Inspect the requested outcome, Coverage, declared checks, and existing proof.
+   If implementation or required evidence is missing, reopen its owning task and
+   return to the implementation loop. Partial batches follow the same route;
+   entering this phase does not assume that all task statuses are already done.
+2. Finish independent safe in-scope repairs and diagnostics before declaring a
+   blocker or requesting final capability preflight. A missing test is a repair,
+   not an unavailable environment. Record the next executable action in state.
+3. Once repair preparation is complete, preflight only the capabilities required
+   by required local commands in Batch validation. Exclude optional commands,
+   CI checks, and completed task checks. The adapter's declared capability list
+   is a configuration check, not proof that a database or browser works. Confirm
+   actual availability with permitted diagnostics and validation. Use an already
+   authorized capable client/profile when available; otherwise record the exact
+   unavailable capability and attempted permitted recovery paths.
+4. Deduplicate required batch commands and run each once at its declared timeout.
+   Never launch CI-scoped commands locally. Exercise the observable feature and
+   its required UI states; reuse still-valid task evidence rather than rerunning
+   unchanged passing checks. Repair related failures in their owning tasks, then
+   rerun only affected proof. Repeat this loop while evidence shows progress.
+5. Before closure, record proof in PROGRESS.md and link each required AC/C and
+   consumer to it through Coverage. Confirm that task work is complete, required
+   validation is passed or explicitly accepted, approvals are evidenced, and no
+   safe authorized in-scope action remains. Later evidence cannot retroactively
+   justify an earlier done; record a revalidation event when needed.
+6. Update integration and release evidence in the WORK_INDEX.md row separately
+   as not_required, pending, verified, failed, or accepted_gap. Pending release
+   proof blocks release_ready; it blocks batch done only when that completion
+   level is required by FEATURE.md. On evidenced completion move the batch
+   validated -> done and its source NMI rows to done, append a closure event,
+   and set Executable next action to none. No other document owns batch status.
 
-Completion:
-- `done`: every `done_when` item and relevant acceptance criterion is satisfied;
-  required task-scoped and focused existing checks pass within their timeouts;
-  skill-specific evidence is recorded; task-local traceability and progress agree.
-- `failed_validation`: execution stopped with implementation present and a
-  required task-scoped check unresolved after the same-root-cause no-progress
-  limit or a real verification blocker.
-- `blocked`: no executable in-scope repair path remains, all independent
-  repairable work is complete, and an exact missing capability, authority,
-  product decision, external input, or exhausted no-progress path prevents
-  continuation; no materially different permitted recovery path is available.
-- `in_progress`: the coherent task still has a concrete evidence-backed path;
-  continue it without requiring another user instruction.
-- `rolled_back`: agent-created changes were reverted or abandoned with recovery
-  evidence.
+Terminal gate:
+- verified completion: the requested scope and its required proof are complete,
+  including any specific user-accepted gaps. Report delivery, integration and
+  release state separately, changed files, evidence links, and remaining risks.
+- blocked: no safe authorized executable path remains and an exact missing
+  capability, authority, product decision, external input, or exhausted
+  no-progress path prevents continuation. Preserve work and record what would
+  enable resumption. Use failed_validation when implementation is present but
+  required validation remains unresolved at this genuine stopping point.
+- in_progress: a concrete permitted path remains. Continue without a terminal
+  answer. Do not mark done or blocked simply because a test is red, an artifact
+  is long, a task boundary was reached, or commit packaging failed.
 
-Do not convert a validation gap into completion. Use `accepted_gap` only after
-explicit user acceptance recorded in `PROGRESS.md`.
-
-If this was the last task:
-1. keep the batch `active`
-2. leave declared batch items open and keep CI under release evidence
-3. enter final verification and repair immediately
-4. close lifecycle owners only from evidence already recorded by that phase
-
-Terminal gate: a final response is forbidden while PROGRESS_STATE.md records an
-`Executable next action` other than `none`, or while any other safe, authorized,
-in-scope edit, diagnostic, focused check, rerun, or executable `Next` action
-remains. This applies even after a validation command reports an environment or
-permission failure. A real blocker is terminal only when the strict `blocked`
-definition above is fully evidenced.
-
-Final output only at verified batch completion or a real blocker:
-1. batch delivery, integration, and release status
-2. tasks completed and files changed
-3. validation, visual/skill evidence, and results
-4. impact-map and traceability closure
-5. risks, gaps, blockers, or pending external release evidence
-6. exact user decision or authority needed, only when blocked
-
-Commit packaging is optional and uses `COMMIT_MESSAGE.md` only when requested or
-required by repo policy.
+A final response is forbidden while an executable in-scope action remains.
+For section 12's named_task_only request, this gate covers only the named task;
+record the next batch action for later without executing it or claiming batch
+completion. For batch execution, finish all independent repairable work first.
+Commit packaging is optional and uses COMMIT_MESSAGE.md when present and requested
+or required by project policy. Its absence does not block delivery.
 ```
 
 ## 12. Execute A Specific Task
 
-Section 12 is the stable named-task adapter for section 11. It intentionally does
-not duplicate the runtime procedure.
-
 Use this prompt:
 
 ```text
-Use section 11 of `feature_execution_blueprint.md` with:
-
-First run the common provenance preflight from this blueprint for section 12.
-
-Target task: <TASK_ID>
-Target batch: <B###, when supplied>
+Run the common provenance preflight from this blueprint, then section 11 with:
+Target task: <T###>
+Target batch: <B###>
 Execution scope: named_task_only
 
-Select that task instead of the next unfinished task, then follow section 11's
-context loading, runtime policy, lifecycle ownership, task-scoped validation,
-evidence, repair, and stop rules. After the named task reaches `done`, update
-state and return its evidence; do not continue to another task or invoke section
-11 final verification unless the request explicitly changes `Execution scope`
-to `batch_to_verified_outcome`.
-
-Honor the named task's declared session relationship. If it declares `continue`
-but the `from_task` provider session is unavailable to this invocation, record a
-truthful fallback and execute it as `fresh` from durable state as section 11
-defines. The missing provider session alone is not a blocker and does not permit
-loading unrelated history or skipping any task gate.
-
-If the named task does not exist, its dependencies are incomplete, its status is
-not executable, or another task has an unresolved related validation failure,
-stop and report the exact conflict. Do not silently substitute another task.
+Select only that task. If it is missing, not executable, or has incomplete
+dependencies, report the exact conflict instead of substituting another task.
+Follow section 11's implementation, validation, repair, context, and stop rules.
+After the named task is done, record its evidence and the next batch action,
+then return. Do not start another task or final batch verification unless the
+user changes the execution scope. Keep the batch active pending finalization.
 ```
 
 ## 13. Validate And Close A Batch
 
-Section 13 is a compatibility alias, not an independent finalization procedure.
-Section 11 owns canonical final verification and repair. Keep this number stable
-for saved prompts and for deliberately checking an existing batch.
+Section 13 is the stable repair/audit entry point to section 11.
 
 ```text
 Mode: repair_existing_batch unless the request explicitly says audit_only.
+Target batch: <B###>
 
-- repair_existing_batch: this is repair-mandatory, not audit-only and not merely
-  permission to repair. Run the common provenance preflight from this blueprint,
-  select the supplied Target batch, and enter section 11 at `Final verification
-  and repair`. Reopen the existing owning T* task for every related in-scope
-  defect; do not create a validation-only or replacement task. A missing
-  implementation, required test, fixture, assertion, evidence record, or
-  workflow correction is unfinished repair. Complete every independent safe,
-  authorized, in-scope repair and executable `Next` action before applying the
-  capability preflight or considering `blocked`. Do not stop after the first
-  environment or permission failure, and do not return a terminal response while
-  any executable in-scope path remains. Close the existing batch only through
-  section 11's evidence and lifecycle gates.
-- audit_only: compare provenance without applying preflight migrations, select
-  the supplied Target batch, and inspect the same artifacts and declared evidence.
-  Report stale provenance as a finding; do not edit
-  application code or any workflow file, do not change status, and do not write
-  findings into PROGRESS.md. Run only explicitly requested read-only checks.
-  Return findings, evidence gaps, and the exact repair entry point in the response.
+Resolve the exact batch first. If it is already done and revalidation was not
+requested, return its recorded result without commands or mutations.
 
-If the batch is already done and revalidation was not explicitly requested,
-return its recorded result without commands or mutations.
+repair_existing_batch: run the common provenance preflight, inspect the current
+work and evidence, then enter section 11's Final verification and repair. For a
+partially implemented batch, that loop resumes unfinished tasks before broader
+validation. Reopen existing owning tasks for missing code, tests, fixtures,
+assertions, or evidence; do not create validation-only or replacement tasks.
+The same repair-mandatory continuation and terminal gate apply.
+
+audit_only: compare provenance and inspect the selected contract, plan, state,
+and recorded evidence. Do not apply migrations, edit files, change statuses,
+or write findings to PROGRESS.md. Run only explicitly requested read-only checks.
+Report findings, evidence gaps, and the exact repair entry point in the response.
 ```
 
 ## 14. Evaluate Blueprint, Model, And Harness Changes (Maintainer Only)
 
-This maintainer-only appendix is an acceptance protocol for changes to the
-workflow system. Do not load it while running sections 8–13. It is not part of
-normal feature execution, sections 11 and 13 never invoke it, and it does not run
-automatically. Use it deliberately before accepting a change to this blueprint,
-generated policy wording, the selected model or reasoning setting, available
-tools, or agent harness behavior.
+This maintainer-only appendix describes behavioral evaluation. Do not load it
+while running sections 8–13 or invoke it automatically during feature delivery.
+There are two distinct claims:
+
+- Technical acceptance: the changed documentation, generated example, parser,
+  and local regression checks agree. This permits shipping a technically checked
+  change with explicit behavioral uncertainty.
+- Behavioral acceptance: comparable baseline/candidate agent runs demonstrate
+  results on stated tasks and configurations, with retained independent evidence.
+  Local unit tests and scripted adapters do not establish this claim.
+
+Choose cases proportional to the behavior changed. A useful pilot is six
+sanitized tasks covering a local change, a risky shared-contract change, and a
+multi-session repair, each run twice with both versions: 24 runs. Hold starting
+revision, model, effort, tools, and access constant; vary the workflow only.
+Independently verify correctness and record repairs after first claimed completion,
+necessary versus avoidable user interventions, elapsed time, and actual token/cost
+usage when available. Unknown cost stays unknown. Report per-case differences
+and variability; do not generalize this small pilot to all development work.
+Describe the experiment before running it; this appendix itself authorizes no
+paid runs or external transmission.
+
+The remaining protocol specifies the optional reference suite's stronger
+behavioral acceptance bar. Its ten dimension scores are 10 times the pass fraction
+of cases tagged with that dimension, not independent calibrated quality ratings.
+The thresholds below are suite policy, not universal productivity or quality laws.
+A small pilot can report results without claiming reference-suite acceptance.
 
 If no evaluation runner exists, the operator executes the cases below and records
 the results. A text or schema validation test proves only that required rules are
@@ -2161,12 +1544,12 @@ test every intentional copy for drift.
 
 ### 14.4 Apply the acceptance bar
 
-Score these dimensions from 0 to 10: outcome correctness, autonomous continuity,
+The reference suite reports these dimensions on its 0-to-10 pass-fraction scale: outcome correctness, autonomous continuity,
 repair behavior, downstream-impact coverage, UI or observable quality, evidence
 and status truthfulness, context and artifact efficiency, safety and scope
-control, usability without steering, and regression evaluability. Accept a
-candidate only when every dimension is at least 9.0/10 and every hard gate
-passes. Do not average away a weak dimension.
+control, usability without steering, and regression evaluability. Mark a
+reference-suite candidate accepted only when every dimension is at least 9.0/10
+and every hard gate passes. Do not average away a weak dimension.
 
 Hard gates:
 
@@ -2218,7 +1601,10 @@ rules when the provider supports it. Otherwise retain and hash the complete
 effective config, rules, hooks, MCP servers, skills, tools, sandbox, and arguments;
 self-declared labels alone are not comparable configuration evidence.
 
-Official guidance reviewed for revision 2.4.0 on 2026-08-24:
+Historical source review for revision 2.4.0, dated 2026-08-24. These links
+provide design context, not evidence that this workflow improves productivity.
+The Codex execution-plans recipe is now archived; treat it as a historical
+example of durable planning, not a current mandatory practice:
 
 - [OpenAI ExecPlans](https://developers.openai.com/cookbook/articles/codex_exec_plans),
   [long-running work](https://learn.chatgpt.com/docs/long-running-work), and

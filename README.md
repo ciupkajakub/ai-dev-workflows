@@ -19,25 +19,25 @@ Do not use it as a replacement for human review, security review, production cha
 ## 5-minute quickstart
 
 1. Copy `feature_execution_blueprint.md` into your project or keep it open next to your project.
-2. Ask your coding agent to run sections 2-7 of the blueprint to create the base `ai-workflow/` files.
+2. Ask your coding agent to run sections 2-6 of the blueprint to create the base `ai-workflow/` files.
 3. Paste raw feedback into the prompt from section 8 to create backlog and batch entries.
 4. Run section 9 to turn one selected batch into `FEATURE.md`.
 5. Run section 10 to create `IMPLEMENTATION.md`, `PROGRESS.md`, and `PROGRESS_STATE.md`.
 6. Use section 11 to start from the next task and continue autonomously through
-   dependency-ready tasks plus repair-mandatory finalization. Each task uses its
-   planned fresh or continued session relationship. Use section 12 only when you
-   intentionally want one named task.
+   dependency-ready tasks plus repair-mandatory finalization. Each task
+   reconstructs its durable context; explicit continuation is available when
+   useful. Use section 12 only when you intentionally want one named task.
 7. Section 11 owns final verification and repair. Section 13 remains a compatible
    direct entry point for repairing an existing batch or running a read-only audit.
-8. Deliberately run section 14 before accepting changes to prompts, models, tools,
-   or harness behavior. It is an evaluation runbook, not an automatic part of
-   feature execution.
+8. Use section 14 when measuring workflow changes. Local regression checks
+   establish technical correctness; a comparable baseline/candidate experiment
+   is needed to claim better agent behavior. Neither runs automatically.
 
 For the executable reference checks, run:
 
 ```sh
 bin/feature-execution doctor example/ai-workflow \
-  --blueprint feature_execution_blueprint.md
+  --blueprint feature_execution_blueprint.md --batch B001
 python3 -m unittest discover -s tests
 ```
 
@@ -55,8 +55,12 @@ Existing commands such as `Use section 12 ... task T002` remain valid.
 
 `bin/feature-execution` is one public command with four operations:
 
-- `doctor` checks generated provenance, lifecycle agreement, required files,
-  allowed statuses, and artifact-size targets.
+- `doctor` checks provenance, required files, and lifecycle owners. Use
+  `--batch B001` to check one batch and its linked index entries; omit it for an
+  explicit whole-workflow audit. Size targets are warnings, and the commit helper
+  is optional. Unknown/ambiguous targets are errors. Schema 2 retains legacy
+  status checks; schema 3 has one batch-status owner. The doctor does not verify
+  semantic equivalence of generated prose or product correctness.
 - `run` drives execution through internal continuation until a verified outcome,
   real blocker, authorization boundary, or the three-cycle no-progress watchdog.
   It preserves a provider session within a task, switches sessions at declared
@@ -98,6 +102,12 @@ bin/feature-execution eval \
   --effort '<effort setting>' \
   --tools '<tool set>'
 ```
+
+The suite thresholds are acceptance policy for these cases, not universal
+quality ratings. Dimension scores are ten times the pass fraction of tagged
+cases. Section 14 also describes a smaller 24-run pilot; no behavioral comparison
+was performed for revision 3.0.0, so technical checks do not establish a
+productivity or reliability improvement.
 
 The canonical suite contains executable verifier commands. Review the suite
 first: `--allow-verifier-commands` explicitly authorizes those commands to run
@@ -159,8 +169,10 @@ reads `FEATURE_EXECUTION_CODEX_MODEL`, `FEATURE_EXECUTION_CODEX_EFFORT`,
 `FEATURE_EXECUTION_CODEX_TOOLS_LABEL`, `FEATURE_EXECUTION_CODEX_SANDBOX`, and
 `FEATURE_EXECUTION_CODEX_CAPABILITIES`. The capability list describes the local
 resources available to the selected execution profile and is checked before the
-agent continues into final validation. `FEATURE_EXECUTION_CODEX_ARGS` must remain
-an empty JSON array during a controlled evaluation. For a behavioral report,
+agent continues into final validation. Only required local Batch validation
+commands contribute to that check. Declarations do not prove that the database
+or browser actually works; permitted diagnostics and validation provide proof.
+`FEATURE_EXECUTION_CODEX_ARGS` must remain an empty JSON array during a controlled evaluation. For a behavioral report,
 the first three values must match `--model`, `--effort`, and `--tools`; the runner
 checks that match on every turn and never treats an unknown value as evidence.
 
@@ -169,14 +181,13 @@ Pasteable setup prompt:
 ```text
 Use feature_execution_blueprint.md to create the base ai-workflow files for this repository.
 
-Run only sections 2-7.
+Run only sections 2-6. Section 7 is an optional commit-message helper.
 Create:
 - ai-workflow/AGENTS.md
 - ai-workflow/SECURITY.md
 - ai-workflow/TESTING_POLICY.md
 - ai-workflow/PRODUCT_BACKLOG.md
 - ai-workflow/WORK_INDEX.md
-- ai-workflow/COMMIT_MESSAGE.md
 
 Do not create feature work files yet.
 Do not implement code.
@@ -202,20 +213,18 @@ tests, and unsafe tool access truthfully. An ordinary related failing check stay
 active while an evidence-backed repair path is progressing; real validation,
 permission, scope, and safety blockers remain explicit.
 
-The workflow combines a downstream-consumer impact map with grouped traceability
-closure. Every implementation-affecting contract item and changed shared seam
-maps to an owner plus proof, blocker, or explicitly accepted gap without
-duplicating the same evidence across hundreds of rows.
+The Coverage table maps contract ids and shared-contract consumers to task
+owners, validation ids, and evidence links. Requirements stay in FEATURE.md,
+commands in the plan, and results in PROGRESS.md. The table does not copy them.
 
 Before accepting a completed batch, the blueprint's finalizer runs declared
 broader local checks, exercises the observable result, evaluates UI against its
 visual rubric when applicable, and repairs related in-scope findings while
 evidence shows progress. Missing tests and workflow corrections are unfinished
-repair, not blockers. After all independent repairs, the adapter verifies that
-its selected profile provides the declared database, browser, filesystem, and
-other local capabilities before final validation or lifecycle closure. The
-finalizer checks lifecycle consistency, impact and traceability closure, security
-approvals, and final-report accuracy before closing delivery.
+repair, not blockers. After independent repairs, the adapter compares required
+capabilities with its configured profile. The executor confirms actual access
+through permitted diagnostics and validation. The finalizer checks lifecycle
+owners, Coverage, security approvals, and final-report accuracy before closure.
 
 ## Outcome-driven task execution
 
@@ -228,26 +237,13 @@ on the same root cause, and rerunning an unchanged check. Section 11 proceeds
 across task boundaries and into finalization without requiring `Continue` or
 `Fix` prompts.
 
-The execution architecture is:
-
-```text
-strong planner -> durable execution contract -> potentially cheaper isolated workers
-               -> final verification or escalation
-```
-
-Section 10 records a small task-level `session` contract. `fresh` is the default:
-the executor reconstructs only the required context from `AGENTS.md`,
-`PROGRESS_STATE.md`, the selected task, exact `feature_refs`, completed dependency
-outcomes, routed references and skills, and repository code/tests. `continue`
-names an earlier task and is reserved for concrete implementation discoveries or
-debugging state that would be expensive to reconstruct. `depends_on` does not
-imply `continue`.
-
-This design does not require using different models. It permits a strong planner
-to produce a durable contract that cheaper or lower-effort workers can execute,
-with difficult work and final verification escalated when useful. It is not a
-multi-agent framework: there is no automatic model policy, parallel scheduler,
-agent pool, distributed queue, or worktree orchestration.
+Schema 3 tasks have six required fields: id, status, outcome, feature_refs,
+dependencies, and validation_commands. Omitted session metadata means fresh
+context reconstructed from durable state. An explicit `continue` names a prior
+task and a concrete reason to reuse its implementation/debugging discoveries.
+Dependencies alone do not imply continuation. A manual client can reconstruct
+the selected context within its current session when provider-session control
+is unavailable; creating another conversation is not a completion gate.
 
 Provider adapters implement semantic continuity using their own mechanism. The
 Codex adapter uses resume tokens, but those tokens never enter workflow
@@ -260,9 +256,9 @@ that a requested continuation handle is unavailable; other adapter failures
 remain errors and are not retried as fresh sessions.
 
 Full suites, repo-wide build/lint/typecheck, full-history or repository security
-scans, dependency audits, and CI commands cannot be task-scoped. This reduces
-total batch time by running broad proof once instead of repeating it for each
-task.
+scans, dependency audits, and CI commands cannot be task-scoped. This avoids
+scheduling the same broad proof for every task. Actual elapsed time or cost
+improvements require a comparative measurement.
 
 `IMPLEMENTATION.md` assigns every check to exactly one scope:
 
@@ -279,7 +275,9 @@ runs each declared batch command once initially, reruns only failed proof after 
 relevant repair, and closes feature delivery separately from integration and
 release evidence. Pending CI blocks `release_ready`, not a truthful
 feature-delivery claim, unless the feature contract explicitly requires release
-readiness. Section 13 is only the stable repair/audit alias for this same phase.
+readiness. Section 13 enters the same repair loop for an existing batch,
+including a partially implemented one. Unfinished work returns to its owning tasks before
+final validation.
 
 ## Context strategy
 
@@ -315,16 +313,42 @@ The blueprint is the source of truth. It contains prompts and templates for gene
 - `ai-workflow/TESTING_POLICY.md`
 - `ai-workflow/PRODUCT_BACKLOG.md`
 - `ai-workflow/WORK_INDEX.md`
-- `ai-workflow/COMMIT_MESSAGE.md`
+- `ai-workflow/COMMIT_MESSAGE.md`, optional
 - `ai-workflow/work/B###/FEATURE.md`
 - `ai-workflow/work/B###/IMPLEMENTATION.md`
 - `ai-workflow/work/B###/PROGRESS.md`
 - `ai-workflow/work/B###/PROGRESS_STATE.md`
 
-Generated runtime artifacts record the exact blueprint source, declared
-revision, workflow schema, and SHA-256 digest. This lets a run detect a stale
-project copy while continuing from the newer canonical source without rewriting
-historical evidence.
+Schema 3 defines one owner for each changing fact:
+
+| Information | Owner |
+| --- | --- |
+| Product requirements, AC, decisions, completion level | FEATURE.md |
+| Task statuses, dependencies, commands, Coverage | IMPLEMENTATION.md |
+| Batch status and integration/release state | WORK_INDEX.md |
+| NMI status | PRODUCT_BACKLOG.md |
+| Material decisions, command results, repairs, accepted gaps | PROGRESS.md |
+| Next action, recovery facts, links to evidence and open checks | PROGRESS_STATE.md |
+
+FEATURE.md has five required, populated sections: Outcome, Scope, Acceptance
+criteria, Decisions and constraints, and Verification. Permissions, performance,
+data, UI, and other relevant requirements belong inside these sections, without
+nullable fields or empty optional headings. Stable AC/C references prevent the
+shorter format from dropping a requirement during planning.
+
+Generated current artifacts record the exact source, revision, schema, and digest.
+Preflight checks operational instructions even when metadata already matches:
+obsolete task/count limits, extra approval pauses, first-failure stops, provider
+session requirements, and mirrored state must be reconciled against the canonical
+contract. It preserves real project constraints and does not infer a semantic
+migration from a changed hash.
+
+The blueprint includes the known schema 2-to-3 migration. Apply it only to selected
+work; preserve task ids, requirements, legacy references, and prior evidence.
+PROGRESS.md keeps its earlier bytes and provenance and gains a migration entry.
+Unrelated and archived batches are not rewritten. The doctor can still inspect
+schema 2 artifacts and reports known migration drift as warnings; it remains a
+structural check, not an agent-behavior verifier.
 
 `ai-workflow/AGENTS.md` is generated by the blueprint and is read by the workflow
 prompts. It intentionally stays compact and repo-specific rather than repeating

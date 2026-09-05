@@ -1,9 +1,9 @@
 # Agent rules
 
-Workflow schema: `2`
+Workflow schema: `3`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.4.0`
-Blueprint digest: `de5c2c52bb128c3337bc0c7c38c40833ac5badc84f13b8bbfa1d343b51ea7039`
+Blueprint revision: `3.0.0`
+Blueprint digest: `4ec4a15ff4b2718372b62fb42af6c10359f1c7028ea0c2e0820b9b2ae5eaaf4b`
 
 Example note: this file is fictional sanitized output for a sample task
 management app. Paths and commands are illustrative.

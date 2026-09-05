@@ -8,6 +8,13 @@ import subprocess
 import tempfile
 import unittest
 
+from feature_execution.doctor import inspect_workflow
+from feature_execution.harness import (
+    _declared_validation_capabilities,
+    _executable_next_actions,
+    _validate_planned_session_route,
+)
+
 from feature_execution.evals import (
     _copy_workspace_snapshot,
     _report_integrity_failures,
@@ -319,6 +326,135 @@ class DoctorCliTest(unittest.TestCase):
             self.assertIn("status_mismatch", issue_codes)
             self.assertIn("missing_provenance", issue_codes)
             self.assertIn("artifact_too_large", issue_codes)
+
+
+    def test_scoped_doctor_ignores_other_batch_errors_and_reports_scope(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflow = Path(directory)
+            write_valid_workflow(workflow)
+            (workflow / "work" / "B002-broken").mkdir()
+            with (workflow / "WORK_INDEX.md").open("a") as handle:
+                handle.write("| B002 | active | work/B002-broken |\n")
+            self.assertFalse(inspect_workflow(workflow)["valid"])
+            with (workflow / "WORK_INDEX.md").open("a") as handle:
+                handle.write("| B002 | done | work/B002-broken |\n")
+            result = run_cli("doctor", workflow, "--batch", "B001")
+            self.assertEqual(result.returncode, 0, result.stdout)
+            report = json.loads(result.stdout)
+            self.assertEqual(report["scope"], {"batch": "B001"})
+            self.assertEqual(report["batches_checked"], 1)
+            self.assertFalse(report["semantic_rules_checked"])
+
+    def test_scoped_doctor_rejects_unknown_invalid_and_ambiguous_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflow = Path(directory)
+            write_valid_workflow(workflow)
+            for target in ("B999", "../B001", "B001-extra"):
+                result = run_cli("doctor", workflow, "--batch", target)
+                self.assertNotEqual(result.returncode, 0, target)
+            index = workflow / "WORK_INDEX.md"
+            original_index = index.read_text()
+            index.write_text(original_index + "| B001 | done | work/B001-example |\n")
+            result = run_cli("doctor", workflow, "--batch", "B001")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("ambiguous work index", result.stderr)
+            index.write_text(original_index)
+            (workflow / "work" / "B001-duplicate").mkdir()
+            report = inspect_workflow(workflow, batch="B001")
+            self.assertFalse(report["valid"])
+            self.assertIn("ambiguous_batch_directory", {i["code"] for i in report["issues"]})
+
+    def test_size_is_a_warning_and_commit_helper_is_optional(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflow = Path(directory)
+            batch = write_valid_workflow(workflow)
+            (workflow / "COMMIT_MESSAGE.md").unlink()
+            with (batch / "PROGRESS_STATE.md").open("a") as handle:
+                handle.write("historical note\n" * 75)
+            result = run_cli("doctor", workflow, "--batch", "B001")
+            self.assertEqual(result.returncode, 0, result.stdout)
+            report = json.loads(result.stdout)
+            self.assertEqual([(i["code"], i["severity"]) for i in report["issues"]],
+                             [("artifact_too_large", "warning")])
+
+    def test_schema_three_uses_task_and_index_owners(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflow = Path(directory) / "ai-workflow"
+            shutil.copytree(REPO_ROOT / "example" / "ai-workflow", workflow)
+            report = inspect_workflow(workflow, BLUEPRINT, batch="B001")
+            self.assertTrue(report["valid"], report["issues"])
+            batch = workflow / "work" / "B001-example-feature"
+            plan = batch / "IMPLEMENTATION.md"
+            plan.write_text(plan.read_text().replace("status: done", "status: in_progress", 1))
+            report = inspect_workflow(workflow, batch="B001")
+            self.assertIn("unfinished_task", {i["code"] for i in report["issues"]})
+            plan.write_text(plan.read_text().replace("status: in_progress", "status: invented", 1))
+            report = inspect_workflow(workflow, batch="B001")
+            self.assertIn("invalid_task_status", {i["code"] for i in report["issues"]})
+            with (batch / "FEATURE.md").open("a") as handle:
+                handle.write("\nStatus: done\n")
+            report = inspect_workflow(workflow, batch="B001")
+            self.assertIn("mirrored_batch_status", {i["code"] for i in report["issues"]})
+
+    def test_schema_two_history_stays_readable_after_agents_migration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflow = Path(directory)
+            write_valid_workflow(workflow)
+            agents = workflow / "AGENTS.md"
+            agents.write_text(agents.read_text().replace("Workflow schema: `2`", "Workflow schema: `3`"))
+            report = inspect_workflow(workflow, batch="B001")
+            self.assertTrue(report["valid"], report["issues"])
+            self.assertTrue(report["issues"])
+            self.assertTrue(all(i["severity"] == "warning" for i in report["issues"]))
+            agents.write_text(agents.read_text().replace("Workflow schema: `3`", "Workflow schema: `99`"))
+            report = inspect_workflow(workflow, batch="B001")
+            self.assertFalse(report["valid"])
+            self.assertIn("unsupported_schema", {i["code"] for i in report["issues"]})
+
+
+class GeneratedContractTest(unittest.TestCase):
+    def test_example_terminal_sentinel_and_capability_scope(self):
+        batch = REPO_ROOT / "example" / "ai-workflow" / "work" / "B001-example-feature"
+        self.assertEqual(_executable_next_actions(REPO_ROOT, [batch]), [])
+        # The completed UI task needed a browser; final batch validation does not.
+        self.assertEqual(_declared_validation_capabilities(REPO_ROOT, [batch]), ["filesystem"])
+
+    def test_capabilities_ignore_optional_ci_task_and_other_batch_checks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            batch = workspace / "B001"
+            batch.mkdir()
+            (batch / "IMPLEMENTATION.md").write_text(
+                "## Batch validation\nvalidation_commands:\n"
+                "  - command: required\n    required: true\n    scope: batch\n"
+                "    required_capabilities: [filesystem, database]\n"
+                "  - command: optional\n    required: false\n    scope: batch\n"
+                "    required_capabilities: [browser]\n"
+                "  - command: external\n    required: true\n    scope: ci\n"
+                "    required_capabilities: [network]\n"
+                "## Tasks\n- id: T001\n  status: done\n"
+                "  required_capabilities: [browser]\n")
+            other = workspace / "B002"
+            other.mkdir()
+            (other / "IMPLEMENTATION.md").write_text(
+                "## Batch validation\n  - command: unrelated\n    required: true\n"
+                "    scope: batch\n    required_capabilities: [hardware_token]\n")
+            self.assertEqual(_declared_validation_capabilities(workspace, [batch]),
+                             ["database", "filesystem"])
+
+    def test_schema_three_default_session_still_checks_dependencies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            plan = workspace / "IMPLEMENTATION.md"
+            plan.write_text(
+                "Batch: `B001`\nWorkflow schema: `3`\n"
+                "- id: T001\n  status: done\n  dependencies: []\n"
+                "- id: T002\n  status: planned\n  dependencies:\n    - T001\n")
+            route = {"batch_id": "B001", "task_id": "T002", "mode": "fresh"}
+            _validate_planned_session_route(workspace=workspace, completed_task="T001", route=route)
+            plan.write_text(plan.read_text().replace("status: done", "status: in_progress"))
+            with self.assertRaisesRegex(ValueError, "unambiguous durable task contract"):
+                _validate_planned_session_route(workspace=workspace, completed_task="T001", route=route)
 
 
 class OutcomeHarnessCliTest(unittest.TestCase):
@@ -1114,7 +1250,9 @@ class OutcomeHarnessCliTest(unittest.TestCase):
             )
             implementation.parent.mkdir(parents=True)
             implementation.write_text(
-                "T001 status: done\nrequired_capabilities: [filesystem, database]\n",
+                "T001 status: done\n## Batch validation\nvalidation_commands:\n"
+                "  - command: python3 verify.py\n    required: true\n    scope: batch\n"
+                "    required_capabilities: [filesystem, database]\n",
                 encoding="utf-8",
             )
             prompt = Path(directory) / "prompt.txt"
@@ -1179,7 +1317,9 @@ class OutcomeHarnessCliTest(unittest.TestCase):
             )
             implementation.parent.mkdir(parents=True)
             implementation.write_text(
-                "T001 status: done\nrequired_capabilities: [database]\n",
+                "T001 status: done\n## Batch validation\nvalidation_commands:\n"
+                "  - command: python3 verify.py\n    required: true\n    scope: batch\n"
+                "    required_capabilities: [database]\n",
                 encoding="utf-8",
             )
             prompt = Path(directory) / "prompt.txt"
@@ -1242,7 +1382,9 @@ class OutcomeHarnessCliTest(unittest.TestCase):
             )
             implementation.parent.mkdir(parents=True)
             implementation.write_text(
-                "Batch validation:\n  required_capabilities: [filesystem]\n",
+                "## Batch validation\nvalidation_commands:\n"
+                "  - command: python3 verify.py\n    required: true\n    scope: batch\n"
+                "    required_capabilities: [filesystem]\n",
                 encoding="utf-8",
             )
             prompt = Path(directory) / "prompt.txt"
@@ -1306,7 +1448,7 @@ class OutcomeHarnessCliTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory) / "workspace"
             for batch_id, action in (
-                ("B001", "none"),
+                ("B001", "none."),
                 ("B002", "repair an unrelated batch"),
             ):
                 batch = workspace / "ai-workflow" / "work" / batch_id.lower()

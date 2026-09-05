@@ -1,28 +1,10 @@
 # Implementation plan: Overdue dashboard section
 
 Batch: `B001`
-Source items: `NMI-001`
-Status: `done`
-Completion level: `feature`
-Workflow schema: `2`
+Workflow schema: `3`
 Blueprint source: `feature_execution_blueprint.md`
-Blueprint revision: `2.4.0`
-Blueprint digest: `de5c2c52bb128c3337bc0c7c38c40833ac5badc84f13b8bbfa1d343b51ea7039`
-
-## Implementation scope gate
-
-- Shared completion bar: overdue behavior, user scoping, query performance, and final dashboard states are verified together.
-- Independent deployment or rollback seams: T001 and T002 can be reverted independently, but T002 depends on T001.
-- Validation and risk areas: task-scoped query/UI checks and rendered states;
-  batch-scoped full suite; no CI-only check.
-- Context assessment: small; both tasks use adjacent dashboard touchpoints.
-- Throughput assessment: T001 has two unique task checks; T002 has three; broad
-  validation runs once at batch scope and neither task boundary is time-driven.
-- Advisory counts: source items `1`; tasks `2`; acceptance criteria `6`;
-  task-scoped checks `5`; batch-scoped checks `1`; CI-scoped checks `0`;
-  estimated total task minutes `20-35`.
-- Result: `coherent`.
-- Reason: both tasks share one contract and one integrated validation story.
+Blueprint revision: `3.0.0`
+Blueprint digest: `4ec4a15ff4b2718372b62fb42af6c10359f1c7028ea0c2e0820b9b2ae5eaaf4b`
 
 ## Execution policy
 
@@ -41,7 +23,8 @@ task_execution_policy:
 ```yaml
 validation_commands:
   - command: npm test
-    purpose: proves the integrated dashboard change does not regress the wider application suite
+    id: V001
+    purpose: proves the integrated change against the wider application suite
     required: true
     scope: batch
     timeout_seconds: 300
@@ -50,210 +33,72 @@ validation_commands:
 
 ## CI validation
 
-```yaml
-validation_commands:
-  - command: none
-    purpose: this fictional batch has no required external-only validation
-    required: false
-    scope: ci
-```
+This fictional feature has no required external-only checks or deployment proof.
 
-## Impact map
+## Coverage
 
-| Changed seam | Change | Known consumers and search evidence | Compatibility decision | Owner | Regression proof | State |
-| --- | --- | --- | --- | --- | --- | --- |
-| Dashboard task-query result and section ordering | Add overdue results and render them before today without renaming existing selectors. | Existing today-section component, task-query/today-section tests, and dashboard smoke fixture; searches covered the query entrypoint, labels, and selectors. | Preserve today's behavior and selector contract. | T001, T002 | Query/query-plan tests, today-section regression test, and live responsive fixture review. | verified |
-
-## Traceability closure
-
-| Feature reference | Required item | Covered by | Validation or evidence | State |
-| --- | --- | --- | --- | --- |
-| FR1-FR3, Edge1-Edge3, AC1, AC2, AC5, Permission1, Assumption1, Risk1 | Select the correct user's incomplete overdue tasks at the local-date boundary, excluding completed/undated tasks and sorting ascending. | T001 | `npm test -- dashboard-task-query.test.ts`; timezone fixture evidence in `PROGRESS.md`. | verified |
-| NFR1, AC6, Risk2 | Preserve the indexed user/due-date path and avoid N+1 rendering. | T001 | `npm test -- dashboard-query-plan.test.ts`; query-plan evidence in `PROGRESS.md`. | verified |
-| FR4, AC4 | Today's tasks and existing section behavior remain unchanged. | T002 | `npm test -- dashboard-today-section.test.ts`. | verified |
-| AC1, AC3 | Render overdue tasks above today and show the empty state when needed. | T001, T002 | Query result plus `npm test -- dashboard-overdue-section.test.ts`. | verified |
-| VIS1-VIS3 | Populated/empty desktop/mobile states satisfy hierarchy, identity, spacing, distinction, keyboard, legibility, and reduced-motion criteria. | T002 | Live synthetic fixture review and visual-rubric evidence in `PROGRESS.md`. | verified |
+| Feature refs | Consumers and compatibility | Owner / validation ids | Evidence |
+| --- | --- | --- | --- |
+| AC1, AC2, AC5, C1 | Query consumers preserve user scoping, local dates, exclusions, and order; search evidence in C2. | T001 / V002 | [Query recovery](PROGRESS.md#2026-06-23-1) |
+| AC6 | Indexed query/rendering path remains free of N+1 fetches. | T001 / V003 | [Query-plan proof](PROGRESS.md#2026-06-23-1) |
+| AC3, AC4, C2 | Existing today component, stable selectors, and overdue empty state remain compatible. | T002 / V004, V005 | [Component proof](PROGRESS.md#2026-06-23-2) |
+| AC7, C3 | Synthetic populated/empty responsive fixture preserves the visual contract. | T002 / V006 | [Final visual proof](PROGRESS.md#2026-07-27--context-routing-clarification) |
+| AC1-AC7 | Combined dashboard behavior. | T001, T002 / V001 | [Final batch proof](PROGRESS.md#2026-07-27--context-routing-clarification) |
 
 ## Tasks
 
 ```yaml
 - id: T001
   status: done
-  title: Add overdue task query
-  goal: Return incomplete tasks due before the user's local date.
-  done_when:
-    - query excludes completed tasks
-    - query excludes tasks without due dates
-    - query uses the user's local date boundary
-    - query sorts overdue tasks by due date ascending
-    - query preserves user scoping and indexed due-date filtering
-  acceptance_criteria:
-    - FEATURE.md AC1
-    - FEATURE.md AC2
-    - FEATURE.md AC5
-    - FEATURE.md AC6
-  feature_refs:
-    - FR1
-    - FR2
-    - FR3
-    - NFR1
-    - Edge1
-    - Edge2
-    - Edge3
-    - AC1
-    - AC2
-    - AC5
-    - AC6
-    - Permission1
-    - Assumption1
-    - Risk1
-    - Risk2
-  tests_required:
-    - model or service test for included overdue tasks
-    - test excluding completed overdue tasks
-    - test excluding undated tasks
-    - test sorting multiple overdue tasks by due date
-    - test proving another user's overdue tasks are excluded
-    - query-plan or instrumentation check proving no N+1 path
-  areas:
-    - task query layer
-  risk: medium
+  outcome: Return the current user's incomplete overdue tasks in local-date order through the existing dashboard query seam; use the timezone fixture and retain indexed filtering.
+  feature_refs: [AC1, AC2, AC5, AC6, C1, C2]
   dependencies: []
-  session:
-    mode: fresh
-    reason: durable query contract, fixtures, repository code, and task validation provide the full handoff
-  batch_group: query
-  validation_level: targeted_tests
-  execution_guidance:
-    estimated_minutes: 10-18
-    confidence: medium
-    rationale: one existing query seam, timezone fixture, and two focused checks; query-plan details may vary
-    internal_milestones: none
   validation_commands:
     - command: npm test -- dashboard-task-query.test.ts
-      purpose: proves overdue query includes overdue tasks, excludes completed/undated/other-user tasks, applies user-local date boundary, and sorts by due date
+      id: V002
+      purpose: proves overdue inclusion, completed/undated/other-user exclusion, local dates, and ascending order
       required: true
       scope: task
       timeout_seconds: 120
       required_capabilities: [filesystem]
     - command: npm test -- dashboard-query-plan.test.ts
-      purpose: proves overdue rendering uses the indexed user/due-date query path or equivalent no-N+1 guard
+      id: V003
+      purpose: proves indexed user/due-date filtering and no N+1 rendering
       required: true
       scope: task
       timeout_seconds: 120
       required_capabilities: [filesystem]
-  existing_checks_to_rerun:
-    - command: npm test -- dashboard-task-query.test.ts
-      reason: same command as required validation because the query test file is also the nearest existing behavior coverage for the touched query layer
-      scope: task
-      timeout_seconds: 120
-  likely_files:
-    - app queries or services for dashboard tasks
-    - dashboard task query tests
-  context_budget: small
-  references:
-    - item: existing user-timezone fixture
-      reason: defines the authoritative local-date boundary
-    - item: existing dashboard task query and query-plan tests
-      reason: define user scoping, sorting, and performance regression behavior
-  applicable_skills:
-    - name: none
-      reason: this backend query task does not need specialized UI or conversion guidance
-      required: false
-      load_when: none
-      required_evidence: none
-      portable_fallback: not_required
-  stop_conditions:
-    - user timezone source is unclear
-    - no reliable query-plan or instrumentation check exists for the no-N+1 requirement
-  source_items:
-    - NMI-001
 
 - id: T002
   status: done
-  title: Render overdue section on dashboard
-  goal: Display overdue tasks above today's tasks with an empty state.
-  done_when:
-    - overdue section appears above today section
-    - empty state appears when no overdue tasks exist
-    - existing today task rendering is unchanged
-    - populated and empty overdue states are rendered and inspected at desktop and mobile widths
-    - keyboard access, legibility, and reduced-motion behavior are inspected
-  acceptance_criteria:
-    - FEATURE.md AC3
-    - FEATURE.md AC4
-  feature_refs:
-    - FR4
-    - AC1
-    - AC3
-    - AC4
-    - VIS1
-    - VIS2
-    - VIS3
-  tests_required:
-    - view or component test for overdue section
-    - view or component test for empty state
-  areas:
-    - dashboard UI
-  risk: low
+  outcome: Render the overdue and empty states above today's unchanged section using the existing component and synthetic fixture as the visual references.
+  feature_refs: [AC3, AC4, AC7, C2, C3]
   dependencies:
     - T001
-  session:
-    mode: fresh
-    reason: T001's completed query outcome is durable in code and tests; this separately specified UI consumer does not require conversational context
-  batch_group: ui
-  validation_level: targeted_tests, manual_check
-  execution_guidance:
-    estimated_minutes: 10-17
-    confidence: medium
-    rationale: one existing dashboard component, two focused tests, and one live responsive visual review
-    internal_milestones: none
   validation_commands:
     - command: npm test -- dashboard-overdue-section.test.ts
-      purpose: proves overdue section visibility and empty state behavior
+      id: V004
+      purpose: proves overdue visibility and empty state
       required: true
       scope: task
       timeout_seconds: 120
       required_capabilities: [filesystem]
     - command: npm test -- dashboard-today-section.test.ts
-      purpose: proves existing today task rendering remains unchanged
+      id: V005
+      purpose: proves existing today-section behavior remains unchanged
       required: true
       scope: task
       timeout_seconds: 120
       required_capabilities: [filesystem]
     - command: manual smoke check with synthetic local account fixture
-      purpose: renders populated and empty overdue states at desktop and mobile widths and proves layout, clipping, spacing, keyboard access, legibility, reduced-motion behavior, and existing-pattern consistency without authenticated browser automation or customer data
+      id: V006
+      purpose: proves AC7 in populated/empty desktop/mobile states, including keyboard, legibility, reduced motion, and existing visual patterns
       required: true
       scope: task
       timeout_seconds: 120
       required_capabilities: [filesystem, browser]
-  existing_checks_to_rerun:
-    - command: npm test -- dashboard-today-section.test.ts
-      reason: same command as required validation because it is the existing UI regression check for unchanged today task rendering
-      scope: task
-      timeout_seconds: 120
-  likely_files:
-    - dashboard view/component
-    - dashboard view/component tests
-  context_budget: small
-  references:
-    - item: existing today-section component and dashboard tests
-      reason: define placement, typography, spacing, and behavior that must remain unchanged
-    - item: interactive dashboard fixture with populated and empty overdue states
-      reason: provides the inspectable visual and interaction reference
-  applicable_skills:
-    - name: apple-design
-      reason: the task changes dashboard hierarchy, feedback, responsive states, and visual integration
-      required: false
-      load_when: implementation and visual review
-      required_evidence: desktop/mobile populated/empty renders plus keyboard, legibility, reduced-motion, and existing-pattern findings in PROGRESS.md
-      portable_fallback: apply FEATURE.md VIS1-VIS3 directly and record the same rendered-state, accessibility, and reduced-motion evidence
-  stop_conditions:
-    - dashboard layout has competing pending changes
-  source_items:
-    - NMI-001
 ```
 
-## Sequencing risks
-
-Timezone behavior should be resolved in T001 before UI work starts.
+Both tasks use schema 3's fresh-context default. T002 depends on durable query
+output; it does not need T001's conversation. If a required assertion or query-plan
+check is missing, repair it in the owning task instead of declaring a blocker.

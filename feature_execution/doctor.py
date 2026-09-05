@@ -26,6 +26,11 @@ BATCH_STATUSES = {
     "rolled_back",
 }
 
+TASK_STATUSES = {
+    "planned", "in_progress", "blocked", "failed_validation", "validated",
+    "done", "superseded", "rolled_back",
+}
+
 ARTIFACT_LIMITS = {
     "FEATURE.md": 220,
     "IMPLEMENTATION.md": 360,
@@ -39,7 +44,6 @@ BASE_FILES = (
     "TESTING_POLICY.md",
     "PRODUCT_BACKLOG.md",
     "WORK_INDEX.md",
-    "COMMIT_MESSAGE.md",
 )
 
 
@@ -49,6 +53,7 @@ class Issue:
     path: str
     message: str
     details: dict
+    severity: str = "error"
 
     def as_dict(self) -> dict:
         return {
@@ -56,6 +61,7 @@ class Issue:
             "path": self.path,
             "message": self.message,
             "details": self.details,
+            "severity": self.severity,
         }
 
 
@@ -89,7 +95,9 @@ def _extract_status(text: str) -> str | None:
     return None
 
 
-def _work_index_rows(path: Path) -> dict[str, dict[str, str]]:
+def _work_index_rows(
+    path: Path, *, batch: str | None = None
+) -> dict[str, dict[str, str]]:
     if not path.exists():
         return {}
     rows = {}
@@ -108,6 +116,10 @@ def _work_index_rows(path: Path) -> dict[str, dict[str, str]]:
         batch_id = columns[indexes["batch"]]
         if not re.fullmatch(r"B\d{3}", batch_id):
             continue
+        if batch is not None and batch_id != batch:
+            continue
+        if batch_id in rows:
+            raise ValueError(f"ambiguous work index: multiple rows for {batch_id}")
         folder_parts = Path(columns[indexes["folder"]].rstrip("/")).parts
         if folder_parts[:2] == ("ai-workflow", "work"):
             folder_parts = folder_parts[1:]
@@ -181,7 +193,39 @@ def _blueprint_identity(path: Path) -> dict[str, str]:
     }
 
 
-def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict:
+def _task_status_issues(
+    text: str, relative: str, batch_id: str, index_status: str | None
+) -> list[Issue]:
+    issues = []
+    task_blocks = re.split(r"(?m)^- id:[ \t]*(T\d{3})[ \t]*$", text)
+    task_ids = task_blocks[1::2]
+    if not task_ids:
+        issues.append(Issue("missing_tasks", relative, "task plan has no T### tasks", {}))
+    if len(task_ids) != len(set(task_ids)):
+        issues.append(Issue("duplicate_task_id", relative, "task ids must be unique", {}))
+    for task_id, block in zip(task_ids, task_blocks[2::2]):
+        match = re.search(r"(?m)^  status:[ \t]*([a-z_]+)[ \t]*$", block)
+        task_status = match.group(1) if match else None
+        if task_status not in TASK_STATUSES:
+            issues.append(Issue(
+                "invalid_task_status", relative,
+                f"{task_id} needs a supported task status",
+                {"task": task_id, "actual": task_status},
+            ))
+        elif index_status in {"validated", "done"} and task_status not in {"done", "superseded"}:
+            issues.append(Issue(
+                "unfinished_task", relative,
+                f"{batch_id} cannot be {index_status} while {task_id} is {task_status}",
+                {"task": task_id, "status": task_status},
+            ))
+    return issues
+
+
+def inspect_workflow(
+    workflow_root: Path, blueprint: Path | None = None, *, batch: str | None = None
+) -> dict:
+    if batch is not None and not re.fullmatch(r"B\d{3}", batch):
+        raise ValueError("--batch must be an exact B### identifier")
     workflow_root = workflow_root.resolve()
     issues: list[Issue] = []
     for filename in BASE_FILES:
@@ -215,7 +259,16 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
     blueprint_identity = (
         _blueprint_identity(blueprint.resolve()) if blueprint else None
     )
+    if canonical_provenance.get("Workflow schema") not in {None, "2", "3"}:
+        issues.append(Issue(
+            "unsupported_schema", "AGENTS.md", "unsupported workflow schema",
+            {"actual": canonical_provenance["Workflow schema"], "supported": ["2", "3"]},
+        ))
     if blueprint_identity:
+        legacy_migration = (
+            canonical_provenance.get("Workflow schema") == "2"
+            and blueprint_identity["Workflow schema"] == "3"
+        )
         for field, code in (
             ("Blueprint source", "blueprint_source_mismatch"),
             ("Workflow schema", "blueprint_schema_mismatch"),
@@ -238,10 +291,14 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
                         "AGENTS.md",
                         f"{field} does not match the supplied blueprint",
                         {"expected": expected, "actual": actual},
+                        severity=(
+                            "warning" if legacy_migration and field != "Blueprint source"
+                            else "error"
+                        ),
                     )
                 )
 
-    index_rows = _work_index_rows(workflow_root / "WORK_INDEX.md")
+    index_rows = _work_index_rows(workflow_root / "WORK_INDEX.md", batch=batch)
     index_statuses = {
         batch_id: row["status"] for batch_id, row in index_rows.items()
     }
@@ -249,6 +306,19 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
     batch_dirs = sorted(
         path for path in (workflow_root / "work").glob("B???-*") if path.is_dir()
     )
+    if batch is not None:
+        batch_dirs = [path for path in batch_dirs if path.name[:4] == batch]
+        if batch not in index_rows and not batch_dirs:
+            raise ValueError(f"unknown batch: {batch}")
+        index_rows = {key: row for key, row in index_rows.items() if key == batch}
+    for batch_id in sorted({path.name[:4] for path in batch_dirs}):
+        matches = [path for path in batch_dirs if path.name[:4] == batch_id]
+        if len(matches) > 1:
+            issues.append(Issue(
+                "ambiguous_batch_directory", "work",
+                f"{batch_id} has multiple batch directories",
+                {"batch": batch_id, "folders": [path.name for path in matches]},
+            ))
     actual_batch_ids = {path.name[:4] for path in batch_dirs}
     required_index_ids = {
         batch_id
@@ -315,6 +385,7 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
                         relative,
                         f"artifact has {line_count} lines; target is {limit}",
                         {"actual_lines": line_count, "target_lines": limit},
+                        severity="warning",
                     )
                 )
 
@@ -323,8 +394,23 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
             text = path.read_text(encoding="utf-8")
             if filename == "FEATURE.md":
                 feature_source_items.update(re.findall(r"NMI-\d+", text))
+            provenance = _extract_provenance(text)
+            schema = provenance.get("Workflow schema")
+            if schema not in {"2", "3", None}:
+                issues.append(Issue(
+                    "unsupported_schema", relative, "unsupported workflow schema",
+                    {"actual": schema, "supported": ["2", "3"]},
+                ))
             status = _extract_status(text)
-            if status is None:
+            if schema == "3":
+                if status is not None:
+                    issues.append(Issue(
+                        "mirrored_batch_status", relative,
+                        "schema 3 keeps batch status only in WORK_INDEX.md", {},
+                    ))
+                if filename == "IMPLEMENTATION.md":
+                    issues.extend(_task_status_issues(text, relative, batch_id, index_status))
+            elif status is None:
                 issues.append(
                     Issue("missing_status", relative, "batch status is missing", {})
                 )
@@ -340,7 +426,6 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
                         )
                     )
 
-            provenance = _extract_provenance(text)
             for field in PROVENANCE_FIELDS:
                 if field not in provenance:
                     issues.append(
@@ -365,6 +450,11 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
                                 "expected": canonical_provenance[field],
                                 "actual": provenance[field],
                             },
+                            severity=(
+                                "warning" if schema == "2"
+                                and canonical_provenance.get("Workflow schema") == "3"
+                                else "error"
+                            ),
                         )
                     )
 
@@ -439,10 +529,12 @@ def inspect_workflow(workflow_root: Path, blueprint: Path | None = None) -> dict
     return {
         "schema_version": 1,
         "workflow_root": str(workflow_root),
-        "valid": not issues,
+        "valid": not any(issue.severity == "error" for issue in issues),
+        "scope": {"batch": batch} if batch else {"all_batches": True},
         "batches_checked": len(actual_batch_ids | required_index_ids),
         "provenance": canonical_provenance,
         "blueprint": blueprint_identity,
         "artifact_targets": ARTIFACT_LIMITS,
+        "semantic_rules_checked": False,
         "issues": [issue.as_dict() for issue in issues],
     }

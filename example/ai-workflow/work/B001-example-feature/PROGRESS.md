@@ -234,3 +234,20 @@ Commit:
 - Migrated compatible workflow metadata from blueprint revision 2.3.0 to 2.4.0.
 - Added provider-neutral validation capability declarations and the explicit
   executable-next terminal gate; historical execution evidence is unchanged.
+
+## 2026-09-05 — schema 3 migration
+
+- Migrated the generated example to blueprint 3.0.0, schema 3. Current provenance:
+  source `feature_execution_blueprint.md`, digest `4ec4a15ff4b2718372b62fb42af6c10359f1c7028ea0c2e0820b9b2ae5eaaf4b`.
+- Consolidated the contract into five populated sections, retaining AC1-AC6 and
+  a legacy-reference map. AC7 collects the existing visual requirements.
+- Kept B001 status/integration/release state in WORK_INDEX.md and task statuses
+  in IMPLEMENTATION.md. Removed mirrored batch statuses from current artifacts.
+- Combined impact and traceability tables into Coverage with links to earlier
+  evidence. V001-V006 identify the same existing batch/task checks, each once.
+- Replaced task completion/check duplicates with outcome, feature_refs, and one
+  validation list. Fresh context is now implicit; dependency T002 -> T001 remains.
+- Replaced the missing-query-plan-check stop condition with repair in its owning
+  task. Compact state now points to work, next action, recovery facts, and evidence.
+- This is a documentation migration of a fictional example. Earlier log bytes,
+  command results, lifecycle dates, and product evidence remain unchanged.

@@ -23,6 +23,7 @@ def _parser() -> argparse.ArgumentParser:
     doctor = subparsers.add_parser("doctor", help="validate generated workflow artifacts")
     doctor.add_argument("workflow_root", type=Path)
     doctor.add_argument("--blueprint", type=Path)
+    doctor.add_argument("--batch", help="check only this B### and its linked index entries")
 
     run = subparsers.add_parser("run", help="drive one batch to a terminal outcome")
     run.add_argument("--workspace", type=Path, required=True)
@@ -62,7 +63,7 @@ def main(argv=None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "doctor":
-            report = inspect_workflow(args.workflow_root, args.blueprint)
+            report = inspect_workflow(args.workflow_root, args.blueprint, batch=args.batch)
             print(json.dumps(report, indent=2))
             return 0 if report["valid"] else 1
 

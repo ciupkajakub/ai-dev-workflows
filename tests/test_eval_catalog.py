@@ -73,7 +73,6 @@ class EvalCatalogContractTests(unittest.TestCase):
         for path in (
             "ai-workflow/PRODUCT_BACKLOG.md",
             "ai-workflow/WORK_INDEX.md",
-            "ai-workflow/work/B001-example/FEATURE.md",
         ):
             self.assertTrue(
                 any(
@@ -141,8 +140,9 @@ class EvalCatalogContractTests(unittest.TestCase):
                 "summary": "verified",
                 "writes": {
                     "app/label.py": "def format_label(value): return value + '.'\n",
-                    "ai-workflow/work/sample/IMPLEMENTATION.md": "Batch: B001\nStatus: done\nT001 status: done; FR1 and AC1 verified\n",
-                    "ai-workflow/work/sample/PROGRESS_STATE.md": "Status: done\nExecutable next action: none\n",
+                    "ai-workflow/work/sample/IMPLEMENTATION.md": "Batch: B001\nT001 status: done; FR1 and AC1 proof: PROGRESS.md\n",
+                    "ai-workflow/work/sample/PROGRESS_STATE.md": "Evidence: PROGRESS.md\nExecutable next action: none\n",
+                    "ai-workflow/work/sample/PROGRESS.md": "python3 verify.py passed after the label repair\n",
                 },
                 "commands": ["python3 verify.py"],
             },
