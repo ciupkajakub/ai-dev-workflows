@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import subprocess
 import tempfile
 from typing import Iterable
@@ -41,6 +42,41 @@ def parse_adapter_command(raw: str) -> list[str]:
     ):
         raise ValueError("adapter command must be a non-empty JSON array of strings")
     return command
+
+
+def _run_adapter(
+    command: list[str], workspace: Path, environment: dict[str, str], timeout: int
+) -> subprocess.CompletedProcess:
+    with subprocess.Popen(
+        command,
+        cwd=workspace,
+        env=environment,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=(os.name == "posix"),
+    ) as process:
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            try:
+                if os.name == "posix":
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                else:
+                    subprocess.run(
+                        ["taskkill", "/F", "/T", "/PID", str(process.pid)],
+                        capture_output=True,
+                        check=True,
+                        timeout=10,
+                    )
+            finally:
+                process.kill()
+                process.wait()
+            raise
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def _validate_turn(value: object) -> dict:
@@ -494,14 +530,11 @@ def run_outcome_loop(
                 environment["FEATURE_EXECUTION_BLUEPRINT"] = str(blueprint.resolve())
 
             try:
-                completed = subprocess.run(
+                completed = _run_adapter(
                     list(adapter_command),
-                    cwd=workspace,
-                    env=environment,
-                    text=True,
-                    capture_output=True,
+                    workspace=workspace,
+                    environment=environment,
                     timeout=adapter_timeout_seconds,
-                    check=False,
                 )
                 if (
                     completed.returncode == CONTINUATION_UNAVAILABLE_EXIT_CODE
@@ -522,14 +555,11 @@ def run_outcome_loop(
                         encoding="utf-8",
                     )
                     environment["FEATURE_EXECUTION_RESUME_TOKEN"] = ""
-                    completed = subprocess.run(
+                    completed = _run_adapter(
                         list(adapter_command),
-                        cwd=workspace,
-                        env=environment,
-                        text=True,
-                        capture_output=True,
+                        workspace=workspace,
+                        environment=environment,
                         timeout=adapter_timeout_seconds,
-                        check=False,
                     )
                     resume_token = ""
                     if trajectory and "session_routing" in trajectory[-1]:
@@ -631,6 +661,7 @@ def run_outcome_loop(
                 RuntimeError,
                 ValueError,
                 json.JSONDecodeError,
+                subprocess.CalledProcessError,
                 subprocess.TimeoutExpired,
             ) as error:
                 outcome = {
