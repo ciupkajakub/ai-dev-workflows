@@ -64,6 +64,48 @@ The proposal combines the former sections 8, 9, and 10. Delivery replaces sectio
 11 and includes verification and repairs. You can still limit a request to a
 feature contract, plan, or named task; that scope is not a mandatory extra gate.
 
+## Workflow commands
+
+The repository includes five native skills that route to the blueprint. Their
+canonical instructions live in `skills/`; `.agents/skills/` and `.claude/skills/`
+contain relative links to those same directories. Codex and Cursor discover the
+former; Claude Code discovers the latter. Cursor also supports the Claude path.
+No separate Cursor copy is needed.
+
+| Action | Codex invocation | Claude Code / Cursor invocation |
+| --- | --- | --- |
+| [Set up](skills/workflow-setup/SKILL.md) | `$workflow-setup` | `/workflow-setup` |
+| [Prepare](skills/workflow-prepare/SKILL.md) | `$workflow-prepare <need>` | `/workflow-prepare <need>` |
+| [Deliver](skills/workflow-deliver/SKILL.md) | `$workflow-deliver <batch>` | `/workflow-deliver <batch>` |
+| [Apply feedback](skills/workflow-feedback/SKILL.md) | `$workflow-feedback <batch> <feedback>` | `/workflow-feedback <batch> <feedback>` |
+| [Resume](skills/workflow-resume/SKILL.md) | `$workflow-resume <batch>` | `/workflow-resume <batch>` |
+
+Select the skill through the client's skill picker if needed. Replace placeholders
+with the actual request; they are chat inputs, not terminal commands. The skill
+instructions are in English; requests and feedback can be in Polish or English.
+
+A direct `workflow-deliver` invocation approves the exact proposal and delivery
+scope already presented to the operator, including its publication destination.
+If these are missing, ambiguous, or changed, the agent presents them for approval
+before implementation. Merely discovering or automatically selecting the skill
+does not approve delivery. `workflow-resume` reuses existing authority; it does not
+approve a waiting proposal or accept a delivered result.
+
+Run commands in the application repository after installation. For the one-time
+bootstrap, give that repository's agent the absolute path to this package's
+`skills/workflow-setup/SKILL.md` and request setup for Codex, Claude Code, Cursor,
+or the providers your team uses. The [installation procedure](skills/install.md)
+keeps a versioned copy of the blueprint and skills together in the application.
+It preserves existing configuration and reports fresh-session discovery as pending
+unless it has actually been checked. Installing in this repository alone does not
+make the skills available in other application repositories.
+
+These entry points standardize requests. Provider permissions, model configuration,
+execution, and verification still apply. They do not enforce the workflow in software.
+Provider documentation: [Codex skills](https://learn.chatgpt.com/docs/build-skills),
+[Claude Code skills](https://code.claude.com/docs/en/skills), and
+[Cursor skills](https://cursor.com/docs/skills).
+
 ## Models, sessions, and later automation
 
 Configure a stronger planning/coordinator model and faster or cheaper implementation
@@ -158,8 +200,9 @@ python3 -B tests/validate_blueprint.py
 git diff --check
 ```
 
-It checks Markdown structure and local documentation links. It does not run an
-agent, validate a project's delivery, or prove productivity gains. No new
+It checks Markdown structure, local documentation links, and the skill discovery
+links for Codex, Claude Code, and Cursor. It does not run an agent, validate a
+project's delivery, or prove productivity gains. No new
 behavioral experiment or quality-equivalence claim accompanies this revision.
 Evaluate it on real work by recording human interventions, review rounds,
 defects found after claimed completion, elapsed time, and available usage data.

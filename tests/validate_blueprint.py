@@ -40,12 +40,21 @@ def markdown_structure(path):
 
 
 def main():
-    documents = sorted(ROOT.glob("*.md"))
+    documents = sorted([*ROOT.glob("*.md"), *(ROOT / "skills").rglob("*.md")])
     structures = {path: markdown_structure(path) for path in documents}
     errors = [error for _, _, found in structures.values() for error in found]
     for name in ("README.md", "feature_execution_blueprint.md"):
         if not (ROOT / name).is_file():
             errors.append(f"missing document: {name}")
+    for action in ("setup", "prepare", "deliver", "feedback", "resume"):
+        name = f"workflow-{action}"
+        canonical = ROOT / "skills" / name
+        if not (canonical / "SKILL.md").is_file():
+            errors.append(f"missing skill: {name}")
+        for provider in (".agents", ".claude"):
+            link = ROOT / provider / "skills" / name
+            if not link.is_symlink() or link.resolve() != canonical.resolve():
+                errors.append(f"invalid skill discovery link: {link.relative_to(ROOT)}")
     links_checked = 0
     for path, (_, prose, _) in structures.items():
         for number, line in prose:
