@@ -24,9 +24,22 @@ existing service. A file inventory or a promised response field is insufficient.
 
 Complete the blueprint's
 [Proposal readiness](../../feature_execution_blueprint.md#proposal-readiness)
-review before requesting approval. Repair contradictions, missing shared contracts,
-and path-specific verification gaps yourself. Resolve ordinary technical choices
-from code evidence; ask only for unresolved product decisions or genuine blockers.
+review before requesting approval. Own the complete technical approach yourself.
+For proposals with material cross-component, concurrency, or recurring readiness
+risks, follow
+[Independent proposal review](../../feature_execution_blueprint.md#independent-proposal-review)
+with a separate read-only reviewer context when native subagents are available.
+Straightforward scoped changes do not require another agent. Supply the original
+request, proposal revisions, relevant code access, and draft summary, without your readiness verdict
+or expected findings. Review requirement fidelity, component contracts, check
+coverage, and summary wording. Resolve findings and re-review material repairs
+before presenting approval; record the reviewer run and outcomes in PROGRESS.
+If delegation cannot run, record the limitation and use the coordinator review
+without claiming independence or adding a manual operator step.
+
+Repair contradictions, missing shared contracts, and path-specific verification
+gaps. Resolve ordinary technical choices from code evidence; ask only for unresolved
+product decisions or genuine blockers.
 Keep the approach in the documents. Support readiness in PROGRESS with links to
 the approach, inspected code, and planned checks. Do not label an incomplete
 proposal ready and expect the operator to finish its technical design.

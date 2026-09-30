@@ -329,8 +329,11 @@ changes. Retain an identifiable snapshot or diff for that state.
 ### Proposal readiness
 
 Before requesting approval, the coordinator reviews its own proposal against the
-inspected code. This is part of preparation, not another operator gate or a
-required separate agent. Repair the documents before presenting them:
+inspected code, then obtains the independent review below where warranted and
+supported by native delegation. Both reviews are part of preparation, within the
+same request. The coordinator owns a complete approach; a reviewer is a safeguard,
+not a substitute for discovery or technical design.
+Repair the documents before presenting them:
 
 - Reconcile contradictory criteria, constraints, and fallback rules, including
   the behavior when no suitable alternative exists. Do not silently settle an
@@ -358,6 +361,69 @@ The operator should assess the proposed behavior, approach, and
 accepted risks, not complete the agent's discovery or find missing contracts.
 If a material decision remains unresolved, request that decision and retain
 `awaiting_approval`; do not present the proposal as ready for execution approval.
+
+#### Independent proposal review
+
+Use an independent proposal review when material correctness or compatibility
+depends on decisions across component boundaries, the change affects concurrent
+or transactional writes, or earlier review of this proposal exposed recurring
+requirement or feasibility gaps. A straightforward, scoped change with a fully
+grounded approach does not need another agent merely because delegation exists.
+
+For those proposals, when the environment supports native subagents, the
+coordinator delegates one read-only review to a separate reviewer context before
+requesting approval. Briefly record why the review is warranted. This is
+preparation work, not authorization to implement. Give the reviewer the original
+operator request, relevant project rules, exact FEATURE and
+IMPLEMENTATION revisions, a draft approval summary, and access to the relevant
+code and tests. For uncommitted proposals, supply retained document contents or an
+identifiable snapshot; live paths and revision labels alone are insufficient.
+Preserve the original requirements; the author's interpretation alone is not the
+review baseline. Do not preload the reviewer with the author's
+readiness verdict, expected findings, or prior conclusions.
+Keep the reviewed draft fixed while the reviewer runs. A later material change
+requires review of the affected approach and summary at the new revisions.
+
+Ask the reviewer to check:
+
+- Whether the contract, plan, and summary satisfy the original request. Identify
+  omitted requirements, contradictions, and scope changes hidden as assumptions
+  or preservation of existing behavior.
+- Whether changed component contracts form an executable approach. Follow the
+  input data through the chosen existing or proposed components, checking required
+  argument types, decoding/validation steps, outputs, and consumers against the
+  actual code. Flag a missing cross-component decision, not an unspecified private
+  helper or a reasonable internal algorithm left to the worker.
+- Whether the planned checks exercise those requirements and distinct paths.
+  Inspect their scenarios rather than accepting coverage labels as proof.
+- Whether the approval summary explains the material changes in natural, precise
+  language. Identify ambiguous actors, misleading promises, grammar errors, and
+  shorthand that requires the operator to reconstruct the meaning.
+
+The reviewer returns actionable findings with the violated requirement, relevant
+proposal/code location, and consequence. Separate confirmed issues from questions
+or hypotheses. The author must supply the chosen approach; the reviewer does not
+complete a missing design on the author's behalf. Do not add unrelated
+improvements, redesign the feature, modify files, run implementation workers,
+or publish anything. The review assesses a
+proposal; it does not claim that implementation tests have passed.
+
+The coordinator checks the findings against the request and code, repairs confirmed
+issues in the documents and summary, and requests focused re-review of material
+repairs using the revised baseline. Record why a disputed finding is rejected.
+Do not request approval while confirmed requirement or feasibility gaps remain;
+escalate only a genuine product decision, access limitation, or blocker. Stop an
+unchanged, unproductive review loop and identify the unresolved issue instead of
+repeating it indefinitely.
+
+Keep a brief record in PROGRESS of the reviewer run, reviewed revisions, findings
+and their disposition, and re-review result. Do not create a new batch file or
+human approval step. Reviewer agreement is supporting design evidence, not proof
+of correct implementation or authority to approve on the operator's behalf.
+If native delegation is unavailable or the reviewer cannot run, perform the
+coordinator review, record the concrete limitation, and label independent review
+as not performed. Do not install tooling or require the operator to launch a
+reviewer manually to compensate.
 
 Present one approval package using the presentation below. FEATURE is the
 behavior contract; IMPLEMENTATION is its execution and verification plan.
