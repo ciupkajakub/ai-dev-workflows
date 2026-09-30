@@ -103,8 +103,12 @@ create a feature or implement application code during setup.
 `AGENTS.md` is a short router containing real project commands, architecture
 constraints, environment setup links, and links to applicable security/testing
 policies. Include this blueprint's exact source and revision once here. Connect
-it to the provider's existing instruction mechanism when that configuration is
-in scope. Do not require a provider-specific skill or duplicate generic advice.
+`ai-workflow/AGENTS.md` to the provider's automatically loaded instructions: the
+project-root `AGENTS.md` for Codex or `CLAUDE.md` for Claude Code. Add an explicit
+instruction to read the workflow router. Setup is complete only after confirming
+that a fresh session loads those instructions. If that configuration is outside
+the authorized scope, report the remaining setup step. Do not require a
+provider-specific skill or duplicate generic advice.
 Link the authorized delivery scope, approval channel, and execution profile here
 when configured. Configure stronger planning/coordinator reasoning and faster or
 cheaper implementation workers using native provider settings where supported.
@@ -296,9 +300,14 @@ task/check definitions change, not on ordinary task-status updates.
 
 The coordinator owns the entire authorized run through verified PR handoff.
 Use the configured provider's native execution, delegation, and sandbox controls.
-Session boundaries and worker completion do not return control to the operator.
-Record enough durable state to resume without the original chat. On interruption,
-resume from actual repository state and existing evidence, not a fresh plan.
+Worker completion does not require another operator prompt. Record enough durable
+state to resume without the original chat. Saved context enables recovery but
+does not itself restart execution. During the manually invoked stage, the operator
+restarts an interrupted run. The coordinator reconstructs state from the documents
+and repository, checks existing workers as described in Pipeline and handoffs,
+and continues within the existing authority without requesting approval again
+for an unchanged plan. Claim automatic resumption only after the provider's
+restart mechanism has been configured and verified.
 
 ### Coordination and native workers
 
@@ -321,6 +330,12 @@ The coordinator selects dependency-ready work and gives each worker:
 - Batch/task identity, approved feature/plan snapshot, and exact requirement refs.
 - Relevant code, dependencies, project rules, and workspace/resource ownership.
 - Required checks, expected evidence, and the limits of its authority.
+
+Before starting each worker, the coordinator identifies the exact starting code
+revision, including the required results of preceding tasks. Before implementation
+begins, it verifies that the worker's workspace contains that revision and the
+approved FEATURE and IMPLEMENTATION snapshots. The worker must not implement
+until these conditions are satisfied.
 
 Workers return changes or their retrievable revision, checks with results and
 evidence, and any blockers or unresolved decisions. Chat-only summaries are not
