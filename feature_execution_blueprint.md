@@ -265,12 +265,27 @@ say so only when that explains the approach. Do not copy the file inventory or
 repeat acceptance criteria as the technical approach.
 
 Choose who owns validation, fallback selection, and response construction when
-they change, and specify the information passed between those components. Trace
-that contract through all affected entry points and consumers, including existing
-alternate paths. A worker may choose private helpers and internal algorithms;
-the plan must settle shared contracts and compatibility behavior before approval.
+they change. For each changed validation or recovery path, record the chain from
+request or call input to the named validating component, its reused or proposed
+validation logic, the response fields, and the consumer's resulting action.
+Specify the data
+passed across those boundaries and where it comes from. Identify how the chosen
+validation handles relevant validity, expiry, authorization, or consent rules.
+When reusing a service from another stage, account for rules that differ at this
+stage. A promised response field or client action does not settle this contract.
+Trace the chain through affected alternate entry points. A worker may choose
+private helpers and internal algorithms; the plan must settle shared contracts
+and compatibility behavior before approval.
 Mark new names as proposed. Do not prescribe every method signature or introduce
 services merely to fill the table.
+
+Preserve the distinction between an omitted field, an empty result, and an invalid
+selection when a partial response updates existing client state. Define the
+consumer's behavior for an authoritative empty result as well as a partial update,
+so preserving state does not retain data that the server has declared unavailable.
+An observed current behavior is evidence, not proof that it satisfies the new
+requirement. Identify proposed compatibility choices and their user-visible effect;
+do not use an assumption to contradict a requirement or expand its scope.
 
 Every AC and implementation-affecting C must have an owner and a check, or an
 explicitly proposed gap for human decision. Cover affected consumers. Declare
@@ -322,7 +337,9 @@ required separate agent. Repair the documents before presenting them:
   unresolved product choice; ask the operator for that specific decision.
 - Check that the technical approach explains each changed shared contract and
   responsibility. Confirm producers receive the data needed to implement the
-  promised behavior and consumers can use their outputs.
+  promised behavior and consumers can use their outputs. Walk each changed
+  validation/recovery chain above using the named components and data. Repair any
+  step described only as a desired effect without an owning implementation path.
 - Trace affected alternate entry points and verify task/check coverage for each
   distinct path. A coverage-table reference alone does not prove that a scenario
   exercises the promised behavior.
@@ -332,9 +349,12 @@ required separate agent. Repair the documents before presenting them:
   unchosen approach as an implementation detail.
 
 Keep the resulting approach and coverage in FEATURE and IMPLEMENTATION, so another
-session can execute them without reconstructing the conversation. Record the
-readiness result and any unresolved decision in PROGRESS. Do not create a separate
-audit report. The operator should assess the proposed behavior, approach, and
+session can execute them without reconstructing the conversation. In PROGRESS,
+link readiness conclusions to the relevant approach, inspected code locations,
+and planned check IDs; record unresolved decisions. A bare statement that readiness
+was checked is insufficient. This is design evidence, not a claim that future
+implementation tests have passed. Do not create a separate audit report.
+The operator should assess the proposed behavior, approach, and
 accepted risks, not complete the agent's discovery or find missing contracts.
 If a material decision remains unresolved, request that decision and retain
 `awaiting_approval`; do not present the proposal as ready for execution approval.
@@ -378,7 +398,18 @@ In a diagram, distinguish new, changed, removed, and existing components with
 labels; show relevant calls, reads/writes, or transaction boundaries.
 A diagram is optional, and the summary is a review of a proposal, not a completed
 code review. Do not invent exact signatures or expand the implementation to make
-the presentation look complete.
+the presentation look complete. Specify proposed shared inputs and outputs needed
+by the chosen approach; the warning against invented signatures does not excuse
+leaving that approach undecided.
+
+Write batch documents and operator summaries in the operator's language, using
+natural developer prose. Name the actor or component, its action, and the resulting
+behavior where needed to understand a change. Keep established domain terms and
+code identifiers consistent; explain unfamiliar shorthand instead of accumulating
+slang, literal translations, or sentence fragments. Use full sentences in prose;
+short labels are suitable for tables and diagrams. Achieve brevity by selecting
+material changes and linking detail, not by omitting relationships the reader
+needs to reconstruct the meaning. Review wording before presenting the package.
 
 End with the exact proposal baseline, intended delivery authority and destination,
 and the decision requested from the operator. This is one approval covering the
