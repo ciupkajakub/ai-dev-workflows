@@ -23,3 +23,9 @@ without routine prompts at task boundaries.
 Reuse the batch's open PR when one exists. Stop at `awaiting_review` only when the
 authorized handoff and required proof exist, or report a genuine blocker with
 recovery state. Human acceptance, merge, and deployment remain separate actions.
+
+Present the result using the blueprint's
+[Verification and handoff](../../feature_execution_blueprint.md#verification-and-handoff):
+product overview, technical change summary based on the actual diff, and risks
+with verification results and remaining gaps. Highlight material departures from
+the approved proposal and link the PR or local diff and evidence.

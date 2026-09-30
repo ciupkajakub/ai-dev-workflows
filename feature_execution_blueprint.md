@@ -277,12 +277,45 @@ or retained diff, environment, exact invocation or procedure, result, and proof.
 A commit alone is insufficient when the tested worktree includes uncommitted
 changes. Retain an identifiable snapshot or diff for that state.
 
-Present one approval package: FEATURE is the behavior contract; IMPLEMENTATION
-is its execution and verification plan. Summarize the decisions, scope, expected
-proof, and delivery authority for the operator; do not require task-by-task
-approval. Set `awaiting_approval`. Preparing the proposal does not authorize
-implementation. If approval already exists for this exact content, record its
-source and continue only within the requested execution scope.
+Present one approval package using the presentation below. FEATURE is the
+behavior contract; IMPLEMENTATION is its execution and verification plan.
+Set `awaiting_approval`. Preparing the proposal does not authorize implementation.
+If approval already exists for this exact content, record its source and continue
+only within the requested execution scope.
+
+### Approval presentation
+
+Present the proposal in the operator's conversation with links to the exact
+FEATURE and IMPLEMENTATION revisions. A folder path or revision labels alone do
+not explain the proposed change. Keep the summary concise enough to assess without
+reading every task; leave supporting detail in the existing batch documents.
+
+- **Product overview.** Explain the expected user behavior and scope. Distinguish
+  the operator's requirements from decisions or assumptions added by the agent.
+  Identify unresolved material decisions before requesting execution approval.
+- **Technical change summary.** Explain what the proposal adds, changes, or removes
+  and why. Name the affected components and relevant repository locations. Cover
+  endpoints, services, parameters, response fields, callers, data writes, or
+  migrations only where they change. Show the current and proposed flow when it
+  helps explain the impact. Distinguish inspected code facts from planned changes;
+  mark provisional component or method names as provisional.
+- **Risks and verification.** Identify material compatibility, failure, concurrency,
+  or regression risks supported by the inspected code or proposed approach. Explain
+  which observable scenarios the agent will verify and what proof remains external
+  or needs a human decision or access. Separate confirmed findings from hypotheses;
+  do not turn speculative risks into mandatory manual checks for the operator.
+
+Use a compact table or a readable diagram when relationships are easier to see
+than describe. In a diagram, distinguish new, changed, removed, and existing
+components with labels; show relevant calls, reads/writes, or transaction boundaries.
+A diagram is optional, and the summary is a review of a proposal, not a completed
+code review. Do not invent exact signatures or expand the implementation to make
+the presentation look complete.
+
+End with the exact proposal baseline, intended delivery authority and destination,
+and the decision requested from the operator. This is one approval covering the
+outcome and technical approach, not separate product, technical, or task-by-task
+gates. These presentation requirements do not add batch files or template fields.
 
 ## Approve and execute
 
@@ -403,7 +436,13 @@ exists until confirmed. A requested PR handoff remains `blocked` until published
 an explicitly authorized local-only handoff can proceed without a PR.
 
 Once the agreed handoff and required proof exist, set `awaiting_review`. Report
-the result for the person to assess. The agent cannot set `done` on its own.
+the result for the person to assess. Use the same product overview, technical
+change summary, and risks/verification structure, now grounded in the actual diff
+and evidence. Highlight material departures from the approved proposal, identify
+what was added, changed, or removed, and distinguish passed checks from unverified
+behavior and remaining gaps. Link the PR or local diff and supporting evidence.
+Do not present planned work as delivered or require the operator to reconstruct
+the change from task logs. The agent cannot set `done` on its own.
 
 ## Feedback and operator edits
 

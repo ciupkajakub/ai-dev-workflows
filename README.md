@@ -60,6 +60,13 @@ approval can start the complete run. Existing scoped project authorization can
 provide those permissions. Merge and deployment remain separate decisions.
 For a plan-only review, explicitly ask to update the proposal without implementing.
 
+Before approval, the agent presents a product overview, a technical summary of
+what it plans to add/change/remove, and material risks with verification scenarios.
+It separates inspected code facts from proposed changes and agent-added decisions,
+and links the proposal documents. A flow diagram is optional. At PR handoff, the
+same summary describes the actual diff, departures from the plan, and verification
+results. See [Approval presentation](feature_execution_blueprint.md#approval-presentation).
+
 The proposal combines the former sections 8, 9, and 10. Delivery replaces section
 11 and includes verification and repairs. You can still limit a request to a
 feature contract, plan, or named task; that scope is not a mandatory extra gate.
