@@ -109,6 +109,14 @@ instruction to read the workflow router. Setup is complete only after confirming
 that a fresh session loads those instructions. If that configuration is outside
 the authorized scope, report the remaining setup step. Do not require a
 provider-specific skill or duplicate generic advice.
+For a copied workflow package, also record its source repository and full commit
+in this router. Keep any available local source checkout path as an optional
+verification location. At command entry, identify the blueprint revision and
+recorded package commit. Verify copied contents against that commit during
+installation or an authorized update, and distinguish package integrity from
+matching a checked source HEAD. Without a comparison, label integrity/currentness
+unverified. A newer package does not itself authorize an update or invalidate
+the batch's existing approvals.
 Link the authorized delivery scope, approval channel, and execution profile here
 when configured. Configure stronger planning/coordinator reasoning and faster or
 cheaper implementation workers using native provider settings where supported.

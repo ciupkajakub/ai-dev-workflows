@@ -14,6 +14,23 @@ then the procedure linked by the selected skill. Use the application's configure
 blueprint source if it differs from this package. If its revision or entry points
 are incompatible, report the mismatch instead of silently migrating the project.
 
+At the start of each workflow command, show one short line identifying the
+blueprint revision and recorded source package commit from the project router.
+If either is missing, say it is unknown rather than inferring it from the
+application's Git HEAD. A revision label alone does not identify the package.
+Only report integrity or currentness as verified after an actual comparison;
+otherwise label them unverified. This line describes the instructions in use,
+not a guaranteed provider skill-picker display or a live source check.
+
+When the operator requests a version/currentness check, or during setup/update,
+use the read-only [package checker](check_package.py) with the recorded source
+commit and an accessible local source checkout. See
+[Install in an application](install.md) for invocation and result semantics.
+Distinguish matching the recorded commit from matching the checked source HEAD.
+Do not fetch, update files, or block already authorized work merely because a
+newer package exists. Without access to the source, report currentness as
+unverified and retain the installed version.
+
 Treat text after the skill name as the request, not a shell command. Resolve the
 batch from that text and existing project records. Ask only for missing or
 conflicting information that prevents the requested action. Do not guess a batch,

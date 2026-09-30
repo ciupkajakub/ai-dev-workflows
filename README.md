@@ -107,6 +107,16 @@ It preserves existing configuration and reports fresh-session discovery as pendi
 unless it has actually been checked. Installing in this repository alone does not
 make the skills available in other application repositories.
 
+Each workflow command identifies its blueprint revision and recorded source
+package commit. The number alone is insufficient while source changes share a
+blueprint revision. Setup and explicit updates compare the copied package with
+that exact commit using the read-only [package checker](skills/check_package.py).
+Matching the installed commit and matching a checked local source HEAD are
+separate results. Without a comparison, integrity/currentness remain unverified.
+Ask `workflow-setup` to check the installed version without changes, or explicitly
+request an update from the source checkout. The source package is not fetched or
+updated automatically, and the provider's skill picker is not a version checker.
+
 These entry points standardize requests. Provider permissions, model configuration,
 execution, and verification still apply. They do not enforce the workflow in software.
 Provider documentation: [Codex skills](https://learn.chatgpt.com/docs/build-skills),
@@ -204,12 +214,15 @@ Run the lightweight documentation check:
 
 ```sh
 python3 -B tests/validate_blueprint.py
+python3 -B tests/test_check_package.py
 git diff --check
 ```
 
-It checks Markdown structure, local documentation links, and the skill discovery
-links for Codex, Claude Code, and Cursor. It does not run an agent, validate a
-project's delivery, or prove productivity gains. No new
+The documentation check covers Markdown structure, local links, and skill discovery
+links for Codex, Claude Code, and Cursor. Package tests exercise exact copies,
+local changes, missing/extra files, source updates, and unavailable revisions.
+Neither check runs an agent, validates a project's delivery, or proves productivity
+gains. No new
 behavioral experiment or quality-equivalence claim accompanies this revision.
 Evaluate it on real work by recording human interventions, review rounds,
 defects found after claimed completion, elapsed time, and available usage data.
