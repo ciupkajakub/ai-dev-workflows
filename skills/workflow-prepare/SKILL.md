@@ -14,13 +14,27 @@ existing context identifies the need, ask for it. Inspect the relevant project
 code, tests, and decisions before asking product questions.
 
 Prepare the batch's FEATURE, IMPLEMENTATION, and PROGRESS documents and update
-the shared ledgers as the blueprint requires. Present one approval package with
+the shared ledgers as the blueprint requires. In IMPLEMENTATION's existing Tasks
+section, record the material component changes before/after, their responsibilities,
+changed inputs/outputs, and affected callers. Follow the behavior through actual
+validation, recovery, and alternate entry points; a file inventory is insufficient.
+
+Complete the blueprint's
+[Proposal readiness](../../feature_execution_blueprint.md#proposal-readiness)
+review before requesting approval. Repair contradictions, missing shared contracts,
+and path-specific verification gaps yourself. Resolve ordinary technical choices
+from code evidence; ask only for unresolved product decisions or genuine blockers.
+Keep the approach in the documents and record readiness in PROGRESS. Do not label
+an incomplete proposal ready and expect the operator to finish its technical design.
+
+Present one approval package with
 the exact proposal baseline, verification plan, and intended delivery scope,
 including the push destination and PR authority needed for delivery.
 
 Present that package in the conversation using the blueprint's
 [Approval presentation](../../feature_execution_blueprint.md#approval-presentation):
-product overview, technical summary of proposed additions/changes/removals, and
+product overview, concise component-level before/after summary of proposed
+additions/changes/removals and interface changes, and
 material risks with observable verification scenarios. Distinguish code facts,
 planned changes, and agent-added decisions or assumptions. Link the proposal
 documents; use a readable flow diagram only when it helps explain the change.

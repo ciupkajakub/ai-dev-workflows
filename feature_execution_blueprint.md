@@ -170,6 +170,11 @@ Use repository evidence first, then ask the smallest useful question. Mark
 assumptions explicitly. Do not invent business decisions or silently expand the
 request. A small reversible edit may not need this workflow at all.
 
+Discovery must follow the affected behavior through its actual entry points,
+services, responses, and consumers. Reuse existing validation and recovery paths
+where they fit. A list of files or a restatement of the requested behavior does
+not establish how the proposed change works.
+
 Create three working documents in `work/<batch>-<short-name>/`. Use the following
 templates as a content contract. Omit unused optional details; do not fill
 documents with empty fields or copies of requirements.
@@ -250,6 +255,23 @@ dependent task from starting; it does not prevent unrelated authorized work.
 Mark a task done only after its outcome and required checks are satisfied, with
 proof or a specifically accepted gap recorded. Link replacements for superseded tasks.
 
+For changes that cross component boundaries, record the technical approach in
+the existing Tasks section, alongside the owning tasks. Use a compact before/after
+table or equivalent prose: named component and code location, current behavior,
+proposed responsibility, changed inputs/outputs, and affected callers or consumers.
+Include relevant parameter or response-field additions/removals, responsibility
+extractions, external calls, and data writes. If a boundary remains unchanged,
+say so only when that explains the approach. Do not copy the file inventory or
+repeat acceptance criteria as the technical approach.
+
+Choose who owns validation, fallback selection, and response construction when
+they change, and specify the information passed between those components. Trace
+that contract through all affected entry points and consumers, including existing
+alternate paths. A worker may choose private helpers and internal algorithms;
+the plan must settle shared contracts and compatibility behavior before approval.
+Mark new names as proposed. Do not prescribe every method signature or introduce
+services merely to fill the table.
+
 Every AC and implementation-affecting C must have an owner and a check, or an
 explicitly proposed gap for human decision. Cover affected consumers. Declare
 focused task checks and broader batch/integration checks separately; identify
@@ -258,6 +280,10 @@ Checks are required unless explicitly marked optional with a reason. A new check
 discovered during execution belongs at its appropriate scope in the plan.
 Commands must be real project commands with suitable cancellation/time limits.
 Observable procedures must name the expected result, not just "manual test".
+Where similar behavior uses different implementations, name the checks for each
+affected path; coverage of one does not establish coverage of the others. Include
+failure or lifecycle cases exposed by the inspected code when they affect the
+requested behavior, rather than adding a generic edge-case checklist.
 
 ### PROGRESS.md
 
@@ -285,6 +311,34 @@ or retained diff, environment, exact invocation or procedure, result, and proof.
 A commit alone is insufficient when the tested worktree includes uncommitted
 changes. Retain an identifiable snapshot or diff for that state.
 
+### Proposal readiness
+
+Before requesting approval, the coordinator reviews its own proposal against the
+inspected code. This is part of preparation, not another operator gate or a
+required separate agent. Repair the documents before presenting them:
+
+- Reconcile contradictory criteria, constraints, and fallback rules, including
+  the behavior when no suitable alternative exists. Do not silently settle an
+  unresolved product choice; ask the operator for that specific decision.
+- Check that the technical approach explains each changed shared contract and
+  responsibility. Confirm producers receive the data needed to implement the
+  promised behavior and consumers can use their outputs.
+- Trace affected alternate entry points and verify task/check coverage for each
+  distinct path. A coverage-table reference alone does not prove that a scenario
+  exercises the promised behavior.
+- Resolve ordinary technical choices from repository evidence. If feasibility
+  still depends on an unknown, investigate it within preparation authority or
+  identify the precise blocker and needed access or decision. Do not disguise an
+  unchosen approach as an implementation detail.
+
+Keep the resulting approach and coverage in FEATURE and IMPLEMENTATION, so another
+session can execute them without reconstructing the conversation. Record the
+readiness result and any unresolved decision in PROGRESS. Do not create a separate
+audit report. The operator should assess the proposed behavior, approach, and
+accepted risks, not complete the agent's discovery or find missing contracts.
+If a material decision remains unresolved, request that decision and retain
+`awaiting_approval`; do not present the proposal as ready for execution approval.
+
 Present one approval package using the presentation below. FEATURE is the
 behavior contract; IMPLEMENTATION is its execution and verification plan.
 Set `awaiting_approval`. Preparing the proposal does not authorize implementation.
@@ -302,20 +356,26 @@ reading every task; leave supporting detail in the existing batch documents.
   the operator's requirements from decisions or assumptions added by the agent.
   Identify unresolved material decisions before requesting execution approval.
 - **Technical change summary.** Explain what the proposal adds, changes, or removes
-  and why. Name the affected components and relevant repository locations. Cover
-  endpoints, services, parameters, response fields, callers, data writes, or
-  migrations only where they change. Show the current and proposed flow when it
-  helps explain the impact. Distinguish inspected code facts from planned changes;
-  mark provisional component or method names as provisional.
+  and why, using the technical approach recorded in IMPLEMENTATION. For each
+  material component change, show what it does today, what it will do afterward,
+  and the input/output or caller changes that explain the impact. Name components
+  and link relevant repository locations. Include responsibility moves, added or
+  removed parameters/response fields, changed external calls, and persistence only
+  where affected. A file list or product behavior phrased with service names is
+  insufficient. Distinguish inspected code facts from planned changes; mark
+  proposed component or method names as proposed.
 - **Risks and verification.** Identify material compatibility, failure, concurrency,
   or regression risks supported by the inspected code or proposed approach. Explain
   which observable scenarios the agent will verify and what proof remains external
   or needs a human decision or access. Separate confirmed findings from hypotheses;
   do not turn speculative risks into mandatory manual checks for the operator.
 
-Use a compact table or a readable diagram when relationships are easier to see
-than describe. In a diagram, distinguish new, changed, removed, and existing
-components with labels; show relevant calls, reads/writes, or transaction boundaries.
+Use a compact table, short prose, or a readable diagram, whichever explains the
+change with least reading. Group related components and keep only material changes
+in the conversation; link implementation detail. The operator must not need to
+request a second technical summary or open every file to understand the approach.
+In a diagram, distinguish new, changed, removed, and existing components with
+labels; show relevant calls, reads/writes, or transaction boundaries.
 A diagram is optional, and the summary is a review of a proposal, not a completed
 code review. Do not invent exact signatures or expand the implementation to make
 the presentation look complete.
