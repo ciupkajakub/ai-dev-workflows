@@ -306,11 +306,11 @@ These are the shared criteria for the author and reviewer:
 
 | ID | Criterion | Evidence needed |
 | --- | --- | --- |
-| R1 | Requirement fidelity | Each material change is necessary for a requested scenario or identified as a proposed product decision. No unsupported additions, contradictions or hidden exceptions. |
+| R1 | Requirement fidelity | Trace material decisions directly to the original request. Name any narrowing, exception or addition as a proposed requirement change needing approval; recording it in FEATURE does not authorize it. A pass cites the source requirement and corresponding decision, with any departure explicit. Agreement between the proposal's own documents is insufficient. |
 | R2 | Executable flow | Inputs reach an actual validator, result producer and consumer with sufficient data and defined side effects. A recovery handler alone is not an error producer. |
 | R3 | Path coverage | Checks exercise accepting/rejecting branches and affected implementations. Exclusions have a scope or code reason. |
 | R4 | Component and interface changes | Named owners, before/after responsibilities, material input/output additions, changes and removals, data origins and affected callers are explicit. |
-| R5 | Presentation completeness and consistency | The [approval presentation](#approval-presentation) exposes material decisions, component/interface changes and the required flow diagram, all consistent with the plan. Missing content fails even when the included prose is correct. |
+| R5 | Presentation completeness and consistency | Check the [approval presentation](#approval-presentation) against the contract, including material decisions and interface changes. Walk graph branches for success, rejection and relevant missing results; match their conditions, outcomes and side effects to the contract. Cite a concrete correspondence or discrepancy in the verdict. Sections and a diagram being present do not compensate for missing or inconsistent content. |
 
 Record `pass`, `fail` or `unknown` for each, with short evidence links in PROGRESS.
 A material fail or unknown prevents an execution-ready verdict. Resolve ordinary
