@@ -19,10 +19,12 @@ choices need not be settled; shared contracts do.
 
 Return compact path evidence, actionable findings with proposal/code locations
 and consequences, and R1–R5 results derived from that evidence. Separate confirmed
-defects from genuine product questions and hypotheses. Inspect the approval draft
-and any graph for omitted interfaces or extra promises. Do not redesign the feature,
-add unrelated improvements, edit application files or supply the missing design
-on the author's behalf.
+defects from genuine product questions and hypotheses. Check the draft against
+the [approval presentation](../../../feature_execution_blueprint.md#approval-presentation),
+requiring its filled sections, diagram, distinct open/proposed decisions and all
+material interfaces. Correct prose alone cannot pass R5 when the template is incomplete.
+Do not redesign the feature, add unrelated improvements, edit application files
+or supply the missing design on the author's behalf.
 
 For a focused rereview, inspect the changed paths and summary, carry forward
 unresolved findings, and reconcile all criteria at the new baseline. Agreement with

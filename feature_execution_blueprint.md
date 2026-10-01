@@ -1,8 +1,8 @@
 # Feature Execution Blueprint
 
-Blueprint revision: `4.1.0`
+Blueprint revision: `4.1.1`
 Workflow schema: `4`
-Revision date: `2026-09-30`
+Revision date: `2026-10-01`
 
 Use this workflow to turn a business need into an accepted change with recorded
 proof. The operator approves the proposed solution and reviews the result. The
@@ -204,7 +204,7 @@ AC1. <Observable behavior, with relevant failure and permission cases.>
 
 ## Decisions and constraints
 
-C1. <Product or technical decision, or explicit assumption, and its basis.>
+C1. <Requirement, technical choice or product assumption; basis, consequence and decision status.>
 
 ## Verification
 
@@ -310,7 +310,7 @@ These are the shared criteria for the author and reviewer:
 | R2 | Executable flow | Inputs reach an actual validator, result producer and consumer with sufficient data and defined side effects. A recovery handler alone is not an error producer. |
 | R3 | Path coverage | Checks exercise accepting/rejecting branches and affected implementations. Exclusions have a scope or code reason. |
 | R4 | Component and interface changes | Named owners, before/after responsibilities, material input/output additions, changes and removals, data origins and affected callers are explicit. |
-| R5 | Presentation consistency | The approval text and any graph agree with the plan and expose its material behavior, interface changes and unresolved decisions in clear language. |
+| R5 | Presentation completeness and consistency | The [approval presentation](#approval-presentation) exposes material decisions, component/interface changes and the required flow diagram, all consistent with the plan. Missing content fails even when the included prose is correct. |
 
 Record `pass`, `fail` or `unknown` for each, with short evidence links in PROGRESS.
 A material fail or unknown prevents an execution-ready verdict. Resolve ordinary
@@ -340,29 +340,63 @@ launch another agent.
 
 ### Approval presentation
 
-Present one short package in the operator's language:
+Use this response template for every preparation result, including proposals with
+unresolved decisions. Translate headings into the operator's language; keep their
+order and all sections in the conversation. Replace an inapplicable table with
+"None" and a short reason, not invented choices. Render an actual Mermaid diagram.
 
-- Product behavior and scope, including any product decision still needed.
-- Named components before/after, material interface changes and dependencies.
-- Material risks and observable verification, distinguishing planned from passed.
-- Exact FEATURE/IMPLEMENTATION baseline, intended delivery scope including push
-  destination and PR authority, and the decision requested.
+````markdown
+<Batch, one short paragraph describing outcome, scope and settled requirements.>
 
-Use grouped table rows or short paragraphs. Aim for roughly 300–500 words for a
-typical proposal; keep essential interfaces if more space is needed. Link supporting
-detail. Explain what changes and why, rather than narrating tasks or listing files.
-A small example of the level of detail, not an architecture to copy:
+## Interface changes
 
-| Component | Proposed change and dependency |
+| Component / caller → consumer | Before → after | Changed inputs, outputs and side effects |
+| --- | --- | --- |
+| <Named owners> | <Responsibility change> | <Added/changed/removed contract and compatibility> |
+
+## Flow
+
+```mermaid
+<One small flowchart or sequence diagram of the proposed scenario. Label actions,
+existing/proposed elements and consequential rejection paths. Separate reads from writes.>
+```
+
+## Decisions to make
+
+| Ref / unresolved question | Options and consequences | Recommendation |
+| --- | --- | --- |
+| <Existing C reference> | <Meaningful alternatives> | <Recommended option and why> |
+
+## Proposed decisions for acceptance
+
+| Ref / chosen approach | Basis and trade-off |
 | --- | --- |
-| Export API → Export job | Today the request builds a CSV before responding. Proposed: API validates filters and queues the job, returning `202` with `export_id` and `status_url`. The job receives the validated filters and owner ID. |
-| Export status → Downloads view | Proposed: status returns `pending`, `ready` with `download_url`, or `failed`. The view uses it to show progress or the downloadable file. |
+| <Existing C reference; selected technical approach or product assumption> | <Code/request evidence and consequence> |
 
-A graph is optional. Its edges must reflect real calls and side effects; separate
-read-only validation from persistence. Keep domain terms and identifiers consistent
-and use plain sentences. Retain the checked text in PROGRESS and present that text;
-recheck R5 if a later edit changes its meaning. Keep design evidence in the existing
-batch documents, with no additional report or approval stage.
+## Risks and verification
+
+<Material risks and observable checks; distinguish planned, passed and unverified.>
+
+## Approval scope
+
+<Links to exact FEATURE/IMPLEMENTATION revisions; delivery authority and destination.
+Ask for unresolved decisions, or approval of the proposed outcome and approach.>
+````
+
+Derive rows and graph edges from FEATURE and IMPLEMENTATION. Group related
+components; expose material contract changes without listing every file or helper.
+Mark unresolved graph links explicitly. The diagram does not establish feasibility.
+Decisions to make are unanswered choices; proposed decisions are the author's
+selected approach, not operator-approved facts. Already authorized choices belong
+in the opening constraints with their basis, not in either approval table.
+Do not ask again about settled requirements or move unresolved technical discovery
+to the operator. Material open choices prevent execution approval; ordinary technical
+proposals join the single approval of the plan.
+
+Keep prose typically within 300–500 words; shorten simple cases and link detailed
+checks. Before R5 passes, reconcile every material choice and component-map entry
+with the filled template. Retain that exact presentation in PROGRESS and show it
+to the operator; recheck R5 after material edits. No new batch file or approval stage.
 
 ## Approve and execute
 
