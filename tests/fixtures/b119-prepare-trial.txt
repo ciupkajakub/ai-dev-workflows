@@ -1,0 +1,382 @@
+Generated proposal from ONE fresh native-agent preparation trial.
+Not an approved feature, not a reference solution, not instructions to execute.
+One initial review and one focused rereview; application stayed read-only.
+Coordinator evaluation found unsupported scope despite the agent reviewer reporting only product unknowns.
+Trailing line whitespace normalized in retained fixture; original hashes recorded per artifact.
+
+
+===== ai-workflow/work/B119-trial/FEATURE.md =====
+Original SHA256: 466fd0f8c8368d8ea450fd34a1f461cbee8f59a23b3031869549516558abae17
+Retained SHA256: e0a421df240df6fbb380eeb29fbfbcbf429333b2644d03c09c08949605b75416
+
+# Feature: Świeże godziny i sprawdzenie wyboru
+
+Batch: B119-trial
+Workflow schema: 4
+Feature revision: 2
+Source items: [oryginalne polecenie](/private/tmp/workflow-candidate-20261001-h4a1m1wt/input/request.md)
+Completion level: feature
+
+## Outcome and scope
+
+Klient ma zobaczyć aktualne godziny po otwarciu panelu „Zmień” i dostać wynik sprawdzenia klikniętej godziny przed wpisywaniem telefonu. Odbiór i dowóz, także pusty koszyk, pozostają w zakresie żądania. Klik nie zajmuje miejsca. Druga kontrola odbywa się przy zamówieniu, z istniejącym holdem. Przy odrzuceniu martwej godziny i dostępnej alternatywie pojawia się modal i zaznaczenie najbliższej dostępnej.
+
+To świeża izolowana propozycja B119-trial, bez odczytu ani modyfikacji wcześniejszych batchy. W tej próbie nie implementujemy aplikacji i nie uruchamiamy jej testów. D1 poniżej pozostaje decyzją do rozstrzygnięcia, więc dokument nie stanowi gotowej zgody na wykonanie.
+
+Wyłączone: zmiany pojemności i algorytmu rezerwacji, nowe tabele rezerwacji, hold za samo oglądanie/klik, zmiana minimum strefy, dopłata za mały koszyk, polling pełnego katalogu przy zamkniętym panelu, commit/push/PR/deploy.
+
+Oryginalne wymagania zachowano dosłownie poniżej.
+
+<details><summary>Źródło wymagań</summary>
+
+/workflow-prepare
+ Zaimplementuj świeżą listę godzin odbioru i dowozu oraz sprawdzenie godziny w momencie kliknięcia. Nie zmieniaj pojemności kuchni ani modelu rezerwacji. Godzina zostaje dostępna dla wszystkich, dopóki kolejny klik się w nią nie mieści. Nie rezerwuj jej dla jednego ekranu tylko dlatego, że ktoś na nią patrzy.
+
+Kontekst, jak jest dziś
+- Bloczki odbioru schodzą w HTML strony głównej (`Public::PickupSlotState` → `app/views/public/home/show.html.erb` i `app/views/public/home/cart/_pickup.html.erb`). Rozwinięcie „Zmień” (`<details>`) niczego nie pobiera.
+- `CartAvailability#refresh` w `app/javascript/controllers/cart/cart_availability.js` co 15 s nic nie robi przy pustym koszyku. Przy pełnym koszyku po pierwszej wycenie patrzy tylko na markery świeżości (wersja floty, kuchnia, status wybranej godziny, menu). Zajęcie innej godziny przez kogoś innego listy nie przerysowuje.
+- Klik godziny przy pustym koszyku (`allowSlot`) przechodzi bez pytania do serwera. Odmowa jest dopiero przy „zamawiam”.
+- Dowóz: `Delivery#quote` w `app/javascript/controllers/cart/delivery.js` idzie przy przełączeniu na dowóz i 300 ms po zmianie adresu. Wybrana oferta gaśnie po `valid_for_seconds` (około minuty). Niewybrana lista zostaje, dopóki adres się nie zmieni.
+- `catalog: false` w odzyskiwaniu koszyka musi pominąć klucz `day_groups`. Pusta tablica kasuje siatkę w `pickup.js`.
+- Minimum dowozu jest na strefie (`DeliveryPricingZone#minimum_subtotal_cents`, domyślnie 0, `MatchZone` zwraca `below_minimum`). Tej kwoty nie ustawiaj i nie dodawaj dopłaty za mały koszyk.
+
+Zachowanie
+1. Otwarcie listy godzin pobiera ją z serwera w tej chwili. Odbiór i dowóz. Zwinięta lista serwera nie pyta. Nie dokładaj drugiego przycisku obok „Zmień”: otwarcie tego panelu jest fetchem.
+2. Klik w godzinę, także przy pustym koszyku, od razu sprawdza tylko tę godzinę. Nie czekaj do „zamawiam”.
+3. Jak tej godziny już nie ma, pokaż modal: na wybraną godzinę jest za późno. Zaznacz najbliższą, która jeszcze wchodzi (na przykład 13:20 padło, zostaje 13:40). Klient ma to zobaczyć, zanim wpisze telefon.
+4. Kto kliknął, zanim miejsca zabrakło, wchodzi. Dwie osoby mogą dostać tę samą godzinę, jeśli obie kliknęły, zanim pierwsza zajęła kubełek. Miejsce schodzi przy zamówieniu, obecną ścieżką holdu. Kolejny klik, który się nie mieści, dostaje modal i następną godzinę.
+5. „Zamawiam” zostaje drugą bramką na ten wyścig. Jak godzina padnie w trakcie wypełniania, znowu modal i następna godzina. Nie komunikat „Brak wolnych terminów dostawy.” i nie pusta lista.
+6. Dowóz: klik w okno robi to samo. Otwarcie listy albo ponowne pytanie o dowóz bierze świeżą wycenę. Martwe okno podmienia się na najbliższe żywe, z modalem, nie na pustkę.
+
+Nie rób
+- Wyłącznego trzymania godziny dla osoby, która tylko ją ogląda.
+- Pollingu pełnego katalogu, dopóki lista jest zwinięta.
+- Wysyłania `day_groups: []` przy sprawdzeniu jednej godziny.
+- Zmiany progu minimum strefy i nowej opłaty za mały koszyk.
+- Nowej tabeli rezerwacji. Użyj istniejącego sprawdzenia pojemności (`PickupSlotsQuery#remaining_capacity?`, wycena dowozu, checkout).
+
+Testy
+- Otwarcie listy odbioru i dowozu robi fetch. Samo siedzenie na stronie, ze zwiniętą listą, nie.
+- Klik w pełną godzinę przy pustym koszyku otwiera modal i zaznacza następną wolną.
+- Dwa równoczesne zamówienia na ostatnie miejsce: oba wchodzą albo wchodzi tyle, ile kubełek mieści w momencie zapisu. Kolejny klik dostaje następną godzinę, nie „brak dostawy”.
+- `catalog: false` nie zawiera `day_groups`.
+- RuboCop na zmienionych plikach i skupione specy tych ścieżek.
+
+</details>
+
+## Acceptance criteria
+
+AC1. Każde otwarcie listy „Zmień” pobiera aktualny katalog danego sposobu realizacji, również przy pustym koszyku. Zwinięte listy nie pobierają katalogu okresowo; zmiana markerów ani pierwsza wycena koszyka nie obchodzą tego ograniczenia. Brak drugiego przycisku obok „Zmień”.
+AC2. Klik odbioru sprawdza tylko wskazany token oraz aktualne obciążenie koszyka. Pusty koszyk sprawdza faktyczną wolną pojemność, bez pozornego sukcesu przez zerową listę obciążeń. Sukces zaznacza klikniętą godzinę, odmowa pokazuje modal i wybiera najbliższą dostępną. Żądanie z `catalog: false` pomija `day_groups`.
+AC3. Dowóz po otwarciu listy i wyraźnym ponowieniu pobiera świeżą wycenę dla bieżącego adresu/koszyka. Klik sprawdza wskazane okno, odmowa lub wygaśnięcie uruchamia świeżą wycenę i zastępuje je najbliższym żywym, z modalem. Obejmuje legacy i shared fleet. Wymaganie pustego koszyka pozostaje otwarte w D1, a nie wyłączone z AC.
+AC4. Dwa sprawdzenia przed holdem mogą przyjąć ten sam termin. Sprawdzenia niczego nie rezerwują. Zapis zamówienia przyjmuje tylko to, co mieści istniejąca kontrola pojemności. Po zajęciu ostatniego miejsca następny klik dostaje alternatywę. Brak gwarancji miejsca od kliknięcia do zamówienia.
+AC5. Przy utracie wybranego terminu podczas wpisywania danych ponowne „Zamawiam” daje modal i dostępną alternatywę. Dotyczy także preflight przed SMS-em oraz odrzucenia pod blokadą zapisu. Nowy wybór pozostaje zaznaczony po pełnej obsłudze błędu, renderowaniu i zapisie lokalnym.
+AC6. Odpowiedź częściowa bez katalogu zachowuje siatkę. Autorytatywnie pusty katalog usuwa martwe opcje i blokuje zamówienie bez fikcyjnego wyboru; modal wyjaśnia brak następnego terminu. Odrzucenie tokenu innej lokalizacji nie oznacza pustej listy: serwer dobiera alternatywę wyłącznie z bieżącej lokalizacji, jeśli istnieje. Błąd sieci nie jest dowodem braku terminów i nie zatwierdza kliknięcia. Brak adresu, strefy/minimum, zamknięcie zamówień i timeout nie są komunikatem o zajętej godzinie.
+AC7. Zmienione Ruby przechodzą RuboCop, skupione specy serwisowe/requestowe sprawdzają rzeczywiste walidatory, a skupione browser specy sprawdzają fetch, modal, zaznaczenie i utrzymanie wyboru. Próba przygotowania nie daje takiego dowodu.
+
+## Decisions and constraints
+
+C1. Wymagane przez użytkownika: brak rezerwacji za oglądanie/klik, brak zmian limitów, minimum, holdów i schematu. Zachowujemy blokady i idempotencję checkoutu. Geokodowanie/wycena używają istniejących granic zewnętrznych, bez nowych dostawców; testy użyją syntetycznych danych i stubów tych granic.
+C2. Decyzja techniczna: dla pustego odbioru przekazać `cart_items: nil` do `PickupSlotsQuery`, dopiero po rozróżnieniu naprawdę pustego wejścia od koszyka z niedostępnymi pozycjami. `[]` powoduje obecnie `loads.all? == true`; `nil` wybiera istniejący test `reserved_load < limit` puli domyślnej. Dla niepustego koszyka zachować obciążenia wszystkich pul z `Orders::CartLines`/`PreparationLoad`.
+C3. Decyzja techniczna: użyć istniejącego endpointu availability z dodanym `selection_check` i istniejącym `catalog`. Otwarcie ma `catalog: true`; klik ma `selection_check: true, catalog: false`; tło ma oba false. Pełny katalog po odmowie jest osobnym żądaniem recovery wywołanym zdarzeniem, nigdy cyklicznym pobieraniem ukrytej listy.
+C4. Decyzja techniczna: serwer wybiera najbliższą dostępną według czasu w istniejącym horyzoncie, z bieżącym koszykiem i lokalizacją. Dla dowozu świeża wycena i pełne metadane zastępują stary token. Zmiana tokenu zeruje zgodę na długie oczekiwanie; klik nie wymaga tej zgody, checkout nadal jej wymaga. Nie powstaje automatyczna zgoda ani automatyczne ponowienie zamówienia.
+C5. Decyzja techniczna: transport/pending i nieaktualna odpowiedź nie zatwierdzają wyboru. Odpowiedź można zastosować tylko do aktualnego sposobu realizacji, adresu, koszyka i ostatniej intencji wyboru. Modal z istniejącymi stylami, natywnym dialogiem, komunikatem „Na wybraną godzinę jest już za późno”, nową godziną i przyciskiem zamknięcia; poprawny fokus i Escape. Brak alternatywy jest odrębnym stanem, a nie zachowaniem starego martwego terminu.
+C6. Otwarta decyzja produktu D1: jaki ładunek reprezentuje pusty koszyk dowozu? `DeliveryPromises#valid_request?` i `OwnFleet::DeliveryOffer#available?` wymagają pozycji, a `MatchZone` stosuje realne minimum strefy. Wniosek techniczny: usunięcie samego warunku `present?` nie daje prawidłowego planowania kuchni/floty. Wąska propozycja do decyzji: pusty odbiór działa od razu, a dowóz pokazuje terminy dopiero po pierwszej pozycji i pełnym adresie, zachowując prawdziwe minimum. To jawnie proponowana zmiana AC1/AC3, nie zaakceptowana interpretacja polecenia. Alternatywa wymaga określenia obciążenia podglądu i zachowania minimum. Bez decyzji nie implementować tego wyjątku ani nie deklarować spełnienia pustego dowozu.
+C7. Uwaga zgodności do rozstrzygnięcia R1/R2: shared fleet wiąże ofertę z wersją/fingerprintem planu i odrzuca drugie równoczesne zamówienie na starym tokenie nawet przy potencjalnie wolnej pojemności. Żądanie nie upoważnia do zmiany modelu holdów. Plan zachowuje tę granicę, pokazując świeżą ofertę po odmowie; nie twierdzi, że udowodnił „tyle zamówień, ile kubełek mieści” dla shared. Potrzebne rozstrzygnięcie, czy odrzucenie starej oferty z od razu wybranym świeżym terminem spełnia zamierzony wyścig. Nie jest to zaakceptowany wyjątek.
+
+## Verification
+
+Plan K1–K9 wiąże obserwowalne wyniki z rzeczywistym wyczerpaniem pojemności, czasem i wejściami tokenów. Nie wolno ograniczyć dowodu do wstrzyknięcia gotowego błędu presenterowi. Ryzyka: częściowe JSON kasujące listę, pusty koszyk jako zerowe obciążenie, wygasły fingerprint shared, stary wynik HTTP nadpisujący nowszy wybór, odzyskany wybór skasowany przez `showErrors`/`syncSelectedSlotButton`, zgoda przypisana do starego tokenu. Lokalny dowód wymaga późniejszego zatwierdzenia i izolowanego środowiska. Pełne browser/visual/release lanes są osobnym ręcznym etapem przed produkcją, nie bramką tej propozycji.
+
+===== ai-workflow/work/B119-trial/IMPLEMENTATION.md =====
+Original SHA256: d7f651463b2e0af8bf91f66c4eac62ce43eddfbb9904662ff6f9f8533acec259
+Retained SHA256: d7f651463b2e0af8bf91f66c4eac62ce43eddfbb9904662ff6f9f8533acec259
+
+# Implementation: Świeże godziny i sprawdzenie wyboru
+
+Batch: B119-trial
+Workflow schema: 4
+Plan revision: 2
+Feature revision: 2
+
+## Execution context
+
+Aplikacja wyłącznie do odczytu: `/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails`, potwierdzony HEAD `10a5226206851e98a5360d68efba21188be1be7f`. Dowody poniżej odnoszą się do odczytanych plików tej aplikacji. Nie uruchomiono testów ani usług. Zapisy wyłącznie w `/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial`.
+
+Instrukcje: niezacommitowany kandydat `/private/tmp/workflow-candidate-20261001-h4a1m1wt/instructions`, blueprint 4.1.0/schema 4. Router aplikacji podaje commit pakietu `259cdc5d10de0e12067ff95ef9f3ef149e0a86e4`; kandydat go nadpisuje tylko w tej próbie. Integralność wobec tego commita i aktualność wobec HEAD źródła nie były weryfikowane. Obowiązują app `AGENTS.md`, `ai-workflow/AGENTS.md`, `TESTING_POLICY.md`, `SECURITY.md`. Model wybiera platforma; brak repo mechanizmu wyboru modelu. Reviewer natywny, niezależny kontekst.
+
+Dalszy delivery dopiero po rzeczywistej zgodzie człowieka na konkretny snapshot i rozstrzygnięciu otwartych punktów. Zakres wtedy: lokalna implementacja i skupiona weryfikacja, bez commit/push/PR/deploy. Push destination i PR authority: brak. Nie utworzono gałęzi wykonawczej. [WORK_INDEX](../../WORK_INDEX.md) przechowuje tożsamość i status. Brak zadeklarowanych zależności od innych batchy, nie czytano ich.
+
+Przed późniejszym wykonaniem potwierdzić dostępną izolowaną kopię kodu, osobny PostgreSQL/PostGIS i nazwę testowej bazy, porty oraz stuby SMS, geokodera i płatności. Nie wykonywać setup/reset w aplikacji źródłowej. Ta próba nie sprawdza dostępności środowiska i nie upoważnia instalacji. Nie wybieramy istniejącej bazy na podstawie zgadywania. Checks używają rzeczywistych `bin/spec` i `bin/rubocop`; każdą pojedynczą komendę ograniczyć natywnym limitem 180 s, browser 300 s. Limit przekroczony oznacza brak dowodu, nie sukces.
+
+## Tasks
+
+| Task | Status | Outcome | Feature refs | Depends on | Checks |
+| --- | --- | --- | --- | --- | --- |
+| T1 | planned | Kontrakt availability, jednoslotowa kontrola odbioru, selekcja alternatywy | AC1–2, AC6, C1–3 | Decyzja D1 przed całością delivery | K1, K2 |
+| T2 | planned | Kontrola wskazanego dowozu i wymuszona świeża wycena, osobne reguły preview/checkout | AC3, AC6, C3–4, C6–7 | T1, D1 i granica C7 | K3, K4 |
+| T3 | planned | Druga bramka i spójne recovery zamówienia oraz SMS preflight | AC4–5, C1, C4, C7 | T1, T2 | K5, K6 |
+| T4 | planned | Otwarcie panelu, modal i trwały wybór w JS | AC1–6, C3–5 | T1–T3 | K7, K8 |
+| T5 | planned | Skupiona walidacja całości i przegląd zakresu | AC7, C1–7 | T1–T4 | K9 |
+
+Kod w mapie: ścieżki względem wyżej podanej aplikacji tylko do odczytu. Wszystkie nowe nazwy/pola są propozycjami, nie istniejącym kodem.
+
+| Component / owning task / code evidence | Before → proposed change | Inputs and outputs: added, changed, removed | Callers / consumers |
+| --- | --- | --- | --- |
+| `Public::CartRecoveryController`, `Public::CartRecovery`, T1/T2; `app/controllers/public/cart_recovery_controller.rb`, `app/services/public/cart_recovery.rb` | Dziś availability łączy wycenę i katalog, a delivery ignoruje przesłany token. Rozdzielić jawne otwarcie, kontrolę wyboru i częściową wycenę tła | Nowy boolean `selection_check`, istniejący `catalog`; lokalizacja wyłącznie z `PublicLocationContext`. Przy kliknięciu pickup `pickup_slot.valid` i `selected_pickup_slot`; przy kliknięciu delivery `delivery.valid`, `selected_window`, `error`, `message`, bez `windows`. Brak katalogu pomija `day_groups` i `windows`, także w gałęzi błędu. `catalog:true` autorytatywnie zwraca listę nawet pustą. Domyślne `catalog:true` dla istniejących remove-line/remove-unavailable pozostaje | `CartAvailability`, `Delivery`, Basket/recovery dotychczasowi klienci. Bez zmiany tras ani payloadów zamówienia |
+| `Public::PickupSlotState`, `PickupSlotsQuery`, `Public::PickupSlotsRecoveryPayload`, T1/T3 | Dziś `catalog:false` nie ma next slot, stan i selected payload mają różne kontrole. Wyprowadzić jeden wynik walidacji selected ze State, użyć tej samej reguły w payload. Alternatywę wybiera serwer z aktualnego query dopiero w recovery | Prawdziwie pusty `cart_items` normalizowany do nil wyłącznie dla dostępności; koszyk z odrzuconymi pozycjami nie staje się pustym. Podpis, location, status, lead time, godziny otwarcia, kitchen i `remaining_capacity?`. Nowy `replacement_pickup_slot` pełny `{token, starts_at, label, surface_label}`, `no_slots_available`; katalog tylko na żądanie. Dotychczasowe `clear_selected` oznacza usunięcie starego przed zastosowaniem replacement | Pełny katalog otwarcia, częściowy klik, Orders i PhoneProofs po realnym odrzuceniu. Bez zmian pojemności/query algorytmu |
+| `Orders::Checkout::DeliverySelection`, `Public::DeliveryCartQuote`, T2; `app/services/orders/checkout/delivery_selection.rb`, `app/services/public/delivery_cart_quote.rb` | Dziś Selection wymaga płatności i zgody checkout, legacy pyta available?, shared weryfikuje fingerprint/expiry; CartQuote generuje cały katalog. Wydzielić współdzieloną walidację wskazanego okna do proponowanego `Public::DeliveryWindowCheck`, a Selection nadal nakłada płatność i zgodę. Quote służy otwarciu i odmowie | Check otrzymuje server location/time, raw address, token, aktualne lines i subtotal. Geocode → MatchZone/Commercials → legacy `DeliveryPromises.available?` albo shared `expired?`/`verify` plus warunki deadline/freshness z `valid?`. Nie wywołuje hold. Zwraca valid/error/zweryfikowane okno z istniejącymi metadanymi. Quote zachowuje fee/address/windows oraz dodaje `replacement_window` przy recovery. D1 nie ma rozstrzygniętego wejścia dla pustych lines | Klik przed telefonem bez zgody/płatności i checkout po normalnej autoryzacji. Nie przekazywać fikcyjnego consent_token. UI dostaje bieżącą opłatę, znormalizowany adres, terminy, expiry/deadline i consent_required; żadnych prywatnych allocations/planning_input |
+| `Orders::Checkout`, `LockedAttempt`, OrdersController, CheckoutPhoneProofsController, T3 | Dziś pickup pod blokadą sprawdza pojemność, SMS preflight robi to poza zapisem, ale recovery obu kontrolerów pobiera query bez koszyka; delivery preflight w ogóle pomija Selection. Zachować walidację zapisu, uzupełnić rzeczywisty delivery preflight i scalić konstruowanie recovery w proponowanym `Public::CheckoutSlotRecovery` | `read_only_call` po prawidłowym statycznym wejściu dostanie DeliverySelection dla delivery, z rzeczywistym payment_method/consent. Po realnym pickup error recovery bierze lines z tego samego wejścia i aktualne query; po delivery_offer_expired/delivery_window_unavailable także z błędu pod blokadą, po rollback robi świeży Quote i `replacement_window`. Recovery dołączane do failure bez potrzeby wcześniejszego pickup recovery. Producent otrzymuje location, cart_items, address i stary token z żądania; nie ufa cenom klienta | POST orders i POST checkout_phone_proof, następnie Completion i CheckoutPhoneProof w przeglądarce. Recovery nie tworzy order/hold/SMS/payment. Nie generować recovery po sukcesie ani po idempotentnym replay ze status_url. Nie zmieniać istniejących blokad, holdów i commit ścieżki |
+| `CartAvailability`, `cart_controller`, `cart_owners`, widoki pickup/delivery, T4 | Dziś klik pustego odbioru i dowozu jest lokalny, details nie pobiera, delivery ma osobny przycisk. Dodać toggle do obecnego pickup details; delivery godziny przenieść do analogicznego details „Zmień”, zastępując istniejące ponowienie, bez drugiego przycisku | Toggle open wysyła wymuszone catalog:true pomijając cache/markery/count. Klik wysyła selection_check:true/catalog:false. Timer zawsze catalog:false, także gdy potrzebna pełna wycena koszyka. Tło nie generuje pełnej wyceny delivery ani listy windows. Zdarzenia adresu/przełączenia nadal inicjują pojedynczą wycenę, jeśli dane pełne. Odpowiedzi mają sekwencję+fingerprint intencji i nie nadpisują nowszego adresu/wyboru | Widoki i runtime render, katalog i klik dla aktualnego sposobu realizacji. D1 blokuje ustalenie pustego delivery, brak adresu daje informację o wymaganym adresie, a nie fałszywy katalog |
+| `Pickup`, `Delivery`, `Completion`, `CheckoutPhoneProof`, `cart_owners`, T4 | Dziś clear_selected czyści, announce nie jest modalem, syncSelectedSlotButton usuwa token nieobecny w DOM; delivery applyRecovery porównuje tokeny, showErrors ponownie czyści odzyskany wybór. Dodać wspólny modal odzyskania godziny i atomowe zastosowanie recovery | Pełny katalog zastępuje siatkę; częściowa odpowiedź bez klucza ją zachowuje. Przy replacement pickup najpierw zapewnić pełny slot w dayGroups/DOM i właściwy dzień, potem selected token/label, storage starts_at i render. Przy delivery najpierw nowe windows i quoteReceivedAt, następnie replacement token/label, zgoda reset, timer z expiry. `showErrors` nie kasuje poprawnego replacement ani nie powtarza komunikatu „Brak wolnych terminów dostawy.”. PhoneProof przekazuje payload do showErrors, by również rozpoznawał obsłużone recovery | Kolejne renderowanie, submitCopy/readyToPay, lokalny storage, ponowne otwarcie panelu, powrót fokusu z modalu. Invalid + brak replacement czyści stary wybór i blokuje submit. Zmiana tokenu czyści checkout request key tak jak istniejąca zmiana sposobu realizacji, bez automatycznego submit |
+
+Scenariusze, od wejścia do konsumenta:
+
+S1/T1/T4/K1,K7: toggle closed→open pickup, token/koszyk z session → State z bieżącym czasem, scope i query → `day_groups` pełne oraz selected valid/invalid → aktualna siatka. Przy zamknięciu brak fetch; przez kolejne tyknięcia timer może pobierać markery/partial ceny, nigdy day_groups/windows, także po zmianie menu/floty. Reopen wymusza kolejny fetch. Bez zapisów pojemności.
+
+S2/T1/T4/K2,K7: klik pustego odbioru → `selection_check:true,catalog:false`, puste wejście normalizowane do nil → podpis/location/public eligibility/kitchen i `remaining_capacity?` puli domyślnej. Sukces selected, bez katalogu. Pełny kubełek daje valid:false i clear_selected; klient robi jednorazowe catalog:true recovery, które wybiera pierwszą wolną godzinę, zwraca replacement wraz z siatką. Następnie Pickup wybiera dzień, zapisuje token/starts_at, renderuje i pokazuje modal. Dwa kliknięcia przed holdem oba valid:true, zero holdów. Niepusty koszyk przechodzi osobno wszystkie wymagane pule, a niedostępne pozycje zachowują błędy, nie są traktowane jak pusty koszyk.
+
+S3/T2/T4/K3,K7: pełny adres i koszyk, delivery open/requote → wymuszony Quote, geokoder i MatchZone z rzeczywistym subtotal, potem offer → aktualne opłata/adres/windows. Gdy stary wybór istnieje, sprawdzić go przez WindowCheck; na sukces utrzymać tożsamość okna i świeże metadane, na odmowę serwer wybiera najbliższe okno i replacement. Nie porównywać wyłącznie nowych podpisów. Przy `below_minimum`/geocode/timeout zachować właściwy błąd i blokadę, nie wymyślać alternatywy. D1: pusty koszyk dochodzi dziś do guardów present? i nie ma wykonalnego kontraktu oferty, `unknown` do decyzji.
+
+S4/T2/T4/K3,K4,K8: klik legacy tokenu → WindowCheck sprawdza podpis/lokalizację, adres/strefę/taryfę i `DeliveryPromises.available?` na aktualnych capacity. Sukces zawiera tylko potwierdzone okno; odmowa robi Quote i recovery z najbliższym terminem, dopiero wtedy katalog. Shared token → sprawdzenie expiry i verify z realnymi lines/address/travel, następnie deadline/current input/valid?; brak zgody nie blokuje kliknięcia, ale replacement wymaga własnej zgody przy checkout. Wygaśnięcie timera inicjuje ten sam check/requote, bez automatycznego zamówienia. Dwie poprawne odpowiedzi przed holdem nie tworzą rezerwacji. Snapshot/fingerprint może odrzucić shared po innym holdzie; granica C7 pozostaje nierozstrzygnięta.
+
+S5/T3/T4/K5,K8: gość odbiór, poprawny telefon/imię i koszyk, lecz slot wyczerpany → CheckoutPhoneProofs#create → CheckoutPreflight/read_only_call → PickupSelection#remaining_capacity? → rzeczywisty pickup_slot_full, zero nowego OTP/SMS/hold → CheckoutSlotRecovery z obciążeniem tego koszyka → day_groups+replacement → CheckoutPhoneProof/Completion/Pickup/modal. Wybrany następny slot musi nadal być w session/storage/DOM po `showErrors` i render. Dla bezpośredniego delivery preflight poprawne statyczne dane → dodana Selection, expired/full wywołuje ten sam recovery bez OTP; błędne dane statyczne zachowują wczesną odmowę bez zbędnej wyceny.
+
+S6/T3/T4/K5,K6,K8: zwykły order POST po utracie slotu → Eligibility i prawdziwa kontrola pod PreparationCapacity.with_location_lock; pickup_selection lub delivery lock_delivery_admission!/hold odrzuca; transakcja się cofa; recovery budowane po wyjściu z próby → następny termin i modal. Legacy dowóz i shared mają różne walidatory i osobne checki. Po odzyskaniu `showErrors` nie wywołuje clearWindow, Completion nie nadpisuje komunikatu i nie wysyła sam zamówienia. Powtórzony request key istniejącego order ma dotychczasowy replay; nie tworzymy drugiego order.
+
+S7/T1–T4/K2,K4,K7,K8: token innej lokalizacji → walidator odrzuca selected, lecz nie wywodzi z tego pustego katalogu; recovery pyta wyłącznie bieżącą lokalizację i stosuje jej najbliższą pasującą alternatywę zgodnie z S2/S4. Dopiero rzeczywisty brak alternatywy lub zamknięcie kuchni → autorytatywny pusty katalog/stan niedostępności, clear starych opcji i selection, jawny komunikat, submit zablokowany. Pominięte day_groups/windows nie oznaczają pustego katalogu. HTTP/network error nie zamienia istniejących danych w autorytatywną pustkę ani nie zatwierdza kliknięcia. Odpowiedź opóźniona po zmianie adresu/koszyka/trybu jest odrzucona, modal dotyczy tylko aktualnej intencji.
+
+## Verification checks
+
+Wszystkie checks są wymagane po zatwierdzeniu wykonalnej propozycji. Poniższe komendy są planowane, nie uruchomione. Bez pełnych suite/build/scan/instalacji w tej próbie.
+
+| Check | Scope | Command or observable procedure | Required evidence |
+| --- | --- | --- | --- |
+| K1 | focused T1 | `bin/spec spec/requests/public/cart_recovery_spec.rb spec/services/public/pickup_slot_state_spec.rb` | Otwarcie zwraca świeży katalog; catalog:false nie ma klucza day_groups ani windows, także odmowa; remove-line i remove-unavailable zachowują dotychczasowy kontrakt; obie lokalizacyjne trasy zachowują scope |
+| K2 | focused T1 | `bin/spec spec/queries/pickup_slots_query_spec.rb spec/requests/public/cart_recovery_spec.rb` | Rzeczywisty default pool pełny przy pustym koszyku → odmowa, wolny → sukces; dodatkowa pula pełna dla niepustego; closed/too-soon/inny location/invalid signature; obcy token z dostępną alternatywą lokalną daje jej replacement, nigdy dane obcej lokalizacji; katalog recovery dobiera pasujące obciążenie i pełny slot; order/hold/event counts bez zmian |
+| K3 | focused T2 | `bin/spec spec/requests/public/cart_recovery_spec.rb spec/services/delivery_promises_spec.rb spec/services/own_fleet/delivery_offer_spec.rb` | Klik rzeczywiście podpisanego legacy i shared z aktualnymi danymi → valid; po rezerwacji pojemności albo czasie/zmianie fingerprint → realna odmowa i fresh replacement z pełną opłatą/address/expiry/consent; brak hold/payment/SMS. Nowe specy WindowCheck dopisać do tej komendy przy utworzeniu pliku |
+| K4 | focused T2 | `bin/spec spec/services/delivery_geography/match_zone_spec.rb spec/services/own_fleet/delivery_offer_spec.rb spec/requests/public/cart_recovery_spec.rb` | Próg minimum 0 i dodatni bez zmian opłat; brak adresu/out-of-zone/budget timeout/invalid token mają odrębne wyniki; shared klik bez long-wait consent jest poprawny, ale checkout nadal odrzuca jego brak. D1 i C7 wymagają ustalenia oczekiwań przed wykonaniem odpowiednich scenariuszy, nie wolno oznaczyć tych ścieżek green |
+| K5 | focused T3 | `bin/spec spec/requests/public/checkout_phone_proofs_spec.rb spec/services/orders/checkout_spec.rb spec/requests/public/fleet_checkout_spec.rb` | Preflight i order osobno, faktycznie wyczerpać capacity po wyborze; dla preflight dane statyczne poprawne, brak OTP przy odmowie. Legacy i shared expired/rejected pod blokadą dają replacement, nie sam errors. Nie stubować validatora. Brak częściowych order/hold/payment zapisów, idempotentny retry bez duplikatu |
+| K6 | focused T3 | `bin/spec spec/services/orders/checkout_spec.rb spec/services/orders/fleet_checkout_concurrency_spec.rb` | Synchronizowane dwa kliknięcia przed holdem, potem dwa order POST przy 1 i 2 jednostkach oraz dalszy klik; kontrola rzeczywistych order/claim/reserved_load. Pickup i legacy mieszczą tyle, ile pozwala niezmieniona pojemność. Shared osobno ujawnia ograniczenie starego fingerprintu, C7 nie ma przyjętego kryterium sukcesu. Test nie może nazwać jednego sukcesu dowodem przyjmowania wszystkich mieszczących się |
+| K7 | focused T4 | `bin/spec browser spec/system/public_pickup_slot_labels_spec.rb spec/system/checkout_input_resilience_spec.rb` | Dodać browser przykłady: zamknięty panel empty/full przez ≥2 tyknięcia i zmianę markerów → 0 pełnych katalogów; open/reopen → każdy fetch; klik full empty cart przy realnym capacity → modal i następny slot przed telefonem; token, label, dzień, storage starts_at, aria-pressed i submitCopy utrzymują się po renderze i zamknięciu dialogu. Network fail i spóźniony wynik nie zatwierdzają |
+| K8 | focused T4 | `bin/spec browser spec/system/public_delivery_checkout_spec.rb spec/system/fleet_checkout_payment_spec.rb spec/system/customer_checkout_spec.rb` | Osobno legacy/shared, open/quote/click/expiry/recovery z orders i SMS. Rzeczywiste serwerowe capacity/expiry, nie gotowy payload; nowy token+windows+fee+deadline renderują się, zgoda resetuje, submit wymaga nowej zgody. Test po pełnym applyRecovery→showErrors→render wykrywa ponowne clearWindow. Autorytatywna pustka usuwa stare opcje. Modal z klawiaturą/Escape/fokusem, jeden reprezentatywny viewport; krótka inspekcja renderu stylów bez pełnego visual lane |
+| K9 | focused T5 | `bin/rubocop` z dokładnymi zmienionymi plikami Ruby; przegląd końcowego diffu i dowodów K1–K8 | Zero zmian limitów/minimum/schema/hold model, żadnych nowych wywołań zewnętrznych poza istniejącą wyceną, brak testów pending/skipped, wyniki na konkretnym końcowym diffie. Nie powtarzać zielonych checks bez zmiany dotykającej ich wyniku |
+
+Broader local batch checks: przegląd łącznego diffu i pokrycia K9; bez pełnej suite. External CI/release: poza zamówionym lokalnym feature, nie uruchamiać i nie twierdzić, że release_ready. Manualne pre-production lanes pozostają polityką projektu.
+
+## Coverage
+
+| Feature refs / affected consumers | Task and check IDs |
+| --- | --- |
+| AC1, C3; details, CartAvailability, route scoped/default, Basket | T1,T4 / K1,K7,K8 |
+| AC2, C2; State/Query/Pickup/session/storage | T1,T4 / K2,K7 |
+| AC3, C4; DeliverySelection/WindowCheck/Quote/Delivery | T2,T4 / K3,K4,K8; pusty dowóz unknown D1 |
+| AC4, C1,C7; LockedAttempt/PreparationCapacity/shared reservation | T3 / K5,K6; shared granica unknown C7 |
+| AC5; OrdersController/PhoneProofsController/Completion/showErrors | T3,T4 / K5,K8 |
+| AC6, C5; częściowy JSON, authoritative empty, błędy sieci, modal | T1,T2,T4 / K1,K2,K4,K7,K8 |
+| AC7, C1–7 | T5 / K9 i domknięcie K1–K8; unknown nie wolno pominąć |
+
+===== ai-workflow/work/B119-trial/PROGRESS.md =====
+Original SHA256: fdd04e2b3e32005066ba263e6f58e4f897c7886ed98721063b3dbf1a3fe1bdee
+Retained SHA256: fdd04e2b3e32005066ba263e6f58e4f897c7886ed98721063b3dbf1a3fe1bdee
+
+# Progress: Świeże godziny i sprawdzenie wyboru
+
+Batch: B119-trial
+Workflow schema: 4
+
+## Current
+
+Ograniczona próba prepare zakończona po jednym review, jednej naprawie i jednym rereview. Następna czynność poza tą próbą: rozstrzygnięcie D1 i C7, aktualizacja odpowiednich kontraktów i ocena nowej propozycji. Obecny pakiet r2 nie jest gotowy do zgody na wykonanie. Brak upoważnienia do implementacji. [FEATURE](FEATURE.md), [IMPLEMENTATION](IMPLEMENTATION.md), [status](../../WORK_INDEX.md), [dokładny pakiet](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/FINAL.md).
+
+## History
+
+### 2026-10-01 Przygotowanie r1 i snapshot
+
+Oryginalne polecenie zachowano w FEATURE. Realny app HEAD potwierdzony `git rev-parse HEAD` = `10a5226206851e98a5360d68efba21188be1be7f`. Odczytano odpowiednie źródła i istniejące app specy wymienione w planie oraz polityki. Nie odczytano starych batchy, ledgerów, pamięci ani innych prób. Nie uruchamiano aplikacji/testów/usług. Instrukcje są niezacommitowanym kandydatem 4.1.0; nie porównywano do źródłowego HEAD lub routerowego commita pakietu.
+
+Snapshot r1: FEATURE SHA256 `7e7dc70b4972d2b37c69ce6c5d10d264ab1a3c567c24f676045095adb8785391`; IMPLEMENTATION SHA256 `eb1a2cc5b55808d33e16bfb49588133df907642f65da2ed5a7553b04ad59ab2d`; poniższy dokładny tekst pakietu SHA256 `7d01dd971b8cb3dca08febe65fdcb3aa65109e5b5456f5b547344284229a9c02`. Pliki zamrożone na czas reviewer run; ewentualna naprawa dostanie nową rewizję, a stary snapshot pozostanie w dowodzie review. Review uzasadnione kontraktem JSON przez kilka konsumentów oraz granicą transakcyjnego holdu. Dowody lokalnej implementacji K1–K9: nie wykonano, etap prepare.
+
+Koordynator przed review: R1 unknown dla D1/C7, pozostałe wymagania zmapowane AC1–7; R2 unknown dla pustego dowozu i granicy C7, pozostałe ścieżki S1–S7 wskazują producentów błędów i konsumentów; R3 unknown dla K4/K6 zależnych od tych rozstrzygnięć; R4 pass mapą sześciu granic i polami wejść/wyjść; R5 pass zgodnością poniższego tekstu z mapą i jawnymi unknown. Te wyniki nie są przekazywane reviewerowi.
+
+#### Dokładny tekst pakietu r1
+
+<!-- approval-text-start -->
+Pakiet B119-trial jest przygotowany, ale wymaga dwóch rozstrzygnięć przed zgodą na wykonanie. Obecny kod dowozu nie wycenia pustego koszyka. Proponuję wymagać pierwszej pozycji i pełnego adresu dla listy dowozu, pozostawiając odbiór dostępny przy pustym koszyku. To propozycja odstępstwa od polecenia, nie przyjęte założenie. Drugi punkt dotyczy własnej floty: jej stary token może odpaść po zmianie planu, choć pojemność jeszcze istnieje. Plan przewiduje wtedy modal i świeżą ofertę, ale nie uznaje tego za potwierdzenie wymaganego zachowania wyścigu.
+
+Po rozstrzygnięciu tych punktów otwarcie „Zmień” pobierze świeżą listę, klik sprawdzi godzinę, a utrata terminu pokaże modal i zaznaczy najbliższy dostępny. „Zamawiam”, również etap przed SMS-em, pozostanie drugą bramką. Gdy nie ma żadnej alternatywy, pokażemy prawdziwy brak terminu i zablokujemy zamówienie.
+
+Plan zmienia następujące granice:
+
+- `CartRecovery` dostanie rozróżnienie otwarcia i kliknięcia przez `selection_check` oraz `catalog`. `PickupSlotState` zastosuje istniejące `remaining_capacity?` także do pustego koszyka. Częściowe odpowiedzi pominą katalog, a recovery poda pełny `replacement_pickup_slot` dobrany do koszyka.
+- Wydzielony, proponowany `DeliveryWindowCheck` przejmie z `DeliverySelection` sprawdzanie wskazanego okna legacy/shared przed telefonem. Płatność i zgoda pozostaną wymaganiami checkoutu. `DeliveryCartQuote` dostarczy świeży katalog oraz `replacement_window` z opłatą, adresem, terminem ważności i wymogiem zgody.
+- `Orders::Checkout` uzupełni brakującą kontrolę dowozu w preflight. Proponowany `CheckoutSlotRecovery` połączy odpowiedzi zamówienia i kontroli przed SMS-em, uwzględniając koszyk oraz błędy z blokady zapisu. Holdy i limity pozostaną obecne.
+- Widoki, `CartAvailability`, `Pickup`, `Delivery` i `Completion` połączą otwarcie panelu z fetchem, częściowe odpowiedzi z zachowaniem siatki oraz recovery z modalem i trwałym zaznaczeniem. Zniknie osobny przycisk ponowienia dowozu. Obsługa błędu przestanie kasować nowy wybór; nowy token wyzeruje starą zgodę, a spóźnione odpowiedzi nie nadpiszą bieżącego wyboru.
+
+Najważniejsze sprawdzenia obejmą rzeczywiste wyczerpanie pojemności, osobne walidatory legacy/shared i preflight, dwa równoczesne zamówienia oraz stan wyboru po pełnej obsłudze odpowiedzi w przeglądarce. Testów aplikacji w tej próbie nie uruchomiono.
+
+Dokładna baza propozycji: aplikacja `10a5226206851e98a5360d68efba21188be1be7f`, [FEATURE r1](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/FEATURE.md), [IMPLEMENTATION r1](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/IMPLEMENTATION.md). Hashy snapshotu i wynik przeglądu szukaj w [PROGRESS](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/PROGRESS.md). To dokumenty izolowanej próby; [kod aplikacji](/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails/app/services/orders/checkout/delivery_selection.rb) był tylko czytany. Instrukcje: niezacommitowany kandydat blueprint 4.1.0, nie HEAD źródła.
+
+Status: `awaiting_approval`, bez deklaracji gotowości do wykonania. Następnym krokiem jest rozstrzygnięcie pustego dowozu i granicy wyścigu własnej floty. Dopiero rzeczywista zgoda na uzgodniony pakiet pozwoli na lokalną implementację i skupioną weryfikację, bez commitów, push, PR i deployu. Próba diagnostyczna nie udziela tej zgody.
+<!-- approval-text-end -->
+
+### 2026-10-01 Niezależny review r1 i jedna naprawa r2
+
+Reviewer `/root/candidate_full_prepare/review_trial`, natywny agent z `fork_turns=none`, otrzymał oryginalne polecenie, kandydata i zamrożone FEATURE/IMPLEMENTATION/APPROVAL r1, dostęp do aplikacji tylko do odczytu. Nie otrzymał oceny koordynatora. [Dowód ścieżek i wyniki](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/review/r1/REVIEW.md). Faktyczny plik dowodu: `/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/review/r1/REVIEW.md`.
+
+Review R1–R4 unknown przez D1 i C7, R5 pass. Przyjmuję te wyniki; początkowy R4 pass koordynatora był zbyt szeroki, bo nierozstrzygnięty pusty dowóz pozostawia niekompletny interfejs. Nie znaleziono dodatkowych potwierdzonych materialnych usterek. D1/C7 nie uzyskały decyzji i pozostają otwarte, nie zaakceptowano wyjątku.
+
+Jedna naprawa: AC6/S7/K2 rozdzielają odrzucenie obcego tokenu od rzeczywistego braku alternatyw. Ponowny walkthrough: `PublicLocationContext` wybiera lokalizację, `PickupSlotState#selected_slot` sprawdza `scope.exists?`, a `available_slots` używa tego samego scope; błędny selected token nie unieważnia kandydatów bieżącej lokalizacji. Recovery bierze lokalne query, potem klient wstawia replacement do lokalnej siatki i utrzymuje wybór w session/storage. Dowóz analogicznie odrzuca token, po czym quote bierze server location i current address. K2 ma jawny oczekiwany wynik. To doprecyzowanie, nie decyzja D1/C7.
+
+Finalne kryteria przed rereview: R1 unknown, AC1/AC3 i AC4/C6/C7; R2 unknown, S3/D1 i S4/S6/C7; R3 unknown, K4/K6 nie mają przyjętych oczekiwań; R4 unknown, mapa T2/T3 pozostaje zależna od D1/C7; R5 pass, tekst ujawnia te ograniczenia i odwzorowuje sześć wierszy mapy. Inne ścieżki zgodnie z dowodem review r1 i doprecyzowanym S7. Testy K1–K9 nadal niewykonane.
+
+Snapshot r2: FEATURE SHA256 `466fd0f8c8368d8ea450fd34a1f461cbee8f59a23b3031869549516558abae17`; IMPLEMENTATION SHA256 `d7f651463b2e0af8bf91f66c4eac62ce43eddfbb9904662ff6f9f8533acec259`; dokładny tekst poniżej SHA256 `9e0804eed2e1d0860ad2af45b962939f5e3fbe217ecbd7ba4fc89a3313315bb0`. Nie modyfikować podczas rereview. Snapshoty r1 i r2 zachowane jako dowód review, nie dodatkowe raporty batcha.
+
+#### Dokładny tekst pakietu r2
+
+<!-- approval-text-start -->
+Pakiet B119-trial jest przygotowany, ale wymaga dwóch rozstrzygnięć przed zgodą na wykonanie. Obecny kod dowozu nie wycenia pustego koszyka. Proponuję wymagać pierwszej pozycji i pełnego adresu dla listy dowozu, pozostawiając odbiór dostępny przy pustym koszyku. To propozycja odstępstwa od polecenia, nie przyjęte założenie. Drugi punkt dotyczy własnej floty: jej stary token może odpaść po zmianie planu, choć pojemność jeszcze istnieje. Plan przewiduje wtedy modal i świeżą ofertę, ale nie uznaje tego za potwierdzenie wymaganego zachowania wyścigu.
+
+Po rozstrzygnięciu tych punktów otwarcie „Zmień” pobierze świeżą listę, klik sprawdzi godzinę, a utrata terminu pokaże modal i zaznaczy najbliższy dostępny. „Zamawiam”, również etap przed SMS-em, pozostanie drugą bramką. Gdy nie ma żadnej alternatywy, pokażemy prawdziwy brak terminu i zablokujemy zamówienie.
+
+Plan zmienia następujące granice:
+
+- `CartRecovery` dostanie rozróżnienie otwarcia i kliknięcia przez `selection_check` oraz `catalog`. `PickupSlotState` zastosuje istniejące `remaining_capacity?` także do pustego koszyka. Częściowe odpowiedzi pominą katalog, a recovery poda pełny `replacement_pickup_slot` dobrany do koszyka.
+- Wydzielony, proponowany `DeliveryWindowCheck` przejmie z `DeliverySelection` sprawdzanie wskazanego okna legacy/shared przed telefonem. Płatność i zgoda pozostaną wymaganiami checkoutu. `DeliveryCartQuote` dostarczy świeży katalog oraz `replacement_window` z opłatą, adresem, terminem ważności i wymogiem zgody.
+- `Orders::Checkout` uzupełni brakującą kontrolę dowozu w preflight. Proponowany `CheckoutSlotRecovery` połączy odpowiedzi zamówienia i kontroli przed SMS-em, uwzględniając koszyk oraz błędy z blokady zapisu. Holdy i limity pozostaną obecne.
+- Widoki, `CartAvailability`, `Pickup`, `Delivery` i `Completion` połączą otwarcie panelu z fetchem, częściowe odpowiedzi z zachowaniem siatki oraz recovery z modalem i trwałym zaznaczeniem. Zniknie osobny przycisk ponowienia dowozu. Obsługa błędu przestanie kasować nowy wybór; nowy token wyzeruje starą zgodę, a spóźnione odpowiedzi nie nadpiszą bieżącego wyboru.
+
+Najważniejsze sprawdzenia obejmą rzeczywiste wyczerpanie pojemności, osobne walidatory legacy/shared i preflight, dwa równoczesne zamówienia oraz stan wyboru po pełnej obsłudze odpowiedzi w przeglądarce. Testów aplikacji w tej próbie nie uruchomiono. Nierozstrzygnięte punkty uniemożliwiają pozytywny wynik R1–R4; R5 sprawdza wyłącznie zgodność przedstawionego pakietu z planem.
+
+Dokładna baza propozycji: aplikacja `10a5226206851e98a5360d68efba21188be1be7f`, [FEATURE r2](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/FEATURE.md), [IMPLEMENTATION r2](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/IMPLEMENTATION.md). Hashy snapshotu i wynik przeglądu szukaj w [PROGRESS](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/PROGRESS.md). To dokumenty izolowanej próby; [kod aplikacji](/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails/app/services/orders/checkout/delivery_selection.rb) był tylko czytany. Instrukcje: niezacommitowany kandydat blueprint 4.1.0, nie HEAD źródła.
+
+Status: `awaiting_approval`, bez deklaracji gotowości do wykonania. Następnym krokiem jest rozstrzygnięcie pustego dowozu i granicy wyścigu własnej floty. Dopiero rzeczywista zgoda na uzgodniony pakiet pozwoli na lokalną implementację i skupioną weryfikację, bez commitów, push, PR i deployu. Próba diagnostyczna nie udziela tej zgody.
+<!-- approval-text-end -->
+
+### 2026-10-01 Końcowe rozliczenie r2 po jedynym rereview
+
+[Dowód rereview](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/review/r2/REVIEW.md) otrzymany od tego samego niezależnego reviewera na stałym snapshotcie r2. Naprawa AC6/S7/K2 przyjęta; brak nowych potwierdzonych materialnych usterek. Reviewer ponownie prześledził walidację lokalizacji, lokalne wyniki i konsumenta po renderze. Snapshot dokumentów i pakietu nie zmienił się podczas przeglądu.
+
+Koordynator uzgadnia wszystkie pięć kryteriów na r2:
+
+| Kryterium | Wynik | Dowód i ograniczenie |
+| --- | --- | --- |
+| R1 | unknown | AC1/AC3/C6 i S3: pusty dowóz nadal wymagany, brak zaakceptowanego kontraktu; AC4/C7 i S6: brak zaakceptowanej granicy shared. Naprawione AC6 zgodne ze scoped query |
+| R2 | unknown | S1/S2/S4–S7 mają rzeczywiste walidatory, producentów i konsumentów, w tym SMS i clearWindow/syncSelectedSlotButton. S3/D1 nie ma wejścia planowania, C7 nie rozstrzyga przyjęć po zmianie planu |
+| R3 | unknown | K1–K8 wskazują realne capacity/time/token inputs i poprawne lane komend; K4/K6 pozostają bez pełnego kryterium akceptacji D1/C7. Brak wykonanych testów |
+| R4 | unknown | Mapa Tasks obejmuje sześć materialnych granic, źródła danych i konsumentów; ostateczny kontrakt pustego dowozu i ewentualna zmiana C7 nie są ustalone |
+| R5 | pass | Zachowany tekst r2 odwzorowuje mapę i oba unknown, wskazuje baseline, weryfikację i wyłącznie przyszły lokalny delivery; reviewer r2 potwierdził zgodność |
+
+Wynik nie jest gotowym pakietem do execution approval. WORK_INDEX pozostaje awaiting_approval jako granica decyzji, nie gotowość. Nie ma zgody człowieka, zaakceptowanych wyjątków D1/C7, wyników K1–K9, commita, pusha, PR ani deployu. Nie uruchamiamy kolejnej iteracji. Plik FINAL.md jest dokładnie zachowanym tekstem r2, nie nową wersją podsumowania po review.
+
+===== review/r1/REVIEW.md =====
+Original SHA256: 17f372d1c0a1dab52b805289bb394c5e5c08e17eb64dcd99e526e20852e4fb92
+Retained SHA256: 17f372d1c0a1dab52b805289bb394c5e5c08e17eb64dcd99e526e20852e4fb92
+
+# Independent proposal review — fixed r1
+
+Reviewed only the original request, candidate workflow-prepare and R1–R5/review rules, applicable app policies, relevant app code/specs, then fixed FEATURE r1 / IMPLEMENTATION r1 / APPROVAL. App HEAD verified as `10a5226206851e98a5360d68efba21188be1be7f`. No tests/services executed, no app changes. No implementation-test success is claimed.
+
+Before reading the proposal, independently identified: pickup catalog opening and hidden refresh; empty versus loaded pickup selection; legacy versus shared/draining delivery quotation/selection; checkout preflight versus locked persistence; partial recovery versus full catalog; JS selection survival after rendering/error handling. Code revealed the empty-load shortcut, separate legacy/shared validators, missing delivery preflight, and destructive downstream recovery consumers before proposal comparison.
+
+Paths below use app-relative code paths. `pass` means adequately specified proposed path, not implemented or verified behavior.
+
+| Path | Input and actual validator | Result producer / shared data | Consumer and subsequent state | Code / planned check / verdict |
+| --- | --- | --- | --- | --- |
+| Pickup open/reopen, hidden timer | Panel toggle versus periodic refresh; State public eligibility and Query capacity | Full `day_groups` only on explicit catalog request; partial background payload omits it | Pickup renders fresh groups; partial response retains existing groups instead of replacing with [] | `cart/cart_availability.js#payloadFor/#quoted/#preview`, `pickup.js#applyRecovery`; IMPLEMENTATION S1, K1/K7: pass |
+| Empty pickup click | Raw empty cart must become nil for availability; Query nil loads checks default reserved_load < limit, whereas [] yields vacuous all? | State selected validity; rejection followed by separate catalog/replacement query | Complete replacement inserted into groups/DOM before selected token, day, storage and render; syncSelectedSlotButton cannot clear it for absence | `pickup_slots_query.rb#capacity_open?/#resolved_cart_lines`, `PreparationLoad#call`, `Pickup#syncSelectedSlotButton/#storeSelectedSlot`; C2/S2/K2/K7: pass |
+| Loaded pickup click | Signed token, scoped slot, public lead/opening, real loads for every required pool; distinguish unavailable lines from truly empty input | Unified selected result instead of independently inconsistent State and CartRecovery checks; catalog false omits groups | Rejected selection is replaced only by query result fitting actual cart; browser survives full recovery/render | `PickupSlotState#selected_slot_error`, `CartRecovery#slot_available?`, `PickupSlotsQuery#remaining_capacity?`; S2/K1/K2/K7: pass |
+| Legacy delivery list and click | Address geocode, real subtotal MatchZone/Commercials, signed window and `DeliveryPromises.available?` (kitchen, capacity, routing/capability) | WindowCheck for selected token; fresh Quote only for open/recovery, public metadata and replacement | Delivery windows applied before token; absent windows preserves list; expiry/fee/address/state updated, no hold | `DeliverySelection#verified_window/#available?`, `DeliveryPromises#valid_request?/#candidate_slots/#offer_for`, `DeliveryCartQuote`; S3/S4/K3/K4/K8: pass for nonempty cart |
+| Shared delivery click/expiry | verify checks signed schema/workspace/location/time, regenerates offer and fingerprint; valid? adds payment deadline, planning input and matches?; mode shared required (draining cannot produce a new offer) | Valid selected offer or error; fresh Quote provides full replacement and consent metadata, no reservation | Delivery applies new windows/timestamps before replacement, resets old consent, renews expiry; checkout still requires consent | `OwnFleet::DeliveryOffer.verify/.valid?/#available?`, `DeliverySelection#call`; S4/K3/K4/K8: pass for nonempty cart; admission failure remains real unavailability |
+| Empty delivery, both implementations | Legacy valid_request? requires lines.present?; shared available? also requires lines.present? and no allocation means no offer; MatchZone still uses minimum | No chosen preview load or accepted scope exception; proposal explicitly leaves D1 open | Required list/selection for empty delivery has no settled executable result | `DeliveryPromises#valid_request?`, `OwnFleet::DeliveryOffer#available?/#call`, FEATURE C6, S3/K4: unknown |
+| Pickup SMS preflight and order write | read_only_call calls PickupSelection after valid static input; locked checkout validates again under capacity lock | Actual pickup_slot_full/unavailable; proposed shared recovery uses original cart loads rather than existing controller query without cart | PhoneProof/Completion apply full groups + replacement; error/render retains selected token/label/storage; no OTP on rejection | `Checkout#read_only_call`, `Checkout::PickupSelection`, `OrdersController#pickup_slots_recovery_payload`, `CheckoutPhoneProof#request`, `Pickup#applySelectedFromPayload`; S5/S6/K5/K7/K8: pass |
+| Delivery SMS preflight | Current read_only_call excludes delivery from selected-slot validation; proposal explicitly adds DeliverySelection with genuine method and consent after static acceptance | Reachable delivery error before OTP, then CheckoutSlotRecovery independent of pickup recovery presence | PhoneProof passes payload to error handling, preserving replacement and applicable consent requirement | `Checkout#read_only_call` lines 108–114; `checkout_phone_proof.js#request`; S5/K5/K8: pass |
+| Delivery locked refusal → UI | LockedAttempt calls valid? for shared or available? for legacy; rollback emits delivery_window_unavailable | Proposed recovery constructed after rollback includes fresh quote/replacement; idempotent replay excluded | cart_owners currently clearWindow on errors; plan explicitly guards handled recovery, then Completion render keeps new selection | `LockedAttempt#lock_delivery_admission!`, `cart/cart_owners.js` lines 285–290, `Completion#applyRecovery/#showErrors`; S6/K5/K8: pass |
+| Competing checkouts | Shared validity/fingerprint includes plan, capacities and KitchenWork; existing simultaneous same-plan test expects exactly one success | Existing holds preserved; proposal does not establish capacity-only admission for a second old offer while capacity remains | Modal/fresh replacement proposed, but acceptance against requested race semantics not settled | `OwnFleet::DeliveryOffer#fingerprint`, `LockedAttempt#lock_delivery_admission!`, `spec/services/orders/fleet_checkout_concurrency_spec.rb:35`; C7/S6/K6: unknown for shared, pickup/legacy planned real capacity checks |
+| Missing catalog vs true empty / network / stale response | Explicit catalog flag; transport failure and changed intent do not establish slot availability | Omission versus authoritative [] separated; sequence and fingerprint reject stale results | Partial groups/windows retained; authoritative no alternative clears old choice; network cannot confirm click; modal focus/Escape included | Existing `Pickup#applyRecovery`, `Delivery#applyRecovery`; C5/S7/K1/K7/K8: pass, subject to clarification below |
+
+Command-selection check: `bin/spec` recognizes explicit target files; fast excludes system specs, and the proposal uses `bin/spec browser` for functional system paths. Listed principal request/service/system files exist, including shared concurrency. K3 explicitly requires adding a newly created WindowCheck spec path. K9 scopes lint to changed Ruby. These are planned checks, not executed checks.
+
+## R1–R5
+
+- R1 **unknown**: preserved source and explicit exceptions are honest, but empty-delivery behavior (FEATURE C6) and shared race semantics (C7) are not approved/resolved. Cannot certify the full requested behavior.
+- R2 **unknown**: remaining inspected paths connect validators to producers and downstream state, including actual delivery preflight and destructive JS consumers. Empty delivery lacks settled input/result, and shared admission semantics remain unresolved.
+- R3 **unknown**: K1–K8 exercise actual validators and resulting state with appropriate lanes, but D1/C7 lack accepted success expectations. Existing shared concurrency assertion is evidence of current behavior, not proof of the requested capacity contract.
+- R4 **unknown**: map captures material changes for settled paths, including new partial fields, replacements, checkout preflight and consumer ordering. Final empty-delivery input/output contract depends on D1 and is expressly missing; C7 may also change the final chosen boundary.
+- R5 **pass**: retained APPROVAL describes the same changes, explicitly marks both open decisions and avoids ready/test-success/publication claims. No diagram to audit.
+
+Verdict: **not ready for execution approval**. This agrees with the proposal's declared lack of readiness; readiness is not established by an otherwise detailed component map.
+
+## Confirmed findings
+
+1. **D1 is a material unresolved requirement, not a completed empty-cart delivery path.** FEATURE C6 / IMPLEMENTATION S3 and K4 explicitly leave empty delivery unimplemented. The two actual validators independently reject empty lines. Before an executable proposal, author must settle and record the intended behavior or obtain an explicit scope exception, then update affected contracts/checks/approval. This is an acknowledged gap, not a hidden omission found in review.
+2. **C7 is a material unresolved acceptance contract.** FEATURE C7 / IMPLEMENTATION K6 preserve stale shared-offer refusal while the original request asks admission according to remaining bucket capacity. Current code and the existing two-checkout test support the mismatch. Author must reconcile the requested race semantics and allowed boundary before claiming full fidelity; modal recovery alone is not evidence that all otherwise fitting orders were admitted. This is likewise already disclosed.
+
+No additional confirmed material defect found in this bounded review. No missing private helper design is requested.
+
+## Questions / ambiguities (not confirmed additional blockers)
+
+- IMPLEMENTATION S7 groups a foreign-location token with genuine lack of alternatives/closed kitchen and says empty catalog/unavailable state. K2 separately checks scoped validation. Clarify that rejection of a foreign token does not itself prove that the current location's catalog is empty; this wording could otherwise conflict with S2's scoped recovery. This is a wording/behavior ambiguity, not evidence that the plan intentionally exposes another location or fabricates unavailable capacity.
+- D1 and C7 require explicit resolution as noted above; this review supplies neither a product decision nor the missing design.
+
+===== review/r2/REVIEW.md =====
+Original SHA256: 5f59cefff155c5cb3a9a6e07c6f3cfa54f78cc1250e9453554899b0f761f11e0
+Retained SHA256: 5f59cefff155c5cb3a9a6e07c6f3cfa54f78cc1250e9453554899b0f761f11e0
+
+# Final focused independent rereview — fixed r2
+
+Read fixed FEATURE r2, IMPLEMENTATION r2 and retained APPROVAL, without PROGRESS. Re-inspected affected location validation and pickup consumers in the read-only app. Prior original-request/code inventory remains the independent baseline; unmodified material paths and unknowns from the initial review remain in force. No tests/services, app edits or delegation. This is proposal evidence, not implementation validation.
+
+## Affected path evidence
+
+| Path / requirement | Input and actual validator | Result producer / shared data | Consumer and subsequent state | Code / proposed check / verdict |
+| --- | --- | --- | --- | --- |
+| Foreign pickup token, local alternative exists | Controller derives current location from route/default PublicLocationContext, not token. PickupSlotState verifies token then scope.exists?; foreign slot resolves nil and selected_slot_unavailable | Rejection is separate from available_slots query over the same current-location scope and actual cart. r2 S7 requires a local replacement; K2 explicitly asserts local alternative and absence of foreign-location data | Per unchanged component map/S2, full local day_groups and replacement are applied before selected token/day/storage/render. Existing syncSelectedSlotButton clears absent DOM tokens, so planned ordering is necessary and sufficient at contract level | `PublicLocationContext#resolve_current_public_location`, `CartRecoveryController#cart_recovery_result`, `PickupSlotState#selected_slot/#available_slots`, `Pickup#applyRecovery/#applySelectedFromPayload/#syncSelectedSlotButton`; AC6/S7/K2 plus K7: pass |
+| Foreign delivery token, current-location live offer exists | Legacy DeliverySelection rejects payload location mismatch; shared DeliveryOffer.verify rejects location/workspace mismatch | Proposed WindowCheck retains those validators; S7 now routes recovery through S4's fresh Quote using current server location and current cart/address, not the foreign token's scope | Full current-location windows precede replacement token; consent reset, deadline/expiry and subsequent showErrors/render behavior remain specified by T4/S4 | `DeliverySelection#verified_window`, `OwnFleet::DeliveryOffer.verify`, `DeliveryCartQuote#call`; S4/S7/K3/K4/K8: pass for otherwise valid nonempty delivery input |
+| No current-location alternative | Scoped query/quote actually finds none or returns unavailable; invalid token alone is not evidence of this result | Authoritative catalog state clears unavailable options; a partial response still omits day_groups/windows | Existing arrays are not erased by omission; genuine empty result clears old selection and blocks submit without inventing replacement | `PickupSlotState#available_slots/#day_group_payloads`, `Pickup#applyRecovery`, `Delivery#applyRecovery`; AC6/S7/K1/K2/K8: pass |
+| Preserved empty-delivery requirement | Legacy valid_request? and shared available? still require actual lines; no chosen preview load or accepted scope exception in r2 | D1 remains explicitly unresolved | No settled empty-delivery list/selection result | FEATURE C6, IMPLEMENTATION S3/K4/Coverage: unknown |
+| Preserved shared race requirement | Shared validity/fingerprint can reject an old offer after another hold while capacity potentially remains; existing simultaneous same-plan test expects one acceptance | C7 remains explicitly unresolved, with existing hold model preserved | Fresh replacement/modal does not itself prove the requested capacity-based acceptance count | FEATURE C7, IMPLEMENTATION S6/K6, prior inspected `DeliveryOffer#fingerprint`, `LockedAttempt#lock_delivery_admission!`, `fleet_checkout_concurrency_spec.rb:35`: unknown |
+
+The repair consistently changes AC6, S7 and K2. It resolves the prior ambiguity without changing the authority boundary, token validation or capacity model. K2 still targets the actual request/query seams; K7/K8 retain downstream rendered-selection checks. No new endpoint or private implementation design is required by this repair.
+
+## Final R1–R5 reconciliation
+
+- R1 **unknown**: r2 now preserves local recovery after foreign-token refusal; D1 and C7 still prevent confirming all original requirements.
+- R2 **unknown**: repaired validation → scoped recovery → persistent rendered selection flow is explicit. Unmodified empty-delivery input/result and shared race acceptance remain unsettled. Other inspected pickup, legacy/shared nonempty selection, preflight and locked recovery flows retain their initial design-level passes.
+- R3 **unknown**: K2 now exercises foreign selection with a real available local replacement and checks isolation. Other planned checks retain actual validators/downstream state and correct browser lanes. D1/C7 still have no final accepted success criteria.
+- R4 **unknown**: r2's repaired scope and consumer contracts are consistent with the component map. The final empty-delivery contract remains expressly unspecified; C7 may still alter the chosen boundary.
+- R5 **pass**: retained APPROVAL matches r2, links r2 labels, describes the same material changes, retains both unresolved decisions and correctly states no execution readiness or test evidence. Its general nearest-available behavior is consistent with the clarified local-scope case. No diagram.
+
+Final verdict: **not ready for execution approval**, because the two substantive unknowns remain. Closure of the S7 ambiguity does not close them.
+
+## Confirmed findings
+
+No new confirmed material defect in the repaired path or r2 presentation. The two previously confirmed readiness gaps remain unchanged and disclosed: D1 has no executable empty-delivery contract, and C7 has no settled acceptance contract for shared simultaneous checkouts. Resolving either requires updating the owning contract, scenarios, checks and approval text before claiming readiness.
+
+## Open questions
+
+- D1: intended empty-delivery preview behavior versus explicitly accepted scope exception remains undecided.
+- C7: intended shared-race acceptance versus explicitly accepted stale-offer recovery behavior remains undecided.
+
+The foreign-token/local-alternative ambiguity is resolved. No further review or work launched.
+
+===== FINAL.md =====
+Original SHA256: 9e0804eed2e1d0860ad2af45b962939f5e3fbe217ecbd7ba4fc89a3313315bb0
+Retained SHA256: 9e0804eed2e1d0860ad2af45b962939f5e3fbe217ecbd7ba4fc89a3313315bb0
+
+Pakiet B119-trial jest przygotowany, ale wymaga dwóch rozstrzygnięć przed zgodą na wykonanie. Obecny kod dowozu nie wycenia pustego koszyka. Proponuję wymagać pierwszej pozycji i pełnego adresu dla listy dowozu, pozostawiając odbiór dostępny przy pustym koszyku. To propozycja odstępstwa od polecenia, nie przyjęte założenie. Drugi punkt dotyczy własnej floty: jej stary token może odpaść po zmianie planu, choć pojemność jeszcze istnieje. Plan przewiduje wtedy modal i świeżą ofertę, ale nie uznaje tego za potwierdzenie wymaganego zachowania wyścigu.
+
+Po rozstrzygnięciu tych punktów otwarcie „Zmień” pobierze świeżą listę, klik sprawdzi godzinę, a utrata terminu pokaże modal i zaznaczy najbliższy dostępny. „Zamawiam”, również etap przed SMS-em, pozostanie drugą bramką. Gdy nie ma żadnej alternatywy, pokażemy prawdziwy brak terminu i zablokujemy zamówienie.
+
+Plan zmienia następujące granice:
+
+- `CartRecovery` dostanie rozróżnienie otwarcia i kliknięcia przez `selection_check` oraz `catalog`. `PickupSlotState` zastosuje istniejące `remaining_capacity?` także do pustego koszyka. Częściowe odpowiedzi pominą katalog, a recovery poda pełny `replacement_pickup_slot` dobrany do koszyka.
+- Wydzielony, proponowany `DeliveryWindowCheck` przejmie z `DeliverySelection` sprawdzanie wskazanego okna legacy/shared przed telefonem. Płatność i zgoda pozostaną wymaganiami checkoutu. `DeliveryCartQuote` dostarczy świeży katalog oraz `replacement_window` z opłatą, adresem, terminem ważności i wymogiem zgody.
+- `Orders::Checkout` uzupełni brakującą kontrolę dowozu w preflight. Proponowany `CheckoutSlotRecovery` połączy odpowiedzi zamówienia i kontroli przed SMS-em, uwzględniając koszyk oraz błędy z blokady zapisu. Holdy i limity pozostaną obecne.
+- Widoki, `CartAvailability`, `Pickup`, `Delivery` i `Completion` połączą otwarcie panelu z fetchem, częściowe odpowiedzi z zachowaniem siatki oraz recovery z modalem i trwałym zaznaczeniem. Zniknie osobny przycisk ponowienia dowozu. Obsługa błędu przestanie kasować nowy wybór; nowy token wyzeruje starą zgodę, a spóźnione odpowiedzi nie nadpiszą bieżącego wyboru.
+
+Najważniejsze sprawdzenia obejmą rzeczywiste wyczerpanie pojemności, osobne walidatory legacy/shared i preflight, dwa równoczesne zamówienia oraz stan wyboru po pełnej obsłudze odpowiedzi w przeglądarce. Testów aplikacji w tej próbie nie uruchomiono. Nierozstrzygnięte punkty uniemożliwiają pozytywny wynik R1–R4; R5 sprawdza wyłącznie zgodność przedstawionego pakietu z planem.
+
+Dokładna baza propozycji: aplikacja `10a5226206851e98a5360d68efba21188be1be7f`, [FEATURE r2](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/FEATURE.md), [IMPLEMENTATION r2](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/IMPLEMENTATION.md). Hashy snapshotu i wynik przeglądu szukaj w [PROGRESS](/private/tmp/workflow-candidate-20261001-h4a1m1wt/trial/ai-workflow/work/B119-trial/PROGRESS.md). To dokumenty izolowanej próby; [kod aplikacji](/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails/app/services/orders/checkout/delivery_selection.rb) był tylko czytany. Instrukcje: niezacommitowany kandydat blueprint 4.1.0, nie HEAD źródła.
+
+Status: `awaiting_approval`, bez deklaracji gotowości do wykonania. Następnym krokiem jest rozstrzygnięcie pustego dowozu i granicy wyścigu własnej floty. Dopiero rzeczywista zgoda na uzgodniony pakiet pozwoli na lokalną implementację i skupioną weryfikację, bez commitów, push, PR i deployu. Próba diagnostyczna nie udziela tej zgody.

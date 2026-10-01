@@ -213,3 +213,16 @@ new revisions; no repeated preparation/delivery loop ran here.
 
 These checks verify repository documents and package tooling. The separate native
 review above is the only agent behavior trial performed for this change.
+
+## Follow-up on the next proposal
+
+The [bounded follow-up evaluation](proposal_review_followup.md) retains the next
+proposal, compares review and presentation separately, and records the outcome
+of the candidate procedure. Its results do not replace the limitations above.
+
+## Later simplification comparison
+
+The [lean preparation comparison](proposal_simplification_case.md) records the
+subsequent bounded experiment. Earlier outcomes and uncommitted-state statements
+above describe their historical checkpoint, not a claim about the later source
+commit. The lean variant also retains material limitations; see its actual results.

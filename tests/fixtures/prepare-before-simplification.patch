@@ -1,0 +1,78 @@
+--- a/feature_execution_blueprint.md
++++ b/feature_execution_blueprint.md
+@@ -190,3 +190,4 @@
+-4. Apply the five [readiness criteria](#proposal-readiness) to the documents.
+-   Derive the approval draft from the component map, then check that draft and
+-   any diagram against the same paths. Obtain independent review where required.
++4. Derive the approval draft from the component map and retain its exact text
++   in PROGRESS History with the proposal baseline. Check it and any diagram
++   against the same paths. Apply the five [readiness criteria](#proposal-readiness)
++   through the path review below; obtain independent review where required.
+@@ -194,2 +195,3 @@
+-   regenerate the affected summary. Record the final criterion results and exact
+-   reviewed baseline in PROGRESS before requesting approval.
++   update the retained summary. Record the final criterion results and exact
++   reviewed baseline in PROGRESS, then present that same summary without another
++   rewrite before requesting approval.
+@@ -419,5 +421,22 @@
+-Give the reviewer R1–R5 and request an evidence-backed result for each. Ask them
+-to walk the proposed scenarios through actual branches in the code, including
+-error production before recovery and stage-specific side effects. A missing
+-shared contract is a finding; an unspecified private helper is not. Review the
+-draft presentation as well as the documents, including every optional graph edge.
++Give the reviewer R1–R5, but derive their verdicts from inspected paths rather
++than grading the five headings directly. Before reading the author's plan,
++the reviewer identifies the materially distinct entry points, validators and
++consumers from the original request and code. Then compare that inventory with
++the proposal's map and scenarios; the author's file list is not a coverage limit.
++For each material path, return one compact evidence row or equivalent prose:
++
++| Path / requirement | Input and actual validator | Result producer / shared data | Consumer and resulting state | Code / planned check / verdict |
++| --- | --- | --- | --- | --- |
++
++Follow a changed value through the consumer's subsequent update, rendering or
++persistence step, not just to receipt of the response. Check whether the data
++supplied is sufficient for that consumer and whether later logic keeps, clears
++or replaces the promised result. Distinct validators and early returns need
++their own evidence when they change the outcome. Verify that planned commands
++select the claimed checks. Record material paths not inspected or not settled
++as `unknown`, including a missing product decision; do not omit them from the
++aggregate R1–R5 verdict. Keep this proportional to changed contracts, not every
++function or a Cartesian product of cases. A missing shared contract is a finding;
++an unspecified private helper is not. Review the retained approval text as well
++as the documents, including every optional graph edge. When independent review
++is unavailable or unwarranted, the coordinator uses the same path evidence.
+@@ -444,2 +463,5 @@
+-Keep a brief record in PROGRESS of the reviewer run, reviewed revisions, findings
+-and their disposition, and re-review result. Do not create a new batch file or
++Keep a brief record in PROGRESS of the reviewer run, reviewed revisions, path
++evidence, findings and their disposition, and re-review result. Reference plan
++rows for unchanged evidence instead of duplicating the design. The retained
++approval text is part of the reviewed snapshot, alongside FEATURE/IMPLEMENTATION;
++identify it by its History entry and content hash. Do not create a new batch file or
+@@ -492,0 +515,9 @@
++For a typical multi-component proposal, aim for roughly 300–500 words: one short
++product paragraph, grouped technical changes, risks/checks, and the baseline and
++authority. State each fact once. Put caller and producer in the same row when
++that explains their shared contract; omit task-by-task narration, repeated scope
++exclusions and discovery history. Expand only when material decisions cannot be
++understood within that length; never shorten by dropping a changed interface.
++The exact text retained in PROGRESS is the text presented to the operator.
++An editorial rewrite after review is a new draft requiring the affected R5 check,
++not an untracked final formatting step.
+--- a/skills/workflow-prepare/SKILL.md
++++ b/skills/workflow-prepare/SKILL.md
+@@ -34 +34,2 @@
+-   change or extra promise. Check graph edges if a diagram adds useful information.
++   change or extra promise, and retain its exact text in PROGRESS History. Group
++   related owners and state each fact once. Check graph edges if a diagram helps.
+@@ -37,2 +38,5 @@
+-   fixed proposal snapshot, draft summary, code access, and R1–R5, without your
+-   verdict or expected findings. Repair confirmed gaps in their owning documents,
++   fixed proposal snapshot including the retained summary, code access, and R1–R5,
++   without your verdict or expected findings. The reviewer first identifies paths
++   from the request and code, then compares the plan and traces changed data
++   through the consumer's resulting state. Derive readiness from those path
++   results, including unknowns. Repair confirmed gaps in their owning documents,
+@@ -54,0 +59 @@
++Present the retained, checked text; do not generate a different summary after review.

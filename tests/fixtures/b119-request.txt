@@ -1,0 +1,32 @@
+/workflow-prepare
+ Zaimplementuj świeżą listę godzin odbioru i dowozu oraz sprawdzenie godziny w momencie kliknięcia. Nie zmieniaj pojemności kuchni ani modelu rezerwacji. Godzina zostaje dostępna dla wszystkich, dopóki kolejny klik się w nią nie mieści. Nie rezerwuj jej dla jednego ekranu tylko dlatego, że ktoś na nią patrzy.
+
+Kontekst, jak jest dziś
+- Bloczki odbioru schodzą w HTML strony głównej (`Public::PickupSlotState` → `app/views/public/home/show.html.erb` i `app/views/public/home/cart/_pickup.html.erb`). Rozwinięcie „Zmień” (`<details>`) niczego nie pobiera.
+- `CartAvailability#refresh` w `app/javascript/controllers/cart/cart_availability.js` co 15 s nic nie robi przy pustym koszyku. Przy pełnym koszyku po pierwszej wycenie patrzy tylko na markery świeżości (wersja floty, kuchnia, status wybranej godziny, menu). Zajęcie innej godziny przez kogoś innego listy nie przerysowuje.
+- Klik godziny przy pustym koszyku (`allowSlot`) przechodzi bez pytania do serwera. Odmowa jest dopiero przy „zamawiam”.
+- Dowóz: `Delivery#quote` w `app/javascript/controllers/cart/delivery.js` idzie przy przełączeniu na dowóz i 300 ms po zmianie adresu. Wybrana oferta gaśnie po `valid_for_seconds` (około minuty). Niewybrana lista zostaje, dopóki adres się nie zmieni.
+- `catalog: false` w odzyskiwaniu koszyka musi pominąć klucz `day_groups`. Pusta tablica kasuje siatkę w `pickup.js`.
+- Minimum dowozu jest na strefie (`DeliveryPricingZone#minimum_subtotal_cents`, domyślnie 0, `MatchZone` zwraca `below_minimum`). Tej kwoty nie ustawiaj i nie dodawaj dopłaty za mały koszyk.
+
+Zachowanie
+1. Otwarcie listy godzin pobiera ją z serwera w tej chwili. Odbiór i dowóz. Zwinięta lista serwera nie pyta. Nie dokładaj drugiego przycisku obok „Zmień”: otwarcie tego panelu jest fetchem.
+2. Klik w godzinę, także przy pustym koszyku, od razu sprawdza tylko tę godzinę. Nie czekaj do „zamawiam”.
+3. Jak tej godziny już nie ma, pokaż modal: na wybraną godzinę jest za późno. Zaznacz najbliższą, która jeszcze wchodzi (na przykład 13:20 padło, zostaje 13:40). Klient ma to zobaczyć, zanim wpisze telefon.
+4. Kto kliknął, zanim miejsca zabrakło, wchodzi. Dwie osoby mogą dostać tę samą godzinę, jeśli obie kliknęły, zanim pierwsza zajęła kubełek. Miejsce schodzi przy zamówieniu, obecną ścieżką holdu. Kolejny klik, który się nie mieści, dostaje modal i następną godzinę.
+5. „Zamawiam” zostaje drugą bramką na ten wyścig. Jak godzina padnie w trakcie wypełniania, znowu modal i następna godzina. Nie komunikat „Brak wolnych terminów dostawy.” i nie pusta lista.
+6. Dowóz: klik w okno robi to samo. Otwarcie listy albo ponowne pytanie o dowóz bierze świeżą wycenę. Martwe okno podmienia się na najbliższe żywe, z modalem, nie na pustkę.
+
+Nie rób
+- Wyłącznego trzymania godziny dla osoby, która tylko ją ogląda.
+- Pollingu pełnego katalogu, dopóki lista jest zwinięta.
+- Wysyłania `day_groups: []` przy sprawdzeniu jednej godziny.
+- Zmiany progu minimum strefy i nowej opłaty za mały koszyk.
+- Nowej tabeli rezerwacji. Użyj istniejącego sprawdzenia pojemności (`PickupSlotsQuery#remaining_capacity?`, wycena dowozu, checkout).
+
+Testy
+- Otwarcie listy odbioru i dowozu robi fetch. Samo siedzenie na stronie, ze zwiniętą listą, nie.
+- Klik w pełną godzinę przy pustym koszyku otwiera modal i zaznacza następną wolną.
+- Dwa równoczesne zamówienia na ostatnie miejsce: oba wchodzą albo wchodzi tyle, ile kubełek mieści w momencie zapisu. Kolejny klik dostaje następną godzinę, nie „brak dostawy”.
+- `catalog: false` nie zawiera `day_groups`.
+- RuboCop na zmienionych plikach i skupione specy tych ścieżek.
