@@ -66,12 +66,16 @@ prompt now or a configured integration delivers an event later.
 | Actionable authorized feedback | Update contract, plan, and affected evidence, then resume delivery on the same open PR. | `active`; use `awaiting_approval` only for an unresolved change of direction. |
 | Acceptance of the current result | Record the accepted revisions and proof. | `done`; merge and deployment follow their separate authority. |
 
-Before the approval request, identify the intended delivery scope: implementation,
-verification, commits, push destination, and PR creation/update. Link existing
-authority or include missing authority in that request. Approval of this proposal
-then starts the whole authorized run; do not ask the operator to launch each
-task, verification pass, repair, or PR update. An explicitly planning-only or
-named-task request still limits execution to that scope.
+Propose delivery through a PR by default: implementation, verification, commits,
+push destination, and PR creation/update. Before requesting approval, resolve the
+destination and link existing authority or include missing authority in that
+request. Approval starts the whole authorized run; do not ask the operator to
+launch each task, verification pass, repair, or PR update.
+
+A local-only handoff requires an explicit operator instruction. Do not infer it
+from preparation stopping at `awaiting_approval` or from missing publication
+authority. An explicitly planning-only or named-task request still limits the
+current work to that scope; it does not by itself restrict later approved delivery.
 
 Each handoff identifies the project/batch, branch or checkout, event or decision
 source, relevant feature/plan snapshot, requested action, and granted scope.
@@ -379,8 +383,11 @@ existing/proposed elements and consequential rejection paths. Separate reads fro
 
 ## Approval scope
 
-<Links to exact FEATURE/IMPLEMENTATION revisions; delivery authority and destination.
-Ask for unresolved decisions, or approval of the proposed outcome and approach.>
+<Links to exact FEATURE/IMPLEMENTATION revisions; scope through PR handoff,
+including commit/push/PR authority and destination, or an explicitly requested
+limited scope with its source instruction. Keep merge and deployment separate.
+Ask for unresolved decisions, or approval of the proposed outcome, approach and
+delivery scope.>
 ````
 
 Derive rows and graph edges from FEATURE and IMPLEMENTATION. Group related
