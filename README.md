@@ -73,3 +73,6 @@ git diff --check
 ```
 
 These checks verify documentation and package comparison, not agent delivery.
+The [proposal readiness regression case](tests/proposal_readiness_case.md) retains
+one real proposal, fixed evaluation criteria, diagnosis, and the limits of its
+review trial. It is supporting evidence, not an automated semantic quality gate.

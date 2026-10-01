@@ -170,10 +170,29 @@ Use repository evidence first, then ask the smallest useful question. Mark
 assumptions explicitly. Do not invent business decisions or silently expand the
 request. A small reversible edit may not need this workflow at all.
 
-Discovery must follow the affected behavior through its actual entry points,
-services, responses, and consumers. Reuse existing validation and recovery paths
-where they fit. A list of files or a restatement of the requested behavior does
-not establish how the proposed change works.
+Prepare in this order. Keep the working evidence in the existing document
+sections below; do not add a batch report or duplicate the plan in chat.
+
+1. Preserve the original request and locate its source in Outcome and scope.
+   In Decisions and constraints, distinguish requested behavior, necessary
+   technical choices with code evidence, and proposed product assumptions.
+   Existing behavior does not authorize an exception to a new requirement.
+   Remove unsupported additions or ask about a material product choice before
+   designing dependent work. Repair an unapproved proposal in the same batch;
+   preserve its history instead of asking the operator to delete and recreate it.
+2. Inspect the affected entry points through their consumers. In Tasks, build
+   the component change map described below, then walk the relevant scenarios
+   through it. Start with the trigger and inputs, not the desired error response.
+   Record a missing link as unresolved until code evidence or a proposed change
+   supplies it. Do not infer validation from the existence of a recovery handler.
+3. Assign tasks and checks to those paths in Tasks, Verification checks, and
+   Coverage. Settle shared contracts before leaving private details to workers.
+4. Apply the five [readiness criteria](#proposal-readiness) to the documents.
+   Derive the approval draft from the component map, then check that draft and
+   any diagram against the same paths. Obtain independent review where required.
+5. Repair failures in the owning document, update affected paths/checks and
+   regenerate the affected summary. Record the final criterion results and exact
+   reviewed baseline in PROGRESS before requesting approval.
 
 Create three working documents in `work/<batch>-<short-name>/`. Use the following
 templates as a content contract. Omit unused optional details; do not fill
@@ -255,10 +274,14 @@ dependent task from starting; it does not prevent unrelated authorized work.
 Mark a task done only after its outcome and required checks are satisfied, with
 proof or a specifically accepted gap recorded. Link replacements for superseded tasks.
 
-For changes that cross component boundaries, record the technical approach in
-the existing Tasks section, alongside the owning tasks. Use a compact before/after
-table or equivalent prose: named component and code location, current behavior,
-proposed responsibility, changed inputs/outputs, and affected callers or consumers.
+For changes that cross component boundaries, record one component change map in
+the existing Tasks section, alongside the owning tasks. Use the following compact
+table or equivalent prose. This map supplies both worker contracts and the
+technical approval summary; do not maintain two independently written designs.
+
+| Component / owning task / code evidence | Before → proposed change | Inputs and outputs: added, changed, removed | Callers / consumers |
+| --- | --- | --- | --- |
+
 Include relevant parameter or response-field additions/removals, responsibility
 extractions, external calls, and data writes. If a boundary remains unchanged,
 say so only when that explains the approach. Do not copy the file inventory or
@@ -279,6 +302,15 @@ and compatibility behavior before approval.
 Mark new names as proposed. Do not prescribe every method signature or introduce
 services merely to fill the table.
 
+For each materially distinct path, keep a compact scenario walkthrough beside
+its owning task: trigger and input source → validation owner and rule → result
+producer and fields → consumer action; note forbidden and permitted side effects
+and the check ID. Inspect a successful and a rejecting case where behavior
+changes. Follow the branch that actually runs at this stage, including early
+returns. If two entry points share a presenter but not a validator, walk both.
+Record exclusions with code or scope evidence. This is not a Cartesian product
+of generic edge cases or a list of every function.
+
 Preserve the distinction between an omitted field, an empty result, and an invalid
 selection when a partial response updates existing client state. Define the
 consumer's behavior for an authoritative empty result as well as a partial update,
@@ -295,6 +327,9 @@ Checks are required unless explicitly marked optional with a reason. A new check
 discovered during execution belongs at its appropriate scope in the plan.
 Commands must be real project commands with suitable cancellation/time limits.
 Observable procedures must name the expected result, not just "manual test".
+For validation/recovery checks, name the input or state that triggers the actual
+validator, the expected response and consumer action, and relevant side effects.
+Injecting the desired error only at the presenter does not test error detection.
 Where similar behavior uses different implementations, name the checks for each
 affected path; coverage of one does not establish coverage of the others. Include
 failure or lifecycle cases exposed by the inspected code when they affect the
@@ -328,28 +363,25 @@ changes. Retain an identifiable snapshot or diff for that state.
 
 ### Proposal readiness
 
-Before requesting approval, the coordinator reviews its own proposal against the
-inspected code, then obtains the independent review below where warranted and
-supported by native delegation. Both reviews are part of preparation, within the
-same request. The coordinator owns a complete approach; a reviewer is a safeguard,
-not a substitute for discovery or technical design.
-Repair the documents before presenting them:
+Use these fixed criteria before requesting approval. The coordinator applies
+them against the original request and inspected code, then obtains independent
+review below where warranted and supported. A reviewer is a safeguard, not the
+author of missing technical design.
 
-- Reconcile contradictory criteria, constraints, and fallback rules, including
-  the behavior when no suitable alternative exists. Do not silently settle an
-  unresolved product choice; ask the operator for that specific decision.
-- Check that the technical approach explains each changed shared contract and
-  responsibility. Confirm producers receive the data needed to implement the
-  promised behavior and consumers can use their outputs. Walk each changed
-  validation/recovery chain above using the named components and data. Repair any
-  step described only as a desired effect without an owning implementation path.
-- Trace affected alternate entry points and verify task/check coverage for each
-  distinct path. A coverage-table reference alone does not prove that a scenario
-  exercises the promised behavior.
-- Resolve ordinary technical choices from repository evidence. If feasibility
-  still depends on an unknown, investigate it within preparation authority or
-  identify the precise blocker and needed access or decision. Do not disguise an
-  unchosen approach as an implementation detail.
+| ID | Criterion | Required evidence |
+| --- | --- | --- |
+| R1 | Requirement fidelity | Promised behavior traces to the request or an explicit proposed decision. No unsupported additions, contradictions, or exceptions hidden as compatibility choices. |
+| R2 | Executable flow | Each affected path connects inputs, actual validation rules, result production, and consumer action, including side-effect boundaries. Recovery has a reachable error producer. |
+| R3 | Path coverage | Planned scenarios trigger the actual accepting/rejecting path and observe results and relevant side effects. Distinct implementations are covered or explicitly excluded with a reason. |
+| R4 | Component and interface changes | The component map names before/after responsibilities, material input/output additions, changes and removals, data origins, and affected callers. |
+| R5 | Presentation consistency | Product overview, technical summary, risks, and any graph agree with the plan. All material component/interface changes are visible in clear language. |
+
+For each criterion, record `pass`, `fail`, or `unknown` with a short evidence
+reference in PROGRESS History. `Pass` needs the referenced path or decision;
+an assertion, reviewer agreement, or populated Coverage row is insufficient.
+No average score compensates for a material failure or unknown. Investigate and
+repair those within preparation authority. If a real blocker or product decision
+remains, name it and the next action without claiming readiness.
 
 Keep the resulting approach and coverage in FEATURE and IMPLEMENTATION, so another
 session can execute them without reconstructing the conversation. In PROGRESS,
@@ -384,21 +416,11 @@ readiness verdict, expected findings, or prior conclusions.
 Keep the reviewed draft fixed while the reviewer runs. A later material change
 requires review of the affected approach and summary at the new revisions.
 
-Ask the reviewer to check:
-
-- Whether the contract, plan, and summary satisfy the original request. Identify
-  omitted requirements, contradictions, and scope changes hidden as assumptions
-  or preservation of existing behavior.
-- Whether changed component contracts form an executable approach. Follow the
-  input data through the chosen existing or proposed components, checking required
-  argument types, decoding/validation steps, outputs, and consumers against the
-  actual code. Flag a missing cross-component decision, not an unspecified private
-  helper or a reasonable internal algorithm left to the worker.
-- Whether the planned checks exercise those requirements and distinct paths.
-  Inspect their scenarios rather than accepting coverage labels as proof.
-- Whether the approval summary explains the material changes in natural, precise
-  language. Identify ambiguous actors, misleading promises, grammar errors, and
-  shorthand that requires the operator to reconstruct the meaning.
+Give the reviewer R1–R5 and request an evidence-backed result for each. Ask them
+to walk the proposed scenarios through actual branches in the code, including
+error production before recovery and stage-specific side effects. A missing
+shared contract is a finding; an unspecified private helper is not. Review the
+draft presentation as well as the documents, including every optional graph edge.
 
 The reviewer returns actionable findings with the violated requirement, relevant
 proposal/code location, and consequence. Separate confirmed issues from questions
@@ -410,7 +432,10 @@ proposal; it does not claim that implementation tests have passed.
 
 The coordinator checks the findings against the request and code, repairs confirmed
 issues in the documents and summary, and requests focused re-review of material
-repairs using the revised baseline. Record why a disputed finding is rejected.
+repairs using the revised baseline. Re-walk the repaired path from its input
+through its consumers and side effects, then reconcile R1–R5 for the final
+package. Closing the previous finding list alone does not establish readiness.
+Record why a disputed finding is rejected.
 Do not request approval while confirmed requirement or feasibility gaps remain;
 escalate only a genuine product decision, access limitation, or blocker. Stop an
 unchanged, unproductive review loop and identify the unresolved issue instead of
@@ -437,6 +462,11 @@ Present the proposal in the operator's conversation with links to the exact
 FEATURE and IMPLEMENTATION revisions. A folder path or revision labels alone do
 not explain the proposed change. Keep the summary concise enough to assess without
 reading every task; leave supporting detail in the existing batch documents.
+Build it from the final component map and scenario walkthroughs. For each material
+map entry, locate its counterpart in the summary; group related entries but keep
+their named owners and changed interfaces visible. Trace each summary promise
+back to the plan and requirement or explicit proposed decision. If it introduces
+a new promise, repair the documents and readiness result before presenting it.
 
 - **Product overview.** Explain the expected user behavior and scope. Distinguish
   the operator's requirements from decisions or assumptions added by the agent.
@@ -462,6 +492,10 @@ in the conversation; link implementation detail. The operator must not need to
 request a second technical summary or open every file to understand the approach.
 In a diagram, distinguish new, changed, removed, and existing components with
 labels; show relevant calls, reads/writes, or transaction boundaries.
+Check each edge against a scenario walkthrough. Separate preview, validation,
+authorization, and persistence when they have different effects. Never join entry
+points into one path if only one can perform the shown write. Omit the graph when
+the table already explains the dependencies.
 A diagram is optional, and the summary is a review of a proposal, not a completed
 code review. Do not invent exact signatures or expand the implementation to make
 the presentation look complete. Specify proposed shared inputs and outputs needed

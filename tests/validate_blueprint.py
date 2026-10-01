@@ -40,7 +40,11 @@ def markdown_structure(path):
 
 
 def main():
-    documents = sorted([*ROOT.glob("*.md"), *(ROOT / "skills").rglob("*.md")])
+    documents = sorted([
+        *ROOT.glob("*.md"),
+        *(ROOT / "skills").rglob("*.md"),
+        *(ROOT / "tests").glob("*.md"),
+    ])
     structures = {path: markdown_structure(path) for path in documents}
     errors = [error for _, _, found in structures.values() for error in found]
     for name in ("README.md", "feature_execution_blueprint.md"):

@@ -1,0 +1,318 @@
+# Retained B119 proposal, before workflow repair
+
+Application HEAD: 10a5226206851e98a5360d68efba21188be1be7f
+Workflow HEAD: 2d15588c154573b886378c923cc1883a1cee25fd
+Captured: 2026-10-01. Batch files were uncommitted.
+This is historical evaluation input, not active instructions.
+
+
+## Original operator request
+
+/workflow-prepare
+Zaimplementuj świeżą listę godzin odbioru i dowozu oraz sprawdzenie godziny w momencie kliknięcia. Nie zmieniaj pojemności kuchni ani modelu rezerwacji. Godzina zostaje dostępna dla wszystkich, dopóki kolejny klik się w nią nie mieści. Nie rezerwuj jej dla jednego ekranu tylko dlatego, że ktoś na nią patrzy.
+
+Kontekst, jak jest dziś
+- Bloczki odbioru schodzą w HTML strony głównej (`Public::PickupSlotState` → `app/views/public/home/show.html.erb` i `app/views/public/home/cart/_pickup.html.erb`). Rozwinięcie „Zmień” (`<details>`) niczego nie pobiera.
+- `CartAvailability#refresh` w `app/javascript/controllers/cart/cart_availability.js` co 15 s nic nie robi przy pustym koszyku. Przy pełnym koszyku po pierwszej wycenie patrzy tylko na markery świeżości (wersja floty, kuchnia, status wybranej godziny, menu). Zajęcie innej godziny przez kogoś innego listy nie przerysowuje.
+- Klik godziny przy pustym koszyku (`allowSlot`) przechodzi bez pytania do serwera. Odmowa jest dopiero przy „zamawiam”.
+- Dowóz: `Delivery#quote` w `app/javascript/controllers/cart/delivery.js` idzie przy przełączeniu na dowóz i 300 ms po zmianie adresu. Wybrana oferta gaśnie po `valid_for_seconds` (około minuty). Niewybrana lista zostaje, dopóki adres się nie zmieni.
+- `catalog: false` w odzyskiwaniu koszyka musi pominąć klucz `day_groups`. Pusta tablica kasuje siatkę w `pickup.js`.
+- Minimum dowozu jest na strefie (`DeliveryPricingZone#minimum_subtotal_cents`, domyślnie 0, `MatchZone` zwraca `below_minimum`). Tej kwoty nie ustawiaj i nie dodawaj dopłaty za mały koszyk.
+
+Zachowanie
+1. Otwarcie listy godzin pobiera ją z serwera w tej chwili. Odbiór i dowóz. Zwinięta lista serwera nie pyta. Nie dokładaj drugiego przycisku obok „Zmień”: otwarcie tego panelu jest fetchem.
+2. Klik w godzinę, także przy pustym koszyku, od razu sprawdza tylko tę godzinę. Nie czekaj do „zamawiam”.
+3. Jak tej godziny już nie ma, pokaż modal: na wybraną godzinę jest za późno. Zaznacz najbliższą, która jeszcze wchodzi (na przykład 13:20 padło, zostaje 13:40). Klient ma to zobaczyć, zanim wpisze telefon.
+4. Kto kliknął, zanim miejsca zabrakło, wchodzi. Dwie osoby mogą dostać tę samą godzinę, jeśli obie kliknęły, zanim pierwsza zajęła kubełek. Miejsce schodzi przy zamówieniu, obecną ścieżką holdu. Kolejny klik, który się nie mieści, dostaje modal i następną godzinę.
+5. „Zamawiam” zostaje drugą bramką na ten wyścig. Jak godzina padnie w trakcie wypełniania, znowu modal i następna godzina. Nie komunikat „Brak wolnych terminów dostawy.” i nie pusta lista.
+6. Dowóz: klik w okno robi to samo. Otwarcie listy albo ponowne pytanie o dowóz bierze świeżą wycenę. Martwe okno podmienia się na najbliższe żywe, z modalem, nie na pustkę.
+
+Nie rób
+- Wyłącznego trzymania godziny dla osoby, która tylko ją ogląda.
+- Pollingu pełnego katalogu, dopóki lista jest zwinięta.
+- Wysyłania `day_groups: []` przy sprawdzeniu jednej godziny.
+- Zmiany progu minimum strefy i nowej opłaty za mały koszyk.
+- Nowej tabeli rezerwacji. Użyj istniejącego sprawdzenia pojemności (`PickupSlotsQuery#remaining_capacity?`, wycena dowozu, checkout).
+
+Testy
+- Otwarcie listy odbioru i dowozu robi fetch. Samo siedzenie na stronie, ze zwiniętą listą, nie.
+- Klik w pełną godzinę przy pustym koszyku otwiera modal i zaznacza następną wolną.
+- Dwa równoczesne zamówienia na ostatnie miejsce: oba wchodzą albo wchodzi tyle, ile kubełek mieści w momencie zapisu. Kolejny klik dostaje następną godzinę, nie „brak dostawy”.
+- `catalog: false` nie zawiera `day_groups`.
+- RuboCop na zmienionych plikach i skupione specy tych ścieżek.
+
+
+## Retained FEATURE.md
+
+SHA256: de229df7a38b6f7a88c6f780473c0420f45b4384c0b12e27a0102bab55f57a1b
+
+# Feature: Świeża lista godzin i sprawdzenie przy kliknięciu
+
+Batch: B119
+Workflow schema: 4
+Feature revision: 2
+Source items: NMI-195
+Completion level: feature
+
+## Outcome and scope
+
+Klient na stronie głównej wybiera godzinę odbioru albo okno dowozu. Dziś lista odbioru jest wklejona w HTML i nie odświeża się przy otwarciu panelu „Zmień”. Klik godziny przy pustym koszyku nie pyta serwera. Dowóz trzyma wycenę, dopóki nie zmieni się adres, a martwe okno przy „Zamawiam” kończy się komunikatem „Brak wolnych terminów dostawy.” albo pustą listą.
+
+Po zmianie otwarcie listy pobiera ją z serwera w tej chwili. Klik godziny, także przy pustym koszyku, od razu sprawdza tylko tę godzinę. Jeśli już nie wchodzi, klient widzi modal „Na wybraną godzinę jest za późno.” i ma zaznaczoną najbliższą godzinę, która jeszcze wchodzi, zanim wpisze telefon. Miejsce schodzi dopiero przy zapisie zamówienia, obecną ścieżką holdu. Dwie osoby, które kliknęły, zanim pierwsza zajęła kubełek, mogą dostać tę samą godzinę, o ile kubełek mieści oba zamówienia w momencie zapisu.
+
+W zakresie jest publiczny odbiór, publiczny dowóz, sprawdzenie przy kliknięciu, drugie sprawdzenie przy „Zamawiam” i przy prośbie o kod SMS, oraz modal z podmianą na najbliższą żywą godzinę.
+
+Poza zakresem zostaje próg minimum strefy, dopłata za mały koszyk, nowa tabela rezerwacji, wyłączne trzymanie godziny dla osoby, która tylko na nią patrzy, oraz polling pełnego katalogu przy zwiniętej liście.
+
+## Acceptance criteria
+
+AC1. Otwarcie panelu odbioru „Zmień” pobiera aktualną listę godzin. Samo wejście na stronę i siedzenie przy zwiniętym panelu, także z pozycjami w koszyku, nie pobiera katalogu godzin. Zamknięcie panelu też nie pobiera katalogu. Obok „Zmień” nie pojawia się drugi przycisk.
+
+AC2. Otwarcie panelu godzin dowozu albo naciśnięcie istniejącego „Sprawdź ponownie terminy” pobiera świeżą wycenę, gdy adres jest kompletny. Przy zwiniętym panelu zmiana adresu i timer co 15 sekund nie pobierają listy okien. Niekompletny adres nie uruchamia wyceny.
+
+AC3. Klik godziny odbioru, także przy pustym koszyku, sprawdza tylko tę godzinę, zanim wybór zostanie zatrzymany. Odpowiedź nie zawiera klucza `day_groups`. Godzina, która jeszcze wchodzi, zostaje zaznaczona. Godzina, która nie wchodzi, otwiera modal „Na wybraną godzinę jest za późno.” i zaznacza najbliższą, która jeszcze wchodzi. Sam klik nie rezerwuje miejsca.
+
+AC4. Klik okna dowozu robi to samo dla tego okna. Odpowiedź nie podmienia listy na pustą. Martwe okno otwiera ten sam modal i zaznacza najbliższe żywe okno.
+
+AC5. Dwa równoczesne zamówienia na ostatnie miejsce zapisują się oba, jeśli kubełek mieści oba w momencie holdu. Jeśli kolejne zamówienie już się nie mieści, nie zostaje zapisane, pojawia się ten sam modal i zostaje zaznaczona najbliższa żywa godzina. Klient nie dostaje wtedy komunikatu „Brak wolnych terminów dostawy.” i nie widzi wyczyszczonej listy, o ile jakaś późniejsza godzina jeszcze wchodzi.
+
+AC6. „Zamawiam” i prośba o kod SMS przed złożeniem zamówienia są drugą bramką. Jeśli godzina padnie w trakcie wypełniania, znowu jest modal i najbliższa żywa godzina. Pojemność schodzi tylko obecnym holdem przy udanym zapisie.
+
+AC7. `catalog: false` nie zawiera klucza `day_groups`, także gdy wybrana godzina jest pełna. Pusta tablica nie jest wysyłana w miejsce pominiętego klucza.
+
+AC8. Próg `DeliveryPricingZone#minimum_subtotal_cents` i dopłata za mały koszyk zostają bez zmian. Komunikat `below_minimum` zostaje przy koszyku poniżej minimum strefy i nie jest podmieniany na modal spóźnionej godziny.
+
+## Decisions and constraints
+
+C1. Klik i otwarcie listy tylko czytają dostępność. Rezerwacja zostaje w `PreparationCapacity.hold!` dla odbioru oraz w istniejącym holdzie dowozu wewnątrz `Orders::Checkout`, łącznie z `OwnFleet::CheckoutHold`, które woła `PreparationCapacity.reserve_work!`. Nowej tabeli rezerwacji nie ma. Podstawa: polecenie operatora i obecny zapis w `PreparationCapacity::SlotLocks#locked_capacity!`.
+
+C2. Pusty koszyk sprawdza domyślny kubełek tak, jak strona główna buduje listę bez pozycji: `reserved_load < limit`. Pusta tablica linii nie może iść ścieżką `loads.all?`, bo puste hasło obciążeń jest wtedy zawsze prawdziwe i pełna godzina wygląda na wolną. Koszyk z pozycjami dalej używa obecnego `PreparationLoad`. Decyzja agenta, wynikająca z `PickupSlotsQuery#capacity_open?` i `PreparationLoad#call`.
+
+C3. Najbliższa godzina to kandydat o najmniejszej różnicy czasu względem odrzuconej. Przy remisie wygrywa późniejsza. Dla odbioru porównujemy `starts_at` rekordu slotu znalezionego tokenem, także gdy slot jest już pełny. Dla okna legacy początek obietnicy jest w podpisanym tokenie. Dla okna floty token niesie tylko `generated_at` i odcisk, więc żywość sprawdza `OwnFleet::DeliveryOffer.verify` oraz `valid?`, a nie obecność tego tokenu w nowej wycenie. Czas porównania, gdy weryfikacja nie zwróci okna, bierze klient z już pokazanej oferty i wysyła jako `anchor_at`. Serwer używa tej chwili wyłącznie do wyboru sąsiada. Nie przyjmuje nią zamówienia. Kandydaci pochodzą z istniejącego zapytania o wolne sloty albo ze świeżej oferty i nie obejmują odrzuconego tokenu. Decyzja agenta, dopasowana do przykładu 13:20, po którym zostaje 13:40, oraz do `OwnFleet::DeliveryOffer.sign`.
+
+C4. Gdy świeża oferta nie ma żadnej innej godziny, modal i tak mówi, że na wybraną jest za późno, i dodaje zdanie „Nie ma już godziny, która wchodzi.” Lista na ekranie zostaje. Klucze `day_groups` i `windows` są wtedy pominięte, a nie wysłane jako pusta kolekcja. Komunikat „Brak wolnych terminów dostawy.” zostaje tylko przy świadomym otwarciu listy albo ponownej wycenie, gdy serwer naprawdę nie ma żadnego okna. Decyzja agenta dla braku następcy.
+
+C5. Błąd sieci przy samym kliknięciu zostawia dotychczasowe puszczenie wyboru dalej. „Zamawiam” i tak sprawdza godzinę ponownie. Decyzja agenta, zgodna z obecnym `catch` w `CartAvailability#allowProposed`.
+
+C6. Timer co 15 sekund przy zwiniętym panelu nie pobiera katalogu godzin ani listy okien. Przy niepustym koszyku może nadal sprawdzić markery świeżości wybranej godziny, bez `day_groups` i bez `windows`. Pusty koszyk przy zwiniętej liście nie woła serwera. Przy otwartym panelu i niepustym koszyku ten sam timer może pobrać katalog otwartego panelu. Wymagane obserwowalne sprawdzenie dotyczy zwiniętej listy. Osobnego oczekiwania 15 sekund przy otwartym panelu nie ma. Decyzja agenta.
+
+C7. Lokalne wygasanie wybranej oferty po `valid_for_seconds` zostaje w `Delivery#expireWindow`. To nie jest rezerwacja i nie otwiera modalu spóźnionej godziny. Publiczna wycena legacy używana w specach systemowych nie niesie tego pola. Zachowanie zostaje ograniczeniem implementacji, bez nowego przykładu przeglądarkowego. Po wygaśnięciu klient wybiera okno ponownie, a ten klik idzie ścieżką sprawdzenia jednej godziny.
+
+C8. Dodanie pozycji do koszyka zostaje przy obecnym komunikacie, że slot nie ma miejsca na tę pozycję. To żądanie nie wysyła `intent` i dalej dostaje `clear_selected`, żeby `CartAvailability#allowProposed` odrzuciło pozycję. Modal spóźnionej godziny dotyczy kliknięcia godziny, otwarcia listy z już zaznaczoną martwą godziną, „Zamawiam” oraz prośby o kod SMS.
+
+C9. Klik wysyła `cart_recovery[intent]` równe `select_slot` albo `select_window`. Bez tego pola odpowiedź `catalog: false` zostaje przy dzisiejszym `clear_selected` i zdaniu o braku miejsca na pozycję, bez `replacement`. Decyzja agenta, bo dodanie pozycji i klik godziny są dziś tym samym `POST`, a `allowProposed` puszcza zmianę, gdy `clear_selected` nie przyjdzie.
+
+## Verification
+
+Lokalny dowód dla completion level `feature`. Pełne lane `browser`, `visual` i `release` zostają ręczną weryfikacją przed produkcją i nie zamykają tej partii.
+
+Sprawdzenia obejmują request odzyskiwania koszyka, odrzucenie checkoutu i prośby o SMS, dwa równoczesne zapisy na ostatnie miejsce, oraz przeglądarkę dla otwarcia listy i kliknięcia pełnej godziny przy pustym koszyku. RuboCop idzie po zmienionych plikach Ruby.
+
+Regresja, której nie wolno przegapić, to wyczyszczenie siatki przez `day_groups: []`, rezerwacja przy samym spojrzeniu na godzinę, oraz podmiana minimum strefy.
+
+
+## Retained IMPLEMENTATION.md
+
+SHA256: ab2a4b574e5e7cd517560ad150b3ca6a56b1f6f0f87c6e846b6bd0000e7ce065
+
+# Implementation: Świeża lista godzin i sprawdzenie przy kliknięciu
+
+Batch: B119
+Workflow schema: 4
+Plan revision: 3
+Feature revision: 2
+
+## Execution context
+
+Baza aplikacji to commit `10a5226206851e98a5360d68efba21188be1be7f` na gałęzi `fix_delivery_hours`. Ten commit tylko instaluje skill workflow. W drzewie roboczym są osobne, niezacommitowane poprawki plików workflow. Ta partia ich nie wciąga.
+
+Dostawa, po zgodzie, zakłada gałąź `b119-fresh-slot-check` od tego commita. Testy idą zwykłym `bin/spec` i `bin/spec browser` na lokalnej bazie testowej. Nie ma osobnego zasobu zewnętrznego.
+
+Zakres dostawy do zatwierdzenia razem z tym planem: implementacja, sprawdzenia z tabeli poniżej i commity na tej gałęzi. Router projektu nie ma stałego uprawnienia do pusha ani pull requesta. Ta zgoda ich nie obejmuje, dopóki operator nie dopisze ich w odpowiedzi. Merge i wdrożenie zostają poza zgodą.
+
+Zależności od innych otwartych partii nie ma. Gałąź i PR w `WORK_INDEX.md` pozostają puste do startu dostawy.
+
+## Tasks
+
+| Task | Status | Outcome | Feature refs | Depends on | Checks |
+| --- | --- | --- | --- | --- | --- |
+| T001 | planned | Odzyskiwanie koszyka rozróżnia świeżą listę, klik godziny i dodanie pozycji, i zwraca następcę bez pustego katalogu. | AC3, AC4, AC7, AC8, C1, C2, C3, C4, C9 | — | V001 |
+| T002 | planned | Checkout i prośba o SMS odrzucają martwą godzinę tym samym następcą, a hold przy zapisie zostaje jedynym zejściem pojemności. | AC5, AC6, C1, C3, C4 | T001 | V002, V003 |
+| T003 | planned | Strona otwiera listę fetchem, sprawdza klik, zostawia zaznaczonego następcę i pokazuje modal także po „Zamawiam” i prośbie o SMS. | AC1, AC2, AC3, AC4, AC5, AC6, C5, C6, C7, C8, C9 | T001, T002 | V004, V005 |
+
+### T001. Jedna godzina i świeża lista
+
+`Public::CartRecovery` i `Public::PickupSlotState` obsługują dziś dwa różne znaczenia jednej odpowiedzi. Domyślne `catalog: true` dokleja `day_groups`. `catalog: false` już pomija ten klucz, co pilnuje `spec/requests/public/cart_recovery_spec.rb`. `next_slot` jest jednak liczony tylko przy katalogu, a pusta tablica linii idzie do `PreparationLoad` i daje pusty hash obciążeń. `PickupSlotsQuery#capacity_open?` traktuje taki hash jako wolną godzinę, bo `all?` na pustej kolekcji jest prawdziwe. Strona główna omija ten problem, bo `Public::HomeController#assign_public_ordering_state` woła `PickupSlotState` bez koszyka, więc zapytanie dostaje `cart_items: nil` i sprawdza `reserved_load < limit` na domyślnym kubełku.
+
+Po T001 `PickupSlotState` przekazuje do `PickupSlotsQuery` wartość `cart_items.presence`. Pusta tablica znaczy wtedy to samo co brak koszyka. Koszyk z pozycjami zostaje przy `PreparationLoad`. Dotyczy to i sprawdzenia wybranej godziny, i listy kandydatów na następcę.
+
+Sprawdzenie jednej godziny to istniejące `POST` `availability` z `catalog: false`, tokenem i `intent`. Walidatorem zostaje `PickupSlotsQuery#remaining_capacity?` oraz dotychczasowe warunki otwartego slotu w `PickupSlotState#selected_slot_usable?`. Sukces nie dokleja `day_groups`, nie czyści wyboru i nie zapisuje rezerwacji. `reserved_load` po tym żądaniu jest ten sam. `CartRecovery` jest `inspect_only` na tym endpoincie i tak zostaje.
+
+Bez `intent` porażka zostaje jak dziś. `pickup_slot.clear_selected` jest prawdziwe, `message` to obecne zdanie o braku miejsca na ten koszyk, a `replacement` nie występuje. Dzięki temu `allowAdd` i `allowQuantity` dalej odrzucają pozycję.
+
+`intent` równe `select_slot` przy porażce dokleja proponowane pole `replacement` i nie ustawia `clear_selected`. `message` ma treść „Na wybraną godzinę jest za późno.” Klucz `day_groups` jest pominięty. `replacement` to jeden obiekt o obecnym kształcie slotu, `token`, `starts_at`, `label`, `surface_label`, plus `date` i `day_label` policzone tak, jak `Public::PickupDayGroup` liczy dzień tego slotu. Gdy następcy nie ma, klucz `replacement` jest pominięty.
+
+Następca jest liczony z slotów, które to samo zapytanie nadal oferuje dla tego koszyka, bez odrzuconego tokenu. Punkt odniesienia to `starts_at` slotu znalezionego tokenem, także gdy slot jest pełny. Wygrywa najmniejsza różnica. Remis bierze późniejszy slot.
+
+To samo `replacement` wraca przy `catalog: true`, gdy wybrany token już nie wchodzi. Świeże `day_groups` wracają przy każdym otwarciu listy, także gdy w dniach nie ma slotów, bo klient właśnie o tę listę zapytał. To nie jest `day_groups: []`. `clear_selected` nie jest ustawiane, gdy `replacement` jest. Samo sprawdzenie `select_slot` klucza `day_groups` nie wysyła wcale.
+
+Dowóz używa tego samego podziału. Wejściem kliknięcia jest obecne `checkout_context[:delivery_window_token]` oraz proponowane `anchor_at`, chwilą z już wyrenderowanej oferty. Parametr `cart_recovery` przyjmuje `anchor_at` jako czas ISO oraz `intent` jako `select_slot` albo `select_window`. Oba klucze dochodzą do `Public::CartRecoveryController#cart_recovery_params`. Sprawdzenie jednego okna uruchamia się tylko przy `intent` równym `select_window`. `Public::DeliveryCartQuote` zostaje źródłem kandydatów, ale żywość tokenu floty nie jest równością z tokenem nowej wyceny. `OwnFleet::DeliveryOffer.sign` podpisuje `generated_at` i odcisk, a każda wycena ma nowe `generated_at`. Żywe okno floty to `verify`, które w ciągu minuty odbudowuje ofertę, oraz `valid?`. Okno legacy jest żywe, gdy `DeliveryPromises.available?` przyjmie okno odczytane z dotychczasowego tokenu, tak jak `Orders::Checkout::DeliverySelection`. Przy każdym `catalog: false` klucz `windows` jest pominięty. Sukces nie niesie `replacement`. Porażka niesie `delivery.replacement`, jeden obecny obiekt okna, i `delivery.message` ze zdaniem o spóźnionej godzinie. Czas porównania to przyjazd z `verify`, a gdy `verify` nic nie zwróci, `anchor_at`. Brak obu bierze najwcześniejsze świeże okno. Pusta tablica okien nie jest wysyłana.
+
+Pusta tablica okien nie jest wysyłana. Przy `catalog: true` i kompletnym adresie `delivery.windows` wraca jak dziś. Jeśli wraz z tą listą przyszedł token okna, które już nie żyje, odpowiedź dokleja `replacement` obok listy.
+
+Nowego planera nie ma. Kandydaci na następcę to okna świeżej wyceny. Ich czas porównania to `estimated_arrival_at` okna floty, a dla pozostałych `promised_starts_at`.
+
+`below_minimum`, geokodowanie i brak strefy zostają obecnymi błędami wyceny. Nie dostają `replacement`. Próg `minimum_subtotal_cents` nie jest ruszany.
+
+Konsumenci tej odpowiedzi to `CartAvailability#preview` oraz, po T003, klik i otwarcie listy. `allowAdd` i `allowQuantity` dalej wołają `catalog: false` i nie dostają `day_groups`. Ich komunikat o braku miejsca na pozycję zostaje.
+
+### T002. Druga bramka przy zapisie
+
+Dziś `Orders::Checkout::PickupSelection` przy pełnym slocie dopisuje błąd `pickup_slot_full` i `record_pickup_slot_recovery`. `Public::OrdersController#recovery_payload` oraz `Public::CheckoutPhoneProofsController#recovery_payload` mergują `Public::PickupSlotsRecoveryPayload`, który zawsze ustawia `clear_selected` i `day_groups`. Dla dowozu `Orders::Checkout::LockedAttempt#lock_delivery_admission!` oraz `hold_preparation!` zamieniają brak miejsca na `delivery_window_unavailable`. Klient tłumaczy ten kod na „Brak wolnych terminów dostawy.” Hold nadal siedzi w `PreparationCapacity#hold!`. `SlotLocks#locked_capacity!` pod `SlotCapacity.lock` odrzuca zapis, gdy `reserved_load + load > limit`. Dwa równoczesne checkouty serializują się na `PreparationCapacity.with_location_lock`.
+
+Po T002 te błędy nadal odrzucają zamówienie i nie zostawiają holdu. `PickupSlotsRecoveryPayload` dostaje od obu kontrolerów linie tego zamówienia i odrzucony slot znaleziony tokenem z parametrów, także gdy jest pełny. Nie woła już `PickupSlotsQuery.new(location:).call` bez linii. Następca jest liczony regułą C3 wobec `starts_at` tego slotu, wśród slotów, które te linie jeszcze mieszczą. `clear_selected` jest pomijane, gdy `replacement` jest. Gdy następcy nie ma, `clear_selected` zostaje, a `day_groups` jest pominięte, żeby nie wstawić pustej siatki. Gdy następca jest, `day_groups` wchodzi tylko z dniami, które mają slot. Oba kontrolery przekazują token i pozycje z parametrów zamówienia, więc prośba o SMS i „Zamawiam” dostają ten sam kształt.
+
+Dla dowozu `Orders::Checkout#recovery_payload` dokleja `delivery`, gdy błąd należy do `delivery_window_unavailable` albo `delivery_offer_expired`. Źródłem kandydatów jest ponowna, tylko odczytowa wycena `DeliveryCartQuote` po wycofaniu transakcji. Żywość nie jest sprawdzana drugi raz. Zamówienie już odpadło. Punkt odniesienia dla legacy jest w odczytanym tokenie. Dla floty jest w proponowanym `delivery_window_starts_at`, które klient dokłada do parametrów zamówienia z `promised_starts_at` wybranej oferty. To pole wchodzi do `CHECKOUT_ATTRIBUTE_KEYS` i do ładunku prośby o SMS. Nie decyduje o przyjęciu zamówienia. `windows` wchodzi do JSON tylko wtedy, gdy świeża oferta ma choć jedno okno. `replacement` wchodzi, gdy jest kandydat. `message` ma zdanie o spóźnionej godzinie. Kod błędu zostaje w `errors`. Zdanie „Brak wolnych terminów dostawy.” nie jest treścią tego odzyskiwania.
+
+`below_minimum` nie wchodzi w tę gałąź.
+
+Sam hold, limit kubełka i model rezerwacji nie zmieniają się. Test równoległy ma pokazać obecne zachowanie zapisu, a nie nową blokadę na czas kliknięcia.
+
+Wejścia, które muszą dostać ten kształt, to `POST` zamówienia i `POST` prośby o kod SMS. Oba już wołają preflight albo checkout i oba mergują presenter slotów. Weryfikacja kodu SMS nie wybiera godziny ponownie i zostaje bez zmian.
+
+### T003. Lista, klik i modal
+
+Panel odbioru to `details.checkout-slot-picker` w `app/views/public/home/cart/_pickup.html.erb`. Dziś `<summary>Zmień</summary>` tylko rozwija HTML wstawiony przy renderze strony. `CartRuntime#connect` woła `refresh()` od razu i co 15 sekund. `CartAvailability#refresh` przy pustym koszyku wraca od razu. Przy pełnym, po pierwszej wycenie, porównuje markery floty, kuchni, statusu wybranej godziny i menu. Zajęcie innej godziny listy nie przerysowuje. `allowSlot` przy `count() === 0` zwraca `true` bez żądania.
+
+Po T003 ten sam `<details>` dostaje akcję `toggle`. Otwarcie woła `availability` bez `catalog: false`, także przy pustym koszyku, i podmienia siatkę przez obecne `Pickup#renderSlotGroups`. Zamknięcie i pierwszy paint strony tego nie robią. Drugiego przycisku obok „Zmień” nie ma.
+
+Timer co 15 sekund woła to samo `refresh` co wejście na stronę. Przy zwiniętym panelu to `refresh` nie woła `availability` wcale, ani z katalogiem, ani z `catalog: false`. Przy niepustym koszyku może wysłać tylko dotychczasowe markery na adres świeżości. Te markery nie przerysowują listy. Przy otwartym panelu i niepustym koszyku `refresh` może pobrać katalog tego panelu. Pusty koszyk i zwinięty panel nie wołają żadnego z tych adresów.
+
+`CartAvailability#allowSlot` nie idzie już przez `allowProposed`. Zawsze woła `preview` z `catalog: false` i `intent` równym `select_slot`, także przy pustym koszyku. Sukces zwraca prawdę, a `cart_controller` woła `Pickup#selectSlot` dla klikniętego tokenu. Porażka z `replacement` sama zaznacza następcę i otwiera modal, potem zwraca fałsz, więc kliknięty token nie zostaje wybrany. Brak `replacement` otwiera modal, nie czyści siatki i też zwraca fałsz. Brak klucza `day_groups` nie woła `renderSlotGroups`.
+
+`Pickup#applySelectedFromPayload` dziś po ustawieniu wyboru woła `syncSelectedSlotButton`, a ten czyści wybór, gdy przycisku nie ma w DOM i wybór jest potwierdzony. Siatka pokazuje jeden dzień. Następca z innego dnia przy odpowiedzi bez `day_groups` ginąłby. Po zmianie ta metoda, zanim sprawdzi przycisk, dopisuje slot do grupy w pamięci. Dzień bierze z `replacement.date`, podpis grupy z `replacement.day_label`. Potem rysuje ten dzień i oznacza przycisk. Sam brak przycisku przed tym dopisaniem nie czyści wyboru.
+
+`Completion#applyRecovery` i prośba o SMS używają `Pickup#applyRecovery`. Ta metoda dziś przy `clear_selected` zdejmuje godzinę. Po zmianie, gdy w odzyskiwaniu jest `replacement`, nie zdejmuje wyboru. Rysuje `day_groups` tylko jeśli klucz jest, a potem zaznacza `replacement` tą samą poprawioną metodą i otwiera modal. `cart_owners.js` dziś w `showErrors` woła `Delivery#clearWindow` przy `delivery_window_unavailable` i `delivery_offer_expired`, już po `applyRecovery`. To czyszczenie odpada, gdy `recovery.delivery.replacement` jest. Zostaje tylko wtedy, gdy następcy nie ma.
+
+Okna dowozu w `app/views/public/home/cart/_delivery.html.erb` wchodzą w drugi `details` z tym samym napisem „Zmień”. Proponowany target to `deliverySchedule`. Otwarcie, przy kompletnym adresie, woła obecną wycenę i maluje okna. Niekompletny adres zostawia dotychczasową podpowiedź i nie woła serwera. Istniejący przycisk „Sprawdź ponownie terminy” otwiera ten panel, a jeśli panel już jest otwarty, pobiera wycenę ponownie. Jedno otwarcie daje jeden fetch. Zmiana adresu przy otwartym panelu zostawia debounce 300 ms i pobiera wycenę. Przy zwiniętym panelu czyści tylko lokalny wybór okna i nie woła serwera. Poprzednie przyciski giną dopiero przy następnym otwarciu, które wstawia świeżą wycenę.
+
+`selectDeliveryWindow` w `cart_controller.js` czeka na sprawdzenie, tak jak `selectSlot`. Sprawdzenie wysyła `intent` równe `select_window`, token i `anchor_at` z `promised_starts_at` klikniętej oferty, która już jest w pamięci. Sukces dopiero wtedy woła `Delivery#selectWindow`. Porażka zaznacza `replacement` i nie wybiera martwego tokenu. `Delivery#applyRecovery` podmienia `windows` tylko wtedy, gdy klucz jest w odpowiedzi. Brak klucza zostawia obecną listę. Dziś brak klucza wpada w `{ asap: [], scheduled: [] }`, a potem token znika z tej pustki i `clearWindow` kasuje wybór. Tę domyślną pustkę trzeba zdjąć dla częściowej odpowiedzi. Gdy odpowiedź niesie `replacement`, malowanie `windows` jeśli ten klucz jest, a potem wybór następcy, idzie na końcu. `clearWindow` przy tym nie rusza wyboru. Dotyczy to i kliknięcia, które klucza `windows` nie ma, i odmowy zapisu, która ma oba klucze, bo świeża lista już nie zawiera martwego tokenu. Jeśli następcy nie ma wśród przycisków, klient dopisuje jeden przycisk z obiektu `replacement`, tym samym malowaniem co `renderWindowGroup`, i oznacza go jako wybrany.
+
+Modal to proponowany `<dialog data-cart-target="missedHourDialog">` w partialu koszyka. Treść to „Na wybraną godzinę jest za późno.” Drugie zdanie przy następcy podaje jego etykietę. Bez następcy drugie zdanie brzmi „Nie ma już godziny, która wchodzi.” Jeden przycisk zamyka dialog. Fokus wraca na zaznaczony przycisk godziny, a gdy go nie ma, na panel. To samo okno obsługuje odbiór, dowóz, nieudane „Zamawiam” i nieudaną prośbę o SMS.
+
+`Completion#showErrors` oraz `CheckoutPhoneProof#request` przy `pickup_slot_full`, `pickup_slot_unavailable`, `delivery_window_unavailable` i `delivery_offer_expired` otwierają ten modal, gdy odzyskiwanie dotyczy martwej godziny. Nie ogłaszają wtedy „Brak wolnych terminów dostawy.” Jeśli świeża lista z otwarcia panelu naprawdę nie ma okien, zostaje obecny komunikat wyceny. To nie jest ścieżka modalu wyścigu.
+
+Gdy otwarcie listy pokaże, że już zaznaczona godzina zniknęła z odpowiedzi, klient dostaje ten sam modal i następcę. Brak wcześniejszego wyboru tylko przerysowuje listę.
+
+Błąd sieci przy kliknięciu zostawia obecne puszczenie wyboru. Checkout dalej jest bramką.
+
+`valid_for_seconds` zostaje lokalnym timerem wybranej oferty.
+
+## Verification checks
+
+| Check | Scope | Command or observable procedure | Required evidence |
+| --- | --- | --- | --- |
+| V001 | T001 | `bin/spec spec/requests/public/cart_recovery_spec.rb` | `catalog: false` nie ma klucza `day_groups` przy wolnej i pełnej godzinie oraz przy pustym koszyku. `intent` `select_slot` na pełnej godzinie i pustym koszyku zwraca `replacement` z `date` i `day_label`, bez `clear_selected`, i nie zmienia `reserved_load`. To samo żądanie bez `intent` zostawia `clear_selected` i zdanie o braku miejsca na pozycję, bez `replacement`. Żywy token floty przy `select_window` wraca bez `replacement`. Martwy token floty wraca z `replacement` i bez klucza `windows`, choć nowa wycena ma inny token. `below_minimum` zostaje bez `replacement`. |
+| V002 | T002 | `bin/spec spec/requests/public/orders_spec.rb spec/requests/public/checkout_phone_proofs_spec.rb` | Odrzucenie pełnej godziny przy zapisie i przy prośbie o SMS niesie `replacement` slotu, który mieści ten koszyk i jest najbliższy odrzuconemu `starts_at`. Przy tym `replacement` nie ma `clear_selected`. Puste `day_groups` nie występują. Odpowiedź nie zawiera zdania „Brak wolnych terminów dostawy.”, gdy inne okno jeszcze wchodzi. Brak następcy pomija katalog. Zamówienie nie powstaje. |
+| V003 | T002 | `bin/spec spec/services/orders/checkout_spec.rb spec/services/orders/fleet_checkout_concurrency_spec.rb` | Dwa równoczesne checkouty odbioru na ostatnie miejsce. Zapisuje się tyle zamówień, ile kubełek mieści w momencie holdu. Przegrany dostaje `replacement`, a nie pustą listę. Hold zwycięzcy jest jedynym wzrostem `reserved_load`. Osobny przykład legacy oraz osobny przykład floty robią to samo dla ostatniego okna i nie zwracają komunikatu braku terminów, gdy kolejne okno żyje. |
+| V004 | T003 | `bin/spec browser spec/system/public_fresh_slot_list_spec.rb` | Od wejścia na stronę, przy zwiniętym panelu, nie ma `POST` na availability ani przy pustym koszyku, ani przy koszyku z pozycją. Marker świeżości może pójść osobnym adresem. Otwarcie „Zmień” robi ten `POST` i przerysowuje odbiór. Otwarcie panelu dowozu albo „Sprawdź ponownie terminy” dociąga okna. Klik pełnej godziny odbioru przy pustym koszyku otwiera dialog i zostawia zaznaczoną następną godzinę, także gdy leży w innym dniu. Klik martwego okna dowozu otwiera ten sam dialog i zaznacza następne żywe okno. „Zamawiam” oraz prośba o kod SMS przy godzinie, która padła po wyborze, otwierają dialog i zostawiają następną godzinę zaznaczoną. Dodanie pozycji, która nie mieści się w zaznaczonej godzinie, zostawia dotychczasowe zdanie o braku miejsca na pozycję i nie otwiera tego dialogu. Osobny przykład podmienia `window.fetch` tak, żeby żądanie sprawdzenia godziny się nie udało, i oczekuje, że kliknięta godzina zostaje zaznaczona. Spec nie czeka 15 sekund. Timer woła to samo `refresh` co wejście na stronę i nie dostaje osobnej polityki katalogu. |
+| V005 | T003 | `bin/rubocop` na plikach Ruby zmienionych w T001 i T002 | Czysty wynik. |
+
+V004 jest jedynym wymaganym specem przeglądarkowym. Całe lane `browser`, `visual` i `release` nie są sprawdzeniem zamykającym tę partię.
+
+## Coverage
+
+| Feature refs / affected consumers | Task and check IDs |
+| --- | --- |
+| AC1 panel odbioru, wejście na stronę, timer przy zwiniętej liście | T003, V004 |
+| AC2 panel dowozu, ponowna wycena, zwinięty adres | T003, V004 |
+| AC3 klik odbioru i pusty koszyk, brak rezerwacji przy kliknięciu | T001, T003, V001, V004 |
+| AC4 klik okna dowozu | T001, T003, V001, V004 |
+| AC5 dwa zapisy odbioru, legacy i floty | T002, T003, V002, V003, V004 |
+| AC6 „Zamawiam” i prośba o SMS, z godziną zostawioną zaznaczoną | T002, T003, V002, V004 |
+| AC7 brak klucza `day_groups` | T001, V001 |
+| AC8 minimum strefy | T001, V001 |
+| C1 hold odbioru i istniejący hold dowozu, także floty | T002, V003 |
+| C2 pusty koszyk i domyślny kubełek | T001, V001 |
+| C3 wybór następcy, łącznie z tokenem floty | T001, T002, V001, V002, V003 |
+| C4 brak następcy i zakaz pustej listy | T001, T002, T003, V001, V002 |
+| C5 błąd sieci przy kliknięciu | T003, V004 |
+| C6 brak `POST` availability przy zwiniętej liście, timer tym samym `refresh` | T003, V004 |
+| C7 lokalne wygasanie oferty, bez nowego przykładu, bo wycena legacy nie ma `valid_for_seconds` | T003, luka opisana przy C7 |
+| C8 dodanie pozycji zostaje przy starym komunikacie | T001, T003, V001, V004 |
+| C9 `intent` oddziela klik od dodania pozycji | T001, T003, V001, V004 |
+| `CartAvailability#allowAdd` i `#allowQuantity` nadal bez `day_groups` | T001, V001 |
+| `Pickup#renderSlotGroups` nie dostaje pustej tablicy ze sprawdzenia jednej godziny | T003, V004 |
+| `Delivery#applyRecovery` nie zamienia braku klucza `windows` na puste listy | T003, V001, V004 |
+
+
+## Retained PROGRESS.md
+
+SHA256: dad9ca49cf7b65468e5d4b00a3bff5f7fc59e4c7872a36185ea613c832b43ad2
+
+# Progress: Świeża lista godzin i sprawdzenie przy kliknięciu
+
+Batch: B119
+Workflow schema: 4
+
+## Current
+
+Czekam na zgodę operatora na feature revision 2 i plan revision 3. Zgoda obejmuje implementację, sprawdzenia V001–V005 i commity na gałęzi `b119-fresh-slot-check`. Nie obejmuje pusha, pull requesta, merge ani wdrożenia.
+
+Podejście jest w [FEATURE.md](FEATURE.md) i w [IMPLEMENTATION.md](IMPLEMENTATION.md) przy T001, T002 i T003. To jest dowód projektu, nie wynik testów. Testy jeszcze nie były uruchamiane.
+
+## History
+
+- 2026-09-30: Przygotowanie B119 / NMI-195. Feature revision 1, plan revision 1. Implementacja nie wystartowała.
+- 2026-09-30: Niezależna recenzja rewizji 1, osobny kontekst tylko do odczytu. Skrót [Review slot proposal](fb6795c7-e775-49c4-9d89-a0c74e04a921). Potwierdzone luki: token floty nie da się porównać z nową wyceną, jedno `catalog: false` nie rozdziela kliknięcia od dodania pozycji, odzyskiwanie zapisu nie dostaje linii ani `starts_at`, `clear_selected` i pusta lista okien zdejmują następcę, otwarcie katalogu nie nazywa następcy, następca z innego dnia jest czyszczony, sprawdzenia nie liczą żądania przy zwiniętej liście i nie przechodzą „Zamawiam” na ekranie, plus składnia podsumowania. Poprawione w feature revision 2 i plan revision 2.
+- 2026-09-30: Ponowna recenzja rewizji 2. Dwie luki zostały. Zwinięty koszyk nadal mógł wysłać `availability`, a odmowa zapisu dowozu malowała okna i nie zostawiała następcy zaznaczonego. Poprawione w plan revision 3. Trzecia recenzja zamknęła obie. Feature revision 2 bez zmian.
+
+
+## Retained approval presentation
+
+Hi Kuba. Blueprint 4.1.0, pakiet `2d15588c154573b886378c923cc1883a1cee25fd`. Zgodności z tym commitem nie sprawdzałem.
+
+Partia **B119**, pozycja **NMI-195**, czeka na zgodę. Kontrakt to [FEATURE.md](ai-workflow/work/B119-NMI-195-fresh-slot-check/FEATURE.md), rewizja 2. Plan to [IMPLEMENTATION.md](ai-workflow/work/B119-NMI-195-fresh-slot-check/IMPLEMENTATION.md), rewizja 3.
+
+## Co zobaczy klient
+
+Otwiera listę godzin odbioru albo dowozu i dostaje ją z serwera w tej chwili. Póki panel „Zmień” jest zwinięty, strona nie prosi o listę. Klik godziny, także przy pustym koszyku, od razu sprawdza tylko tę godzinę. Jeśli już nie wchodzi, modal mówi, że na wybraną godzinę jest za późno, i zostawia zaznaczoną najbliższą, która jeszcze wchodzi. To samo dzieje się przy „Zamawiam” i przy prośbie o kod SMS, zanim klient wpisze kod.
+
+Miejsce schodzi dopiero przy zapisie, obecnym holdem. Dwie osoby mogą wejść na tę samą godzinę, jeśli obie kliknęły, zanim pierwsza zajęła kubełek, o ile kubełek mieści oba zamówienia. Minimum strefy zostaje.
+
+Sam dopisałem kilka rozstrzygnięć, bo kod inaczej by się zachował. Pusty koszyk sprawdza domyślny kubełek tak, jak strona bez pozycji. Najbliższa godzina to najmniejsza różnica czasu, a przy remisie późniejsza. Gdy następcy nie ma, lista zostaje i modal mówi, że nie ma już godziny, która wchodzi. Błąd sieci przy samym kliknięciu nadal puszcza wybór. Lokalne wygasanie oferty po minucie zostaje i nie otwiera tego modalu.
+
+## Co się zmienia w kodzie
+
+Dziś „Zmień” tylko rozwija godziny wklejone w HTML. Po zmianie otwarcie tego panelu woła istniejące sprawdzenie dostępności. Drugiego przycisku obok nie ma. Okna dowozu wchodzą w taki sam panel. Przycisk „Sprawdź ponownie terminy” zostaje i też bierze świeżą wycenę.
+
+Dziś klik przy pustym koszyku nie pyta serwera. Po zmianie pyta, z osobnym zamiarem `select_slot` albo `select_window`. Dodanie pozycji tego zamiaru nie wysyła i dalej dostaje dzisiejszą odmowę, że w tej godzinie nie ma miejsca na pozycję. Klik martwej godziny dostaje jednego następcę. Odpowiedź kliknięcia nie zawiera listy dni, więc pusta tablica nie kasuje siatki.
+
+Okno floty jest żywe, gdy da się je odtworzyć obecnym `OwnFleet::DeliveryOffer.verify` i `valid?`. Nowa wycena podpisuje inny token, bo w podpisie jest czas wygenerowania, a nie godzina przyjazdu. Godzinę do porównania klient wysyła z oferty, którą już widzi. Serwer używa jej tylko do wyboru sąsiada.
+
+Odmowa zapisu i odmowa prośby o SMS niosą tego samego następcę, liczonego dla linii tego koszyka. Klient maluje świeżą listę, jeśli przyszła, i na końcu zaznacza następcę. `PreparationCapacity.hold!` oraz obecny hold dowozu, także `OwnFleet::CheckoutHold`, zostają jedynym zapisem pojemności.
+
+```mermaid
+flowchart TD
+  open[Otwarcie panelu Zmień] --> list[Świeża lista z serwera]
+  click[Klik godziny] --> read[Odczyt pojemności bez zapisu]
+  read -->|wchodzi| keep[Ta godzina zostaje zaznaczona]
+  read -->|nie wchodzi| modal[Modal i najbliższa żywa godzina]
+  save[Zamawiam albo prośba o SMS] --> hold[Obecny hold przy zapisie]
+  hold -->|kubełek mieści| order[Zamówienie zapisane]
+  hold -->|nie mieści| modal
+```
+
+## Ryzyko i sprawdzenie
+
+Pusta tablica pozycji dziś potrafi uznać pełną godzinę za wolną, bo puste obciążenie przechodzi warunek „wszystkie pule się mieszczą”. Plan kieruje pusty koszyk na gałąź bez linii, tę samą co strona główna.
+
+Odmowa zapisu dowozu dziś czyści wybrane okno, gdy świeża lista już go nie zawiera. Plan najpierw maluje nowe okna, a potem zaznacza następcę.
+
+Sprawdzę request odzyskiwania koszyka, odrzucenie zamówienia i prośby o SMS, dwa równoczesne zapisy odbioru oraz legacy i floty, spec przeglądarkowy zwiniętej listy, kliknięcia, „Zamawiam” i SMS, oraz RuboCop na zmienionych plikach Ruby. Całe lane przeglądarkowe, wizualne i release tej partii nie zamykają. Luka, którą zostawiam, to lokalny minutnik oferty floty. Publiczna wycena w specach systemowych go nie niesie, a kod timera zostaje bez zmian.
+
+## Zgoda
+
+Baseline to feature revision 2 i plan revision 3. Po zgodzie zakładam gałąź `b119-fresh-slot-check` od `10a52262`, robię implementację, V001–V005 i commity. Niezacommitowane poprawki plików workflow, które już leżą w drzewie, do tej gałęzi nie wchodzą.
+
+Ta zgoda nie obejmuje pusha, pull requesta, merge ani wdrożenia. Jeśli chcesz od razu PR, dopisz to w odpowiedzi.

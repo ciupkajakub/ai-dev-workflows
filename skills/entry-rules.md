@@ -45,3 +45,8 @@ Feedback and resume reuse existing authority under the blueprint's rules.
 
 Report the selected batch, resulting boundary, evidence or blocker, and next
 action. Keep durable state in the blueprint's project documents, not only in chat.
+When continuing preparation, recover the original request, recorded decisions,
+current FEATURE/IMPLEMENTATION revisions, and unresolved readiness results from
+those records. An earlier summary or reviewer verdict does not replace that
+baseline. If the request cannot be recovered, name the missing source instead of
+treating the previous agent's additions as requirements.
