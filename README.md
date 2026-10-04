@@ -25,9 +25,22 @@ Do not implement application code.
 ```
 
 The agent installs the package in `ai-workflow/tooling/` and exposes five skills.
+Setup updates the blueprint **and all five skills together**, including `prepare`,
+`deliver`, `feedback` and `resume`. They do not need separate updates.
 Open a **new chat** and confirm that `workflow-prepare` appears in the skill picker.
 Repeat this step after source updates; application copies do not update automatically.
 Use the same source commit for repeatable team installations.
+
+Once setup is available, refresh with this shorter prompt:
+
+```text
+/workflow-setup Update the package from HEAD of <source-repo>. Preserve project
+rules and batch documents. Verify the package and report the installed source commit.
+```
+
+In Codex, use `$workflow-setup`. `HEAD` means the current commit in that local source
+checkout, not the latest remote commit or uncommitted edits. Commit source changes
+before installing them. Open a new application chat after the update.
 
 ### 2. Run a change
 
@@ -91,6 +104,20 @@ In Codex, use `$workflow-setup`. Each command identifies the blueprint revision
 and recorded source commit. Setup checks file contents against that commit;
 an intact older copy can still report an available update. Without access to the
 source, verification is reported as unavailable.
+
+Read the result as follows:
+
+- **Blueprint revision + recorded source commit:** which package was installed.
+  This is separate from the application's own Git commit.
+- **Integrity: verified:** installed files match the recorded source commit,
+  including the skill instructions.
+- **Currentness: matches local source HEAD:** package contents also match the
+  checked local source HEAD. `update available` means an intact older package;
+  `unverified` means freshness has not been established.
+
+A skill appearing in the picker confirms discovery, not its version. The comparison
+above verifies the files. An update can work locally before the application changes
+are committed; commit those installed files to share the version with the team.
 
 ## Details and checks
 
