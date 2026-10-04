@@ -1,7 +1,7 @@
 # AI Dev Workflows
 
 Business need → code discovery and technical interview → agreed proposal → human
-approval → implementation and verification → PR checks → human review.
+approval → implementation, behavioral proof and code review → PR checks → human review.
 Feedback is assessed and added to the plan before another implementation pass.
 Native agents execute the workflow; the [blueprint](feature_execution_blueprint.md)
 defines its rules.
@@ -72,9 +72,11 @@ flowchart TD
   interview --> plan[Requirements, approach and checks]
   plan --> approve[Human approval]
   approve --> implement[Implement and verify a behavior]
-  implement --> checks[Behavioral proof, PR, CI and code review]
+  implement --> verify[Behavioral proof and implementation review]
+  verify -->|finding or missing proof| assess
+  verify -->|local checks complete| checks[PR, CI and configured code review]
   checks -->|finding| assess[Assess feedback]
-  assess -->|rejected or duplicate with evidence| checks
+  assess -->|rejected or duplicate with evidence| verify
   assess -->|confirmed| repair[Update repair plan and affected proof]
   repair --> change{Behavior or scope changes?}
   change -->|yes| interview
@@ -87,8 +89,12 @@ flowchart TD
 One coordinator owns the result and delegates only with a concrete benefit.
 A risk-focused plan review normally gets one pass and one repair confirmation.
 Remaining uncertainty returns to code investigation or the interview, not another
-round of prose review. PR creation is intermediate; pending CI/review is not a
-verified handoff. Each requirement or decision has one canonical home, with
+round of prose review. Stateful changes across components get one independent
+review of the implemented code before publication when native review is available
+and authorized. Simple local changes use coordinator diff review. Tests must
+demonstrate each affected implementation through its actual caller; a narrower
+passing example leaves the missing proof open. PR creation is intermediate;
+pending CI/review is not a verified handoff. Each requirement or decision has one canonical home, with
 references from the plan and progress history instead of repeated specifications.
 
 ### 3. Check the installed version
@@ -137,3 +143,5 @@ one real proposal, fixed evaluation criteria, diagnosis, and the limits of its
 review trial. It is supporting evidence, not an automated semantic quality gate.
 The [4.2 forward check](tests/workflow_42_case.md) records one bounded intake and
 feedback exercise, including what was not validated.
+The [4.2.1 delivery check](tests/workflow_421_delivery_case.md) records one independent
+inspection of the actual PR 145 implementation and its claimed proof.

@@ -12,6 +12,9 @@ Read the [shared entry rules](../entry-rules.md) and follow
 Resolve the batch. Read its WORK_INDEX entry, FEATURE, IMPLEMENTATION, PROGRESS,
 approval snapshots, and evidence. Inspect the actual checkout, changes, branch/PR,
 and any recorded coordinator or worker sessions before choosing the next action.
+Reconcile claimed task completion with its planned behavioral proof using the
+[delivery verification procedure](../../feature_execution_blueprint.md#verification-and-handoff).
+Missing or narrower proof returns the owning task to active verification.
 
 Ensure no other coordinator owns the active run. Reconcile or stop previous
 workers before reassigning interrupted work. Reuse a provider session when it is

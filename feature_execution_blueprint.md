@@ -1,6 +1,6 @@
 # Feature Execution Blueprint
 
-Blueprint revision: `4.2.0`
+Blueprint revision: `4.2.1`
 Workflow schema: `4`
 Revision date: `2026-10-04`
 
@@ -283,21 +283,32 @@ Tasks deliver verifiable outcomes. Prefer a complete behavior across components
 when splitting by file or technology would leave an interface unowned. Use
 `planned`, `active`, `done`, `blocked`, or `superseded`; preserve stable IDs and
 completed work. `done` requires the planned proof or an explicitly accepted gap.
+Compare the observed scenario with the check's promised evidence before closing
+its task. A passing command for a narrower scenario leaves the missing proof
+open; it does not satisfy the original check. Record that gap under the owning task.
 Increment plan revisions when task/check definitions change, not for status changes.
 
 Trace material paths from actual caller data to validation, result production and
 consumer state. Include distinct affected implementations and consequential
 rejection paths. When replacing an existing path, identify which existing
-safeguards must survive. Settle shared contracts; leave private helper design to
-implementation. A component inventory alone does not establish feasibility.
+safeguards must survive and attach a check to each material one. For asynchronous
+responses, verify which request and current input may update state. For partial
+responses, settle what omitted fields preserve, what explicit empty values clear,
+and which data a replacement needs for its next action. Settle shared contracts;
+leave private helper design to implementation. A component inventory alone does
+not establish feasibility.
 
 For each check, name the triggering condition, observable result and real project
 command/procedure. Match the check to the claim: separate server and UI checks do
 not prove that the real caller supplies the required data. For a changed boundary,
 include a check through that boundary. Cover materially different implementations
 with targeted checks rather than repeating every scenario in a full browser suite.
-Identify required focused checks, project-wide checks, CI and configured code
-review before approval. Mark optional checks with a reason. Planned checks are
+Inspect relevant existing tests and earlier review findings for this same behavior
+when available. Carry forward demonstrated regressions as checks, not just notes.
+Identify required focused checks, affected existing tests, project-wide checks,
+CI and implementation review before approval. Budget review according to the
+implementation risks below; a plan review cannot substitute for code review.
+Mark optional checks with a reason. Planned checks are
 not passing results; unresolved coverage stays explicit.
 
 ### PROGRESS.md
@@ -351,6 +362,10 @@ Do not delegate every plan by default. Give the reviewer the original request,
 project rules, code access and a fixed proposal snapshot, using the
 [review brief](skills/workflow-prepare/references/proposal-review.md). Do not supply
 an expected verdict or list of expected findings.
+
+When a risk needs execution to settle, name its behavioral check and evaluate the
+implemented path. Spend the remaining review budget there rather than requesting
+more agreement on a plan that cannot yet demonstrate the behavior.
 
 Use one review and, when needed, one focused confirmation of repairs as the normal
 budget. This is a stopping rule for repeated review, not permission to pass an
@@ -452,12 +467,58 @@ repair, not an automatic reason to hand control back to the user.
 
 ### Verification and handoff
 
+Compare each owning task's planned proof with the actual exercised scenario and
+observed result. Keep the task open when proof is missing, even if other tests
+pass. A discovery during implementation that contradicts an accepted user journey
+returns through feedback before changing the journey or narrowing its check.
+
 Exercise the agreed user journey through the changed boundaries, including
 material failure paths and persistence effects. For UI changes, interact with the
-running feature and inspect the resulting states. Request tests with hand-built
-inputs cannot establish what the browser sends. Record what each check actually
-proves and retain evidence at the tested revision; do not infer complete coverage
-from a passing test count. Reuse unaffected evidence instead of rerunning it.
+running feature and verify that the actual action invokes its validator and that
+the response produces the intended state. Check wiring as well as method bodies:
+an unassigned callback or an optional no-op can bypass otherwise tested code.
+Request tests with hand-built inputs cannot establish what the browser sends or
+how it consumes the response. Cover materially different implementations through
+their own callers; a pickup example does not prove delivery behavior.
+
+For a changed stateful flow, derive focused checks from its actual risks:
+
+- A replaced path retains its existing ordering, stale-result and input-identity
+  safeguards. When requests may overlap, exercise an obsolete response arriving
+  after the current one and verify it cannot overwrite the current state.
+- A partial response preserves omitted state and applies explicit clearing as
+  agreed. Verify the visible total, selected data and messages where affected.
+- A replacement carries or resolves the data needed for the next action,
+  including applicable validation, consent or expiry data. Exercise continuing
+  the journey with that replacement, not just receiving its identifier.
+- A successful retry removes obsolete errors without discarding valid state.
+
+Use only the cases applicable to the change. Reuse existing checks when they prove
+these outcomes; prefer a small reproducer over another prose review of a resolved
+design. Record what each check actually proves at the tested revision. A file/check
+reference or a passing count is not proof of every scenario listed beside it.
+Reuse unaffected evidence instead of rerunning it.
+
+#### Implementation review
+
+Review the final diff against the approved behavior, affected consumers and
+existing safeguards. For changes to shared contracts, asynchronous state or
+cross-component recovery, use one scoped independent implementation review before
+publishing or updating the PR when an authorized native reviewer is available.
+Supply the original request, approved baseline, base/head or retained diff, project rules,
+code and actual test evidence. Do not supply an expected verdict. The reviewer
+inspects the implemented paths and missing regression coverage, not the plan's
+readiness score. Use the [implementation review brief](skills/workflow-deliver/references/implementation-review.md).
+
+Keep this to one pass and a focused confirmation of material repairs. Do not
+repeat full plan reviews after implementation. If independent local review is
+unavailable or prohibited, record the limitation, perform the diff review directly
+and use configured PR review; do not claim independent local coverage. Simple
+local changes need coordinator diff review rather than a mandatory second agent.
+Confirmed findings update the owning repair task/check before code changes.
+Remote review remains required when configured and may discover additional defects.
+
+#### PR checks and result
 
 Run the required project checks and review the diff for regressions and unintended
 scope. Publish or update the authorized PR once it is useful for CI/code review;
@@ -474,10 +535,10 @@ accepted exception, not an assertion that it is unrelated. An unavailable requir
 check is a named gap/blocker, never a pass. Release/deployment checks remain separate
 when the agreed completion level does not require them.
 
-Set `awaiting_review` only when the agreed behavioral proof and PR checks are
-complete and review findings are dispositioned. Any waived gap needs explicit
-applicable authority. An explicitly local-only scope uses its agreed local proof
-instead. A required PR that cannot be published remains a blocker.
+Set `awaiting_review` only when the agreed behavioral proof, implementation review
+and PR checks are complete and review findings are dispositioned. Any waived gap
+needs explicit applicable authority. An explicitly local-only scope uses its
+agreed local proof instead. A required PR that cannot be published remains a blocker.
 
 Present the delivered behavior, material technical changes, PR/local diff,
 demonstration or reproduction instructions, tested revision and remaining gaps.

@@ -16,8 +16,12 @@ as permission for an unspecified remote, merge, deployment, or scope change.
 
 Own the authorized run through verified PR handoff. Implement directly or delegate
 where it has a concrete benefit, under the configured execution profile. Verify
-combined behavior. Route failures and PR findings through the feedback procedure
-to update repair tasks/checks before editing code; continue without routine prompts.
+combined behavior through the actual callers. Before closing a task, compare its
+planned proof with the observed scenario; missing proof keeps it open. Apply the
+blueprint's [implementation review](../../feature_execution_blueprint.md#implementation-review)
+to the final code, independently of any earlier proposal review. Route failures
+and PR findings through the feedback procedure to update repair tasks/checks before
+editing code; continue without routine prompts.
 
 Reuse the batch's open PR when one exists. Stop at `awaiting_review` only when the
 authorized handoff, behavioral proof, required CI and configured code review are
