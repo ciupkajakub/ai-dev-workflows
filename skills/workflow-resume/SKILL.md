@@ -18,12 +18,15 @@ workers before reassigning interrupted work. Reuse a provider session when it is
 available and appropriate; otherwise reconstruct context from the durable records.
 
 Continue an already authorized `active` batch through the
-[delivery procedure](../../feature_execution_blueprint.md#approve-and-execute),
-delegating implementation to native workers by default. For `blocked`, verify that
-the recorded blocker has cleared before dependent work. Do not repeat unchanged
+[delivery procedure](../../feature_execution_blueprint.md#approve-and-execute).
+Recover pending CI/review results and reconcile findings before assigning repairs.
+For `planned`, continue discovery/interview from recorded answers. For `blocked`,
+verify that the recorded blocker has cleared before dependent work. Do not repeat unchanged
 passing checks or discard completed work merely because this is a new session.
 
-Resume is not a new approval: preserve `awaiting_approval` or `awaiting_review`
-and present the outstanding decision unless the current request supplies it.
+Resume is not a new approval. At `awaiting_approval`, present the outstanding
+decision unless the current request supplies it. At `awaiting_review`, check that
+the recorded handoff still holds: new required failures return to authorized repair,
+pending checks return to `active`, otherwise preserve the human review boundary.
 Do not restart `done` or `superseded` work without a new authorized request.
 Report and record the next boundary or remaining blocker.

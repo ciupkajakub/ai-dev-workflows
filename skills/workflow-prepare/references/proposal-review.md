@@ -17,16 +17,17 @@ effects match this entry point. Check that planned commands select the intended
 tests. Treat uninspected or unresolved material paths as unknown. Private helper
 choices need not be settled; shared contracts do.
 
-Return compact path evidence, actionable findings with proposal/code locations
-and consequences, and R1–R5 results derived from that evidence. Separate confirmed
-defects from genuine product questions and hypotheses. Check the draft against
-the [approval presentation](../../../feature_execution_blueprint.md#approval-presentation),
-requiring its filled sections, diagram, distinct open/proposed decisions and all
-material interfaces. Correct prose alone cannot pass R5 when the template is incomplete.
+Return compact evidence and actionable findings with locations and consequences.
+Use R1–R5 to identify gaps, not five mandatory reports. Separate confirmed defects
+from product questions and hypotheses. Check that the operator can assess behavior,
+technical changes, interfaces, relevant flow, decisions and proof under the
+[approval presentation](../../../feature_execution_blueprint.md#approval-presentation).
+Do not demand empty sections, a fixed layout or repeated descriptions of the design.
 Do not redesign the feature, add unrelated improvements, edit application files
 or supply the missing design on the author's behalf.
 
-For a focused rereview, inspect the changed paths and summary, carry forward
-unresolved findings, and reconcile all criteria at the new baseline. Agreement with
-the author is not evidence. Reference existing plan rows for unchanged evidence
-rather than duplicating the design.
+For the focused confirmation, inspect repaired paths and affected consumers and
+carry forward unresolved findings. Do not limit review to textual agreement.
+Reference unchanged evidence rather than duplicating it. If material gaps remain,
+return the concrete missing fact or decision and a recommended investigation;
+do not initiate another review round. The coordinator owns the review budget.

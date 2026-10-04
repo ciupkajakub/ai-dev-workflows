@@ -1,7 +1,8 @@
 # AI Dev Workflows
 
-Business need → contract and plan → human approval → delegated implementation,
-verification and repairs → PR → human review → feedback updates the same PR.
+Business need → code discovery and technical interview → agreed proposal → human
+approval → implementation and verification → PR checks → human review.
+Feedback is assessed and added to the plan before another implementation pass.
 Native agents execute the workflow; the [blueprint](feature_execution_blueprint.md)
 defines its rules.
 
@@ -40,11 +41,42 @@ The agent supplies the batch ID during preparation.
 | Apply feedback | `/workflow-feedback <batch> <feedback>` | `$workflow-feedback <batch> <feedback>` |
 | Resume interrupted work | `/workflow-resume <batch>` | `$workflow-resume <batch>` |
 
-Before `deliver`, review the product overview, planned technical changes, risks,
+`prepare` first shows a preliminary solution: user behavior, technical changes,
+interfaces and a flow diagram when useful. It asks only about unresolved expectations
+and trade-offs, then turns the answers into a short proposal and verification plan.
+It does not make you choose private helpers or repeat settled requirements.
+
+Before `deliver`, review the proposed outcome, technical changes, risks,
 and verification. The command approves the exact presented proposal and delivery
 scope, including its commit/push/PR authority and destination. Missing authority
 must be resolved first. At PR review, accept the result or send feedback.
 Merge and deployment require separate authority; `resume` reuses existing approval.
+
+```mermaid
+flowchart TD
+  need[Business need] --> explore[Code discovery]
+  explore --> interview[Preliminary technical proposal and interview]
+  interview --> plan[Requirements, approach and checks]
+  plan --> approve[Human approval]
+  approve --> implement[Implement and verify a behavior]
+  implement --> checks[Behavioral proof, PR, CI and code review]
+  checks -->|finding| assess[Assess feedback]
+  assess -->|rejected or duplicate with evidence| checks
+  assess -->|confirmed| repair[Update repair plan and affected proof]
+  repair --> change{Behavior or scope changes?}
+  change -->|yes| interview
+  change -->|no| implement
+  checks -->|required checks complete| result[Demo, evidence and human review]
+  result -->|feedback| assess
+  result -->|accepted| done[Accepted result]
+```
+
+One coordinator owns the result and delegates only with a concrete benefit.
+A risk-focused plan review normally gets one pass and one repair confirmation.
+Remaining uncertainty returns to code investigation or the interview, not another
+round of prose review. PR creation is intermediate; pending CI/review is not a
+verified handoff. Each requirement or decision has one canonical home, with
+references from the plan and progress history instead of repeated specifications.
 
 ### 3. Check the installed version
 
@@ -76,3 +108,5 @@ These checks verify documentation and package comparison, not agent delivery.
 The [proposal readiness regression case](tests/proposal_readiness_case.md) retains
 one real proposal, fixed evaluation criteria, diagnosis, and the limits of its
 review trial. It is supporting evidence, not an automated semantic quality gate.
+The [4.2 forward check](tests/workflow_42_case.md) records one bounded intake and
+feedback exercise, including what was not validated.

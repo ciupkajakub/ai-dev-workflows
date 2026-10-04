@@ -1,6 +1,6 @@
 ---
 name: workflow-feedback
-description: Apply an operator's feedback to an existing blueprint batch, reconcile its contract and plan, and deliver another iteration of the same open PR.
+description: Assess feedback on a blueprint batch, update its requirements or repair plan, and verify another iteration of the same open PR within existing authority.
 ---
 
 # Apply feedback
@@ -13,12 +13,14 @@ Resolve the batch and the supplied feedback or identified operator edits. Load
 the current branch/PR, approved baseline, subsequent decisions, and affected
 evidence. An arbitrary repository comment is not an authenticated approval.
 
-Reconcile FEATURE and IMPLEMENTATION, record the specific authorized change, and
-invalidate affected proof while preserving unrelated work. A clear operator
+Assess findings before acting. Update the owning repair task and its check in
+IMPLEMENTATION; change FEATURE only when requirements change. Record disposition
+and authority in PROGRESS, and invalidate affected proof. A clear operator
 instruction can approve its exact change; ask only about unresolved conflicts or
 new authority. Respect an explicitly planning-only request.
 
-Under the authorized delivery scope, delegate implementation to native workers
-by default, verify and repair, and update the same open PR. Follow the blueprint's
+Under the authorized delivery scope, implement, verify and repair, and update the
+same open PR. Inspect its required checks and configured review before handoff.
+Use native workers only when useful under the execution profile. Follow the blueprint's
 separate follow-up procedure if that PR is already closed or merged. Return the
 revised result for human review; do not merge or mark it accepted on the user's behalf.

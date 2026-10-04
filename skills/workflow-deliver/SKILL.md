@@ -14,15 +14,16 @@ operator. Apply the shared approval rule before implementing. Record the approva
 snapshot and retain any existing scoped authority. Do not interpret the command
 as permission for an unspecified remote, merge, deployment, or scope change.
 
-Coordinate the authorized run through PR handoff. Delegate bounded implementation
-tasks to native workers by default under the configured execution profile. Follow
-the blueprint's fallback, starting-revision, resource-isolation, and evidence rules.
-Integrate worker results, run the required checks, assign repairs, and continue
-without routine prompts at task boundaries.
+Own the authorized run through verified PR handoff. Implement directly or delegate
+where it has a concrete benefit, under the configured execution profile. Verify
+combined behavior. Route failures and PR findings through the feedback procedure
+to update repair tasks/checks before editing code; continue without routine prompts.
 
 Reuse the batch's open PR when one exists. Stop at `awaiting_review` only when the
-authorized handoff and required proof exist, or report a genuine blocker with
-recovery state. Human acceptance, merge, and deployment remain separate actions.
+authorized handoff, behavioral proof, required CI and configured code review are
+complete. Pending checks remain `active`; preserve a resume point if the run must
+end. Report genuine blockers with recovery state. Human acceptance, merge, and
+deployment remain separate actions.
 
 Present the result using the blueprint's
 [Verification and handoff](../../feature_execution_blueprint.md#verification-and-handoff):
