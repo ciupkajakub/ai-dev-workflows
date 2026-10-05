@@ -71,10 +71,12 @@ flowchart TD
   explore --> interview[Preliminary technical proposal and interview]
   interview --> plan[Requirements, approach and checks]
   plan --> approve[Human approval]
-  approve --> implement[Implement and verify a behavior]
-  implement --> verify[Behavioral proof and implementation review]
+  approve --> implement[Implementation]
+  implement --> verify[Independent code and behavior verification]
   verify -->|finding or missing proof| assess
-  verify -->|local checks complete| checks[PR, CI and configured code review]
+  verify -->|complete proof for current commit| gate[Publication gate]
+  gate -->|pass| checks[PR, CI and configured code review]
+  gate -->|missing or stale proof| verify
   checks -->|finding| assess[Assess feedback]
   assess -->|rejected or duplicate with evidence| verify
   assess -->|confirmed| repair[Update repair plan and affected proof]
@@ -86,16 +88,20 @@ flowchart TD
   result -->|accepted| done[Accepted result]
 ```
 
-One coordinator owns the result and delegates only with a concrete benefit.
-A risk-focused plan review normally gets one pass and one repair confirmation.
-Remaining uncertainty returns to code investigation or the interview, not another
-round of prose review. Stateful changes across components get one independent
-review of the implemented code before publication when native review is available
-and authorized. Simple local changes use coordinator diff review. Tests must
-demonstrate each affected implementation through its actual caller; a narrower
-passing example leaves the missing proof open. PR creation is intermediate;
-pending CI/review is not a verified handoff. Each requirement or decision has one canonical home, with
-references from the plan and progress history instead of repeated specifications.
+One coordinator owns the result. A plan review is optional when a specific design
+risk remains. Delivery always separates the implementer from the verifier, who
+checks the approved scenarios and actual code before publication. Repairs first
+enter the plan with a regression check, then receive focused confirmation.
+`deliver` runs those stages under the existing approval; `resume` restores the
+unfinished stage. There is no additional command for the operator.
+
+The [publication checker](skills/workflow-deliver/references/publication-gate.md)
+checks a verifier's receipt against the current commit, plan revisions, required
+scenario IDs and retained evidence files. Missing or stale proof blocks handoff.
+It does not authenticate the verifier or prove a test's meaning, and it is not a
+Git hook. The coordinator must inspect the evidence and obey the result. If no
+independent execution facility is available, record a blocker rather than silently
+substituting self-review. Pending CI or remote review also keeps delivery active.
 
 ### 3. Check the installed version
 
@@ -134,6 +140,7 @@ are committed; commit those installed files to share the version with the team.
 ```sh
 python3 -B tests/validate_blueprint.py
 python3 -B tests/test_check_package.py
+python3 -B tests/test_delivery_gate.py
 git diff --check
 ```
 
@@ -145,3 +152,6 @@ The [4.2 forward check](tests/workflow_42_case.md) records one bounded intake an
 feedback exercise, including what was not validated.
 The [4.2.1 delivery check](tests/workflow_421_delivery_case.md) records one independent
 inspection of the actual PR 145 implementation and its claimed proof.
+
+The [4.3 flow check](tests/workflow_43_case.md) records one independent delivery
+stage decision on B119 and the limits of that evaluation.

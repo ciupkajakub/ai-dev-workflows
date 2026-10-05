@@ -1,8 +1,10 @@
-# Review the implementation
+# Independently verify the implementation
 
 Review the supplied fixed base/head or retained diff against the original request,
 approved behavior, project rules and actual test evidence. This review inspects
-implemented code. Proposal readiness and recorded task completion are claims to
+implemented code and required behavioral scenarios. Derive scenarios from the
+request and approved decisions, then reconcile them with the plan's check IDs.
+Proposal readiness and recorded task completion are claims to
 check, not evidence that the code works. Stay within the change's scope.
 
 Trace affected actions through their real wiring, request construction, validator,
@@ -25,6 +27,11 @@ Return compact findings with locations, concrete triggers, consequences and the
 check that would demonstrate each repair. Separate confirmed defects, missing
 proof and hypotheses. Report the inspected snapshot and any access limits.
 Do not supply an expected pass, unrelated redesign, or another full plan review.
-Keep the requested review read-only unless reproductions are explicitly authorized.
-The coordinator owns task/evidence updates and repairs. A focused confirmation
-checks material repairs and their affected consumers without restarting the review.
+Run focused tests or browser checks within the authorized delivery scope and
+isolated resources. Inspect reused logs and actual assertions before accepting them.
+Do not change application code; return defects and missing proof to the implementer.
+Record the inspected commit, observations and dispositions in the
+[verification receipt](publication-gate.md). Keep failures open and preserve their
+repair checks. The coordinator owns repairs and publication. After a repair, verify
+its regression check and affected consumers without repeating unchanged scenarios.
+Do not claim a pass when required access or execution was unavailable.

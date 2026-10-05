@@ -1,8 +1,8 @@
 # Feature Execution Blueprint
 
-Blueprint revision: `4.2.1`
+Blueprint revision: `4.3.0`
 Workflow schema: `4`
-Revision date: `2026-10-04`
+Revision date: `2026-10-05`
 
 Use this workflow to turn a business need into an accepted change with recorded
 proof. The operator approves the proposed solution and reviews the result. The
@@ -60,7 +60,7 @@ prompt now or a configured integration delivers an event later.
 | Input or result | Coordinator action | Next boundary |
 | --- | --- | --- |
 | New business need | Inspect code, present a preliminary technical proposal and interview for unresolved expectations. Record requirements, approach and checks once. | `planned` during discovery/interview; `awaiting_approval` when the proposal is ready. |
-| Approval of the current proposal | Record the approved snapshot and run implementation, checks, repairs and PR publication. Delegate where it helps. | `active` until verified handoff, or a genuine blocker. |
+| Approval of the current proposal | Record the snapshot; run implementation, independent verification, repairs, publication and PR checks. | `active` until verified handoff, or a genuine blocker. |
 | Failed check or PR feedback | Assess the finding, update the repair task/check and invalidate affected evidence before implementation. | Continue `active` within approved scope; return to interview/approval for changed expectations. |
 | Worker result | Inspect and integrate evidence; verify the combined behavior. | Continue `active`; no routine human approval. |
 | Required behavior, CI and configured review complete | Present the result, PR, evidence and demonstration. | `awaiting_review`: human review of the delivered result. |
@@ -283,9 +283,9 @@ Tasks deliver verifiable outcomes. Prefer a complete behavior across components
 when splitting by file or technology would leave an interface unowned. Use
 `planned`, `active`, `done`, `blocked`, or `superseded`; preserve stable IDs and
 completed work. `done` requires the planned proof or an explicitly accepted gap.
-Compare the observed scenario with the check's promised evidence before closing
-its task. A passing command for a narrower scenario leaves the missing proof
-open; it does not satisfy the original check. Record that gap under the owning task.
+The independent verifier confirms the observed scenario against the promised
+evidence before the coordinator closes its task. The implementer does not close
+its own tasks. A narrower passing scenario leaves the missing proof open.
 Increment plan revisions when task/check definitions change, not for status changes.
 
 Trace material paths from actual caller data to validation, result production and
@@ -306,9 +306,14 @@ with targeted checks rather than repeating every scenario in a full browser suit
 Inspect relevant existing tests and earlier review findings for this same behavior
 when available. Carry forward demonstrated regressions as checks, not just notes.
 Identify required focused checks, affected existing tests, project-wide checks,
-CI and implementation review before approval. Budget review according to the
-implementation risks below; a plan review cannot substitute for code review.
-Mark optional checks with a reason. Planned checks are
+CI and independent verification before approval. Each required check has a stable
+ID and an observable scenario; distinguish separate implementations and important
+transitions rather than grouping them under a suite name. Budget review according
+to the delivery stages below; a plan review cannot substitute for execution proof.
+Mark checks that need the published PR as `pr_checks`; required local behavioral
+proof belongs before publication. The publication receipt covers all required
+pre-publication checks. Remote-only CI/review remains required for final handoff,
+not a prerequisite for creating the PR it needs. Mark optional checks with a reason. Planned checks are
 not passing results; unresolved coverage stays explicit.
 
 ### PROGRESS.md
@@ -424,8 +429,9 @@ restart mechanism has been configured and verified.
 ### Coordination and native workers
 
 One coordinator remains responsible for the whole outcome and can implement it
-directly. Delegate only when it provides a concrete benefit, such as independent
-investigation, specialist review or genuinely separable implementation. Do not
+directly. Independent verification is a separate role assigned through authorized
+native delegation or another independent provider session. The implementer cannot
+substitute self-review for that role. Additional delegation is optional. Do not
 split a tightly coupled change merely to assign backend and UI to different agents.
 Use the configured execution profile and available native controls; no custom
 runner or assumed model-selection capability is required.
@@ -444,6 +450,12 @@ procedure as coordinator-owned work.
 
 ### Implementation and repair loop
 
+Delivery has four stages: `implementation`, `verification`, `repair` and
+`pr_checks`. Record the current stage and next action in PROGRESS Current; the
+batch remains `active`. These are execution stages, not new batch statuses.
+One approval runs the stages without extra operator commands. Resume recovers
+the unfinished stage rather than restarting preparation.
+
 Confirm the needed environment actually works: build/test setup, application,
 database, browser, and other resources relevant to this change. A declaration
 that a capability exists is not evidence of access. Use only authorized recovery
@@ -456,6 +468,10 @@ Do not require a mechanical test-first ritual where another check is stronger.
 Do not weaken accepted criteria, skip failing checks, or rewrite expectations
 merely to make the result pass.
 
+The implementer runs focused development checks and retains their outputs, then
+hands over the fixed implementation snapshot with tasks still open. Commit locally
+only within granted authority. Publication waits for independent verification.
+
 Route confirmed failures through the feedback procedure to update the owning task,
 check and evidence before repair. Rerun affected proof after a relevant change. Avoid
 unchanged passing reruns unless integration or new evidence invalidates them.
@@ -466,6 +482,12 @@ do not repeat the same action indefinitely. An ordinary failed test is work to
 repair, not an automatic reason to hand control back to the user.
 
 ### Verification and handoff
+
+An independent verifier owns this stage. Supply the original request, recorded
+operator decisions, fixed base/head, project rules, actual application access and
+existing evidence. Do not supply an expected verdict or the implementer's claim
+that the result is complete. The verifier derives the required scenarios from the
+approved outcome and reconciles them with the plan before assessing code and tests.
 
 Compare each owning task's planned proof with the actual exercised scenario and
 observed result. Keep the task open when proof is missing, even if other tests
@@ -499,29 +521,41 @@ design. Record what each check actually proves at the tested revision. A file/ch
 reference or a passing count is not proof of every scenario listed beside it.
 Reuse unaffected evidence instead of rerunning it.
 
-#### Implementation review
+#### Independent verification and publication gate
 
-Review the final diff against the approved behavior, affected consumers and
-existing safeguards. For changes to shared contracts, asynchronous state or
-cross-component recovery, use one scoped independent implementation review before
-publishing or updating the PR when an authorized native reviewer is available.
-Supply the original request, approved baseline, base/head or retained diff, project rules,
-code and actual test evidence. Do not supply an expected verdict. The reviewer
-inspects the implemented paths and missing regression coverage, not the plan's
-readiness score. Use the [implementation review brief](skills/workflow-deliver/references/implementation-review.md).
+Use the [verification brief](skills/workflow-deliver/references/implementation-review.md)
+for one independent pass that combines final-code review with behavioral evidence.
+The verifier may run the authorized focused checks and browser scenarios using
+isolated resources; independence does not imply read-only test execution. It must
+inspect actual assertions and observe the materially different journeys. Existing
+evidence can be reused after confirming its scope and freshness; do not rerun a
+full suite merely to duplicate the implementer's output.
 
-Keep this to one pass and a focused confirmation of material repairs. Do not
-repeat full plan reviews after implementation. If independent local review is
-unavailable or prohibited, record the limitation, perform the diff review directly
-and use configured PR review; do not claim independent local coverage. Simple
-local changes need coordinator diff review rather than a mandatory second agent.
-Confirmed findings update the owning repair task/check before code changes.
-Remote review remains required when configured and may discover additional defects.
+Confirmed findings and missing proof return to `repair`: update the owning task
+and regression check before editing, implement the correction, then send the
+affected paths for focused verification. Do not commission repeated full plan
+reviews. A surviving failure needs investigation or a reproducer, not another
+prose vote. Product changes alone return to interview/approval.
+
+The verifier records a [verification receipt](skills/workflow-deliver/references/publication-gate.md)
+for the final snapshot. The coordinator checks it with the packaged gate checker
+before closing tasks or publishing/updating the PR. Missing scenarios, unavailable
+verification, stale evidence or unresolved findings fail this gate. If independent
+execution is unavailable or prohibited, record the blocker and retain `active`;
+do not silently substitute self-review or remote review. An operator may explicitly
+authorize a narrower completion scope, but its gaps must remain visible and it
+must not be described as a verified delivery.
+
+Any implementation change invalidates affected proof and the previous receipt.
+Metadata-only commits still require a receipt bound to the final head, but the
+verifier can confirm the diff and reuse unaffected behavioral evidence. A new
+receipt is not a demand to rerun unchanged checks. The receipt is evidence only;
+FEATURE/IMPLEMENTATION/PROGRESS and WORK_INDEX remain the workflow state.
 
 #### PR checks and result
 
-Run the required project checks and review the diff for regressions and unintended
-scope. Publish or update the authorized PR once it is useful for CI/code review;
+After the publication gate passes, publish or update the authorized PR and enter
+`pr_checks`. Run the required project checks and inspect configured remote review;
 PR creation is an intermediate step, not a verified handoff. Reuse the existing
 open PR. Inspect required CI and the configured code review on the current head.
 Pending results keep delivery `active`. Await them with bounded waits using native
@@ -535,7 +569,7 @@ accepted exception, not an assertion that it is unrelated. An unavailable requir
 check is a named gap/blocker, never a pass. Release/deployment checks remain separate
 when the agreed completion level does not require them.
 
-Set `awaiting_review` only when the agreed behavioral proof, implementation review
+Set `awaiting_review` only when the agreed behavioral proof, independent verification
 and PR checks are complete and review findings are dispositioned. Any waived gap
 needs explicit applicable authority. An explicitly local-only scope uses its
 agreed local proof instead. A required PR that cannot be published remains a blocker.
@@ -572,8 +606,9 @@ evidence. Preserve intentional operator edits. Then:
    proof, including dependent consumers; retain old evidence as history and link
    unaffected results. Update WORK_INDEX to `active` for authorized repairs, or
    `awaiting_approval` when a product decision remains.
-5. Implement, verify the correction and affected regressions, then update the same
-   open PR and inspect checks on the new head. Present the revised result only
+5. Implement the correction and its regression check, independently verify the
+   affected paths and pass the publication gate, then update the same open PR and
+   inspect checks on the new head. Present the revised result only
    after the handoff conditions above hold.
 
 Keep a repair entry proportional: one task/check update and a history reference

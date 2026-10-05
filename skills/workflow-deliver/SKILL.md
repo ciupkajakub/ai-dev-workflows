@@ -14,14 +14,21 @@ operator. Apply the shared approval rule before implementing. Record the approva
 snapshot and retain any existing scoped authority. Do not interpret the command
 as permission for an unspecified remote, merge, deployment, or scope change.
 
-Own the authorized run through verified PR handoff. Implement directly or delegate
-where it has a concrete benefit, under the configured execution profile. Verify
-combined behavior through the actual callers. Before closing a task, compare its
-planned proof with the observed scenario; missing proof keeps it open. Apply the
-blueprint's [implementation review](../../feature_execution_blueprint.md#implementation-review)
-to the final code, independently of any earlier proposal review. Route failures
-and PR findings through the feedback procedure to update repair tasks/checks before
-editing code; continue without routine prompts.
+Own the authorized run through four recorded stages: implementation, verification,
+repair when needed, and PR checks. The implementer leaves completion to a distinct
+independent verifier. Follow the blueprint's
+[independent verification and publication gate](../../feature_execution_blueprint.md#independent-verification-and-publication-gate).
+Give that verifier the original request, approved decisions, fixed code snapshot,
+project rules and application access. It checks the actual callers and each required
+scenario, including preserved behavior. Author summaries are claims to examine.
+
+Before closing tasks or publishing, inspect the verifier's evidence and run the
+[publication checker](references/publication-gate.md) for the current commit and
+complete pre-publication check list from the approved plan. Missing independent verification,
+failed scenarios, stale evidence or unavailable checks keep the run active.
+Do not replace that verifier with self-review. Route findings through the feedback
+procedure to record a repair task and regression check before editing code.
+Continue repairs and focused independent confirmation under existing authority.
 
 Reuse the batch's open PR when one exists. Stop at `awaiting_review` only when the
 authorized handoff, behavioral proof, required CI and configured code review are
