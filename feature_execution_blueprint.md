@@ -1,8 +1,8 @@
 # Feature Execution Blueprint
 
-Blueprint revision: `4.3.0`
+Blueprint revision: `4.3.1`
 Workflow schema: `4`
-Revision date: `2026-10-05`
+Revision date: `2026-10-06`
 
 Use this workflow to turn a business need into an accepted change with recorded
 proof. The operator approves the proposed solution and reviews the result. The
@@ -83,6 +83,13 @@ source, relevant feature/plan snapshot, requested action, and granted scope.
 Record decisions and handled event references in PROGRESS history. Current holds
 the next action and coordinator recovery reference; WORK_INDEX remains the owner
 of lifecycle and branch/PR identity. No extra workflow state file is required.
+
+Resolve work by repository, batch, actual branch/checkout and recorded base
+revision together. Confirm any PR's source branch before reusing it. A matching
+batch number on another branch is a possible identity collision, not authority
+to resume that PR, import its decisions or block independent work on its approval.
+Keep the operator's selected checkout and scope; record the collision in the
+existing index/context. Ask only if the intended target itself remains ambiguous.
 
 For a resumed or externally triggered run, verify the operator's authority and
 target revisions before acting. A stale approval must not approve newer content.
@@ -287,6 +294,11 @@ The independent verifier confirms the observed scenario against the promised
 evidence before the coordinator closes its task. The implementer does not close
 its own tasks. A narrower passing scenario leaves the missing proof open.
 Increment plan revisions when task/check definitions change, not for status changes.
+Set a task `active` when work starts and retain that status through missing proof
+or repairs. Before entering `pr_checks` or handing off, reconcile every task's
+status with its required evidence. Close verified tasks; keep any task owning
+pending required PR checks `active`. PROGRESS stage, task statuses and WORK_INDEX
+must describe the same state without copying their tables into each other.
 
 Trace material paths from actual caller data to validation, result production and
 consumer state. Include distinct affected implementations and consequential
@@ -531,6 +543,25 @@ inspect actual assertions and observe the materially different journeys. Existin
 evidence can be reused after confirming its scope and freshness; do not rerun a
 full suite merely to duplicate the implementer's output.
 
+For each required check, enumerate the behaviors promised by its Required evidence
+cell and reconcile them with the approved requirements. In the existing review
+note, map each behavior to the executed trigger, assertion or direct observation,
+and retained evidence at the tested revision. Mark each as demonstrated, missing
+or contradicted. A check passes only when all its required behaviors are
+demonstrated. A suite count or one passing example cannot cover the other behaviors
+under the same ID. For example, calling a refresh helper while the list is open
+does not prove the collapsed list's timer, and a replacement case does not prove
+the no-replacement path. Missing proof blocks publication even if every command
+exits successfully. Inspect the mapping before accepting the receipt.
+
+For diff-scoped checks such as lint on changed Ruby files, derive the complete
+file set from the approved base to the final head, including repair commits.
+Reconcile that set with the command's actual targets and retained results.
+Every applicable file needs a current result or earlier evidence whose coverage
+and unchanged inputs the verifier confirms. Account for deletions, renames and
+project-configured exclusions explicitly. Checking only the last repair's files
+does not prove the feature-wide check; uncovered files keep that check incomplete.
+
 Confirmed findings and missing proof return to `repair`: update the owning task
 and regression check before editing, implement the correction, then send the
 affected paths for focused verification. Do not commission repeated full plan
@@ -561,6 +592,16 @@ open PR. Inspect required CI and the configured code review on the current head.
 Pending results keep delivery `active`. Await them with bounded waits using native
 provider controls. If the run cannot remain active, save a resume point and report
 pending checks, not completion; do not invent a background monitor.
+
+Before ending a turn with a claim of continued monitoring, confirm that the provider
+accepted a mechanism that continues after the turn for this PR and head. Record
+its reference and any expiry in PROGRESS Current. An attempted, rejected or
+unconfirmed subscription is not an active monitor. If no confirmed mechanism can
+continue the run, record the PR/head, outstanding checks/review, last observed
+results and exact resume action; state that the run is interrupted and needs
+resumption. Recover under existing authority when resumed, without another plan
+approval. A check still running is neither a failure nor a completed handoff.
+A bounded wait that has returned does not establish future monitoring.
 
 Route check failures and review findings through
 [Feedback and operator edits](#feedback-and-operator-edits) before repairing.

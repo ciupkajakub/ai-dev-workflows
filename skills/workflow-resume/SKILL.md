@@ -15,6 +15,8 @@ and any recorded coordinator or worker sessions before choosing the next action.
 Reconcile claimed task completion with its planned behavioral proof using the
 [delivery verification procedure](../../feature_execution_blueprint.md#verification-and-handoff).
 Missing or narrower proof returns the owning task to active verification.
+Reconcile each task's status with its proof and the recorded delivery stage;
+neither stale `planned` rows nor unsupported `done` rows describe completed work.
 Restore the recorded implementation, verification, repair or PR-check stage.
 A previously completed task without independent proof or a current
 [verification receipt](../workflow-deliver/references/publication-gate.md) returns
@@ -29,6 +31,10 @@ available and appropriate; otherwise reconstruct context from the durable record
 Continue an already authorized `active` batch through the
 [delivery procedure](../../feature_execution_blueprint.md#approve-and-execute).
 Recover pending CI/review results and reconcile findings before assigning repairs.
+Check any recorded monitor's PR/head, provider confirmation and expiry. A previous
+claim of waiting is not proof that a subscription remains active. If the run must
+stop without confirmed continuation, retain pending checks and the exact resume
+action, and report the interruption explicitly.
 For `planned`, continue discovery/interview from recorded answers. For `blocked`,
 verify that the recorded blocker has cleared before dependent work. Do not repeat unchanged
 passing checks or discard completed work merely because this is a new session.

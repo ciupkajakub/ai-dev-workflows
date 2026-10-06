@@ -30,10 +30,18 @@ Do not replace that verifier with self-review. Route findings through the feedba
 procedure to record a repair task and regression check before editing code.
 Continue repairs and focused independent confirmation under existing authority.
 
+Inspect the review's mapping for every behavior within each check, including
+full base-to-head file coverage for diff-scoped checks. A checker exit 0 does not
+resolve gaps in that mapping. Reconcile task statuses with the accepted evidence
+before changing delivery stage; pending proof must remain active.
+
 Reuse the batch's open PR when one exists. Stop at `awaiting_review` only when the
 authorized handoff, behavioral proof, required CI and configured code review are
 complete. Pending checks remain `active`; preserve a resume point if the run must
-end. Report genuine blockers with recovery state. Human acceptance, merge, and
+end. Claim continued monitoring only with a confirmed provider mechanism for the
+PR/head, recording its reference and expiry when supplied. Otherwise report the
+interruption with pending checks and an exact resume action in PROGRESS Current.
+Report genuine blockers with recovery state. Human acceptance, merge, and
 deployment remain separate actions.
 
 Present the result using the blueprint's

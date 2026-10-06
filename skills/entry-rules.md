@@ -36,6 +36,12 @@ batch from that text and existing project records. Ask only for missing or
 conflicting information that prevents the requested action. Do not guess a batch,
 approval baseline, publication destination, or delivery authority.
 
+Resolve repository, batch, actual branch/checkout and recorded base together.
+Confirm a PR's source branch before treating it as this work's PR. The same batch
+number on a different branch does not import its decisions or authorize updating
+it. Preserve the selected target, record any collision in existing context/index,
+and ask only if the intended target remains ambiguous.
+
 Loading or automatically selecting a skill does not itself authorize execution.
 Use the operator's actual request and recorded authority. A direct
 `workflow-deliver` invocation approves only the exact proposal and delivery scope

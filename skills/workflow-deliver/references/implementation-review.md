@@ -21,7 +21,18 @@ payload that assumes missing data or wiring exists.
 Inspect what the tests execute and assert. Compare that with each task's promised
 proof, including affected existing tests and known regressions when supplied.
 A passing command does not close scenarios that its examples never exercise.
+In this review note, list every behavior promised under each required check and
+map it to the actual executed trigger, assertion/observation and retained evidence
+at the tested revision. Mark each demonstrated, missing or contradicted. Include
+requirements omitted from the planned checks as missing proof. Only a check with
+all required behaviors demonstrated may pass. Do not substitute a helper call for
+a required UI/timer trigger, or a replacement scenario for a no-replacement case.
 Name missing proof without claiming an unrun test has passed or failed.
+
+For checks scoped to changed files, compare the approved base with the final head,
+including all repairs. List applicable files and map each to actual command
+coverage or confirmed reusable evidence. Record deletions, renames and configured
+exclusions. A clean result on a repair subset does not cover the full change.
 
 Return compact findings with locations, concrete triggers, consequences and the
 check that would demonstrate each repair. Separate confirmed defects, missing

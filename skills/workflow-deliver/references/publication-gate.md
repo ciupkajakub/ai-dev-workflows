@@ -9,6 +9,13 @@ pre-publication check. Checks explicitly assigned to post-publication `pr_checks
 run after the PR update and still block final handoff; they do not block creating
 the PR they require. All required local behavioral scenarios remain in this gate.
 
+Before accepting any check's `pass`, reconcile every promised behavior with the
+verifier's trigger/assertion/evidence mapping in the existing review note. Its
+`observed` summary must cover that whole check or report missing proof. For a
+diff-scoped check, also reconcile the complete base-to-head file set with actual
+command coverage or verified reusable results. The checker validates records,
+not these semantic comparisons: exit 0 cannot override a missing behavior or file.
+
 The receipt has this shape; replace all example values with actual observations:
 
 ```json
