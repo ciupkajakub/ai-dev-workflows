@@ -23,6 +23,11 @@ from product questions and hypotheses. Check that the operator can assess behavi
 technical changes, interfaces, relevant flow, decisions and proof under the
 [approval presentation](../../../feature_execution_blueprint.md#approval-presentation).
 Do not demand empty sections, a fixed layout or repeated descriptions of the design.
+Check the approval message itself for named code interfaces and before/after
+inputs, outputs and call conditions. A correct design hidden in implementation
+notes does not satisfy R4 presentation. Check that the proposed delivery action
+matches the inspected PR state and selected checkout; generic acceptance of an
+update cannot authorize an undisclosed reopen or remote-branch restoration.
 Do not redesign the feature, add unrelated improvements, edit application files
 or supply the missing design on the author's behalf.
 

@@ -16,3 +16,9 @@ request do not identify it, ask. Present the preliminary behavior, technical cha
 interfaces and relevant flow before asking focused questions. Keep unresolved work
 `planned`; present the settled proposal at `awaiting_approval`. Preparation does
 not authorize implementation or publication.
+
+The approval message itself must show the changed code interfaces or invocation
+conditions, with named callers, inputs, results and consumers. A customer-flow
+diagram or "backend unchanged" is not enough. Before proposing an existing PR as
+the delivery destination, inspect and disclose its state and branch identity under
+the blueprint's approval presentation rules; do not silently redirect this work.

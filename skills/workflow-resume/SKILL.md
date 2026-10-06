@@ -35,6 +35,9 @@ Check any recorded monitor's PR/head, provider confirmation and expiry. A previo
 claim of waiting is not proof that a subscription remains active. If the run must
 stop without confirmed continuation, retain pending checks and the exact resume
 action, and report the interruption explicitly.
+Compare Current with the actual PR state and observed checks before following its
+next action. Repair stale pre-publication instructions from evidence; do not repeat
+a push, reopen a PR or claim missing CI solely because the checkpoint says so.
 For `planned`, continue discovery/interview from recorded answers. For `blocked`,
 verify that the recorded blocker has cleared before dependent work. Do not repeat unchanged
 passing checks or discard completed work merely because this is a new session.

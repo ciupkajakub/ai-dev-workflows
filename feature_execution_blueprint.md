@@ -1,6 +1,6 @@
 # Feature Execution Blueprint
 
-Blueprint revision: `4.3.1`
+Blueprint revision: `4.3.2`
 Workflow schema: `4`
 Revision date: `2026-10-06`
 
@@ -90,6 +90,10 @@ batch number on another branch is a possible identity collision, not authority
 to resume that PR, import its decisions or block independent work on its approval.
 Keep the operator's selected checkout and scope; record the collision in the
 existing index/context. Ask only if the intended target itself remains ambiguous.
+An unrelated batch with a similar title is context, not a required choice between
+continuing it and replacing it. A reply such as "fix it" does not by itself select
+another checkout. Name any proposed change of target before seeking its approval;
+reuse an explicit target decision without asking for it again.
 
 For a resumed or externally triggered run, verify the operator's authority and
 target revisions before acting. A stale approval must not approve newer content.
@@ -406,6 +410,28 @@ reading. Include:
 5. Exact FEATURE/IMPLEMENTATION revisions and delivery scope through commit, push
    and PR at the identified destination, or the operator's explicit limited scope.
 
+Put the interface explanation in this approval message, not only in linked files
+or a later answer. Use a compact table or code-interface diagram naming the actual
+service/function, caller, inputs before/after, result/error before/after and
+consumer behavior or side effects. Group unchanged fields. If signatures and
+payloads stay unchanged but invocation conditions change, show that change and
+the skipped request or early return explicitly. "Services are unchanged" alone
+does not explain a changed call path. Do not invent changes to private helpers
+just to fill the view. A customer-journey diagram does not replace this explanation.
+Readiness R4 checks this message; R5 checks it against the planned code path.
+
+Before proposing delivery to an existing PR, inspect its current state, source
+branch, target branch and whether the remote source branch still exists. Present
+whether delivery creates a new PR or updates an open one, with the actual checkout
+and base. If the PR is closed or merged, disclose that state and propose an
+authorized linked follow-up; do not present it as an ordinary update. Reopening a
+closed unmerged PR or restoring a deleted remote branch requires explicit authority
+for that action after the state is disclosed. A generic acceptance of "update PR"
+does not supply it. If remote inspection is unavailable, mark the destination
+unverified and resolve it before publication, without blocking independent local
+work already authorized. Recheck immediately before publishing; if the state has
+changed, resolve only the newly missing action, not the whole approved plan.
+
 Combine related items; omit empty tables and ceremonial "None" sections. Reuse
 canonical definitions and distinguish a recommendation from an approved choice.
 During the interview, ask for the missing decisions. At `awaiting_approval`, ask
@@ -603,6 +629,18 @@ resumption. Recover under existing authority when resumed, without another plan
 approval. A check still running is neither a failure nor a completed handoff.
 A bounded wait that has returned does not establish future monitoring.
 
+After publication and after each CI/review result that changes the next action,
+update PROGRESS Current before reporting that event to the operator. Retain the
+actual PR/head, observed check results and links, pending work, disposition of
+failures, monitor state and next action. Reconcile WORK_INDEX when lifecycle or
+branch/PR identity changes. Replace obsolete next actions such as "push next" or
+"CI does not exist"; a chat update is not a durable checkpoint. Before yielding,
+read Current back and verify that another session can resume from the real stage.
+Do not keep stale workflow state merely to preserve a receipt's HEAD. When a
+metadata commit changes HEAD, use the existing receipt-rebinding procedure and
+keep results attached to the revision they actually tested; do not relabel older
+CI as a pass on the new head.
+
 Route check failures and review findings through
 [Feedback and operator edits](#feedback-and-operator-edits) before repairing.
 A claimed pre-existing failure needs base-revision evidence and the project's
@@ -656,7 +694,9 @@ Keep a repair entry proportional: one task/check update and a history reference
 can suffice. Feedback does not require another full proposal or plan review.
 A planning-only request ends after reconciliation; an unexplained file edit alone
 does not trigger execution. If a PR is merged or closed, preserve its history and
-use an authorized linked follow-up instead of reopening or rewriting merged work.
+use an authorized linked follow-up. Reopen a closed unmerged PR only under the
+explicit, state-aware authority described in Approval presentation; never rewrite
+merged work as though it were still an open delivery.
 
 ## Parallel issues and isolated environments
 

@@ -13,6 +13,9 @@ Resolve the batch and the exact proposal and delivery scope presented to the
 operator. Apply the shared approval rule before implementing. Record the approval
 snapshot and retain any existing scoped authority. Do not interpret the command
 as permission for an unspecified remote, merge, deployment, or scope change.
+Inspect the actual PR state and source/target branches before publication. Follow
+the blueprint's state-aware delivery authority: an approved update is not an
+undisclosed reopen or restoration of a deleted remote branch.
 
 Own the authorized run through four recorded stages: implementation, verification,
 repair when needed, and PR checks. The implementer leaves completion to a distinct
@@ -43,6 +46,11 @@ PR/head, recording its reference and expiry when supplied. Otherwise report the
 interruption with pending checks and an exact resume action in PROGRESS Current.
 Report genuine blockers with recovery state. Human acceptance, merge, and
 deployment remain separate actions.
+
+After publication or a CI/review event changes the next action, update and reread
+PROGRESS Current before reporting it. Record the real PR/head, check results,
+pending work and next action; reconcile WORK_INDEX when its owned fields change.
+A chat-only result must not leave resume instructions at a pre-publication stage.
 
 Present the result using the blueprint's
 [Verification and handoff](../../feature_execution_blueprint.md#verification-and-handoff):

@@ -41,6 +41,9 @@ Confirm a PR's source branch before treating it as this work's PR. The same batc
 number on a different branch does not import its decisions or authorize updating
 it. Preserve the selected target, record any collision in existing context/index,
 and ask only if the intended target remains ambiguous.
+Do not turn an unrelated same-topic batch into a mandatory decision for this run.
+Short feedback such as "fix it" does not select another checkout by itself;
+identify any proposed target change before seeking approval.
 
 Loading or automatically selecting a skill does not itself authorize execution.
 Use the operator's actual request and recorded authority. A direct
