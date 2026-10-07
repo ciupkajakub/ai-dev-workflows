@@ -1,72 +1,78 @@
-# Install in an application
+# Install, update or inspect the package
 
-Use this procedure for an authorized `workflow-setup` request in an application
-repository. It installs instruction files and discovery links, not an agent runner.
+This procedure installs instruction files and native discovery links in the
+selected application. It does not implement a feature, migrate batches or supply
+publication authority. A version-check request is read-only. Use the same package
+in every tool; provider differences below concern discovery only.
 
-1. Resolve the source package's real path and the target application repository.
-   Inspect existing workflow and skill locations. Do not install this package into
-   itself or overwrite another skill with the same name.
-   Before an update, compare the existing package with its recorded commit when
-   available. Preserve and reconcile local differences before replacing files.
-2. For a new installation, copy `feature_execution_blueprint.md`, `LICENSE`, and
-   the complete `skills/` directory together into `ai-workflow/tooling/` in the
-   application. Preserve this layout so relative references remain valid. Record
-   the source package repository, full commit and blueprint revision in
-   `ai-workflow/AGENTS.md`. Record the local source checkout path there when
-   available, as an optional verification location rather than a dependency.
-   Install the package contents from that exact Git commit. Do not label a copy
-   of uncommitted source changes with the HEAD commit.
-   If a package is already installed, reuse it; replacing it requires an authorized
-   update and reconciliation with the project's configured blueprint.
-3. Expose each of the five `workflow-*` skill directories using relative directory
-   symlinks. Create only missing parent directories and links. Preserve existing
-   links that already resolve to the intended skill; report a conflicting target.
+## Install or update
 
-   | Provider | Link location in the application | Relative link target |
+1. Identify the source Git checkout, exact commit and target application. Inspect
+   existing package/discovery locations and applicable project instructions.
+   Do not install the package into its own source repository or overwrite another
+   skill named `workflow`. Before replacing an existing copy, compare it with its
+   recorded source commit using its existing checker when available. Preserve and
+   reconcile local changes; a newer source does not authorize discarding them.
+2. Copy `LICENSE` and the complete `skills/` directory from that exact commit into
+   `ai-workflow/tooling/`. Use committed bytes, for example Git archive extraction,
+   rather than labelling a dirty working copy as HEAD. Keep relative paths intact.
+   During an update remove obsolete package-owned files only after reconciling
+   local differences. Keep application rules and work records outside the package.
+3. Expose the one canonical `skills/workflow` directory through the native paths
+   for the tools the user uses. Each link is relative to its containing directory:
+
+   | Tools | Application link | Target |
    | --- | --- | --- |
-   | Codex and Cursor | `.agents/skills/workflow-<action>` | `../../ai-workflow/tooling/skills/workflow-<action>` |
-   | Claude Code | `.claude/skills/workflow-<action>` | `../../ai-workflow/tooling/skills/workflow-<action>` |
+   | Codex / Cursor | `.agents/skills/workflow` | `../../ai-workflow/tooling/skills/workflow` |
+   | Claude Code | `.claude/skills/workflow` | `../../ai-workflow/tooling/skills/workflow` |
 
-   Replace `<action>` with `setup`, `prepare`, `deliver`, `feedback`, and `resume`.
-   Cursor also discovers `.claude/skills`, so a Claude-only installation already
-   exposes the skills to Cursor. Do not add a separate `.cursor/skills` copy.
-   When both discovery paths exist, they must resolve to the same canonical files.
-   If the checkout cannot preserve directory symlinks, report that installation
-   limitation rather than changing Git settings or creating divergent copies.
-4. Follow [Set up a project](../feature_execution_blueprint.md#set-up-a-project)
-   to connect the application's native instructions to `ai-workflow/AGENTS.md`.
-   Use the root `AGENTS.md` for Codex/Cursor or `CLAUDE.md` for Claude Code,
-   preserving existing instructions. The router points to the installed blueprint.
-5. Check that every discovery link resolves and that the blueprint and shared
-   skill references can be read from the canonical directories. Compare the full
-   canonical package with its recorded source commit using
-   [check_package.py](check_package.py):
+   Both paths may point to the same canonical directory. Preserve matching links
+   and report conflicts. If the filesystem cannot preserve them, report the
+   installation limitation instead of creating divergent instruction copies.
+4. In existing project instruction files record the source repository/full commit
+   and optional local source path once, together with a pointer to the installed
+   `skills/workflow/SKILL.md` when this workflow is requested. Other native entry
+   files can point to that record. Preserve project commands and policies; create
+   no additional workflow router, backlog or index. Do not force every unrelated
+   task to load the workflow or change global model/tool settings.
+5. Check links and relative references, then compare installed contents:
 
    ```sh
-   python3 -B ai-workflow/tooling/skills/check_package.py --source <source-checkout> --commit <recorded-source-commit>
+   python3 -B ai-workflow/tooling/skills/check_package.py \
+     --source <source-checkout> --commit <recorded-source-commit>
    ```
 
-   Replace both placeholders with the actual checkout path and commit. The checker
-   reads Git and package files without modifying them or accessing the network.
-   A mismatch must be reconciled before claiming a verified installation; preserve
-   local edits rather than silently overwriting them. Exit 0 confirms integrity,
-   1 reports differences, and 2 means verification could not
-   run. An intact older installation may still report an available update.
-   If the source checkout or commit is unavailable, report integrity and
-   currentness as unverified. Report the blueprint revision, recorded source commit,
-   checked source HEAD and comparison result after setup or an authorized update.
-   Confirm the five names appear in a fresh provider session when possible.
-   If not checked, report discovery as pending. Do not invoke delivery merely to
-   test the menu entry.
+   Exit 0 confirms content integrity, 1 reports differences and 2 means the check
+   could not run. Compare with the checked local source HEAD separately: an intact
+   older copy can have an update available. Without source access, report the
+   comparison as unavailable. No fetch or update is part of a read-only check.
+6. Confirm `workflow` discovery in a fresh session of each selected tool when
+   available. Static link checks do not prove native discovery. Report unchecked
+   tools as unverified; do not start delivery as a discovery test. Retain the
+   package and links in application version control under the user's authorized
+   commit/publication scope. Report the source commit, content comparison and
+   discovery actually checked.
 
-Keep the installed package and discovery links in the application's version
-control so teammates and remote checkouts use the same instructions. Commit or
-publish them only under the applicable authorization. There is no automatic
-update: changing this source repository does not change an installed snapshot.
-An explicit update request follows this procedure for the requested source commit,
-preserves project instructions and batch documents, and rechecks the copied files.
+## Transition from the five-skill package
 
-For the initial bootstrap, an operator can point the application's agent at the
-source `skills/workflow-setup/SKILL.md` by its absolute path and request setup for
-the desired providers. After discovery, use the native skill names from the chat
-input. No global installation or user-specific absolute symlink is required.
+This is an incompatible instruction/document layout. An authorized package update
+replaces the old blueprint and five skill directories with the new package.
+Remove only discovery links that resolve to the replaced package's `workflow-setup`,
+`workflow-prepare`, `workflow-deliver`, `workflow-feedback` and `workflow-resume`.
+Reconcile package-owned references in existing instruction files while preserving
+application-specific rules. Leave other links and all existing batches intact.
+
+The old source commit remains the source for interpreting an unmigrated batch.
+Package update alone does not rename its documents, revoke decisions or expand
+approval. To continue old work with the new workflow, obtain an explicit request
+to migrate that selected batch; do not migrate every batch during setup.
+
+For that migration, preserve the old files through Git history or an unchanged
+archive. Read its original request, FEATURE, IMPLEMENTATION, PROGRESS and relevant
+index entry; compare them with the actual checkout and GitHub. Reconcile them
+into the four [batch sections](workflow/SKILL.md#one-batch-record), preserving
+requirements, identities, approvals, limitations and evidence links. Record the
+old snapshot and retire only that batch's redundant current records after the
+comparison. Legacy completion labels are claims to reconcile, not new approval.
+Resolve material contradictions instead of guessing. Migration itself does not
+start application delivery unless the user's instruction also authorizes it.

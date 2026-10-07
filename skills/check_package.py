@@ -3,12 +3,12 @@
 
 import argparse
 from pathlib import Path
-import re
 import subprocess
 import sys
 
 
-PACKAGE_PATHS = ("feature_execution_blueprint.md", "LICENSE", "skills")
+PACKAGE_PATHS = ("LICENSE", "skills")
+RETIRED_PATHS = ("feature_execution_blueprint.md",)
 
 
 def git(source, *args):
@@ -18,26 +18,16 @@ def git(source, *args):
     return result.stdout
 
 
-def revision(package):
-    blueprint = package / "feature_execution_blueprint.md"
-    if not blueprint.is_file() or blueprint.is_symlink():
-        return "unknown"
-    match = re.search(r"^Blueprint revision: `([^`]+)`", blueprint.read_text(), re.M)
-    return match[1] if match else "unknown"
-
-
 def compare(source, commit, package):
     expected = set(
         git(source, "ls-tree", "-r", "--name-only", "-z", commit, "--", *PACKAGE_PATHS)
         .decode().rstrip("\0").split("\0")
     )
     expected.discard("")
-    if not {"feature_execution_blueprint.md", "LICENSE"}.issubset(expected) or not any(
-        name.startswith("skills/") for name in expected
-    ):
-        raise ValueError("Source commit does not contain a workflow package")
+    if not {"LICENSE", "skills/workflow/SKILL.md"}.issubset(expected):
+        raise ValueError("Source commit does not contain the single-skill workflow package")
     actual = set()
-    for name in PACKAGE_PATHS:
+    for name in (*PACKAGE_PATHS, *RETIRED_PATHS):
         path = package / name
         if path.is_symlink() or path.is_file():
             actual.add(name)
@@ -77,7 +67,6 @@ def main(argv=None):
         latest_problems = compare(source, head, package)
         dirty = bool(git(source, "diff", "--name-only", "HEAD", "--", *PACKAGE_PATHS))
         dirty |= bool(git(source, "ls-files", "--others", "--exclude-standard", "--", *PACKAGE_PATHS))
-        print(f"Workflow revision: {revision(package)}")
         print(f"Recorded source commit: {pinned}")
         print(f"Package integrity: {'mismatch' if problems else 'verified'}")
         print(f"Checked local source HEAD: {head}")

@@ -23,7 +23,7 @@ class PackageCheckTests(unittest.TestCase):
         self.source = Path(self.temp.name).resolve() / "source"
         self.package = Path(self.temp.name).resolve() / "installed"
         self.source.mkdir()
-        for name in ("feature_execution_blueprint.md", "LICENSE"):
+        for name in ("LICENSE",):
             shutil.copy2(ROOT / name, self.source / name)
         shutil.copytree(ROOT / "skills", self.source / "skills")
         self.git("init", "-q")
@@ -60,17 +60,17 @@ class PackageCheckTests(unittest.TestCase):
         self.assertEqual(self.git("status", "--porcelain"), "")
 
     def test_changed_missing_and_extra_files_are_detected(self):
-        (self.package / "skills/entry-rules.md").write_text("local edit\n")
+        (self.package / "skills/workflow/prepare.md").write_text("local edit\n")
         (self.package / "LICENSE").unlink()
         (self.package / "skills/local.txt").write_text("extra\n")
         code, output = self.run_check()
         self.assertEqual(code, 1)
-        self.assertIn("changed: skills/entry-rules.md", output)
+        self.assertIn("changed: skills/workflow/prepare.md", output)
         self.assertIn("missing: LICENSE", output)
         self.assertIn("unexpected: skills/local.txt", output)
 
     def test_intact_old_copy_reports_update(self):
-        with (self.source / "skills/entry-rules.md").open("a") as document:
+        with (self.source / "skills/workflow/prepare.md").open("a") as document:
             document.write("\nAdditional instruction.\n")
         self.git("add", ".")
         self.commit()
@@ -92,12 +92,25 @@ class PackageCheckTests(unittest.TestCase):
         self.assertIn("Package verification unavailable", output)
 
     def test_symlink_cannot_hide_content_substitution(self):
-        path = self.package / "skills/entry-rules.md"
+        path = self.package / "skills/workflow/prepare.md"
         path.unlink()
-        path.symlink_to(self.source / "skills/entry-rules.md")
+        path.symlink_to(self.source / "skills/workflow/prepare.md")
         code, output = self.run_check()
         self.assertEqual(code, 1)
-        self.assertIn("symlink in canonical package: skills/entry-rules.md", output)
+        self.assertIn("symlink in canonical package: skills/workflow/prepare.md", output)
+
+    def test_retired_blueprint_in_installed_copy_is_detected(self):
+        (self.package / "feature_execution_blueprint.md").write_text("old instructions\n")
+        code, output = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("unexpected: feature_execution_blueprint.md", output)
+
+    def test_source_without_workflow_entry_is_unavailable(self):
+        self.git("rm", "skills/workflow/SKILL.md")
+        self.commit()
+        code, output = self.run_check(self.git("rev-parse", "HEAD").strip())
+        self.assertEqual(code, 2)
+        self.assertIn("does not contain the single-skill workflow package", output)
 
 
 if __name__ == "__main__":
