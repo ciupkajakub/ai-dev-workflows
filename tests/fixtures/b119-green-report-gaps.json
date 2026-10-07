@@ -1,0 +1,56 @@
+{
+  "source_head": "435aa843934c715621bd6da8bb537b10f066a928",
+  "source_review_sha256": "07e38d07632893f5f28669bf71eca704a743322acdb09524e0341628ee47476f",
+  "recorded_review_result": "pass",
+  "recorded_checks": [
+    {
+      "id": "V001",
+      "result": "pass"
+    },
+    {
+      "id": "V002",
+      "result": "pass"
+    },
+    {
+      "id": "V003",
+      "result": "pass"
+    },
+    {
+      "id": "V004",
+      "result": "pass"
+    },
+    {
+      "id": "V005",
+      "result": "pass"
+    },
+    {
+      "id": "V006",
+      "result": "pass"
+    },
+    {
+      "id": "V007",
+      "result": "pass"
+    },
+    {
+      "id": "V008",
+      "result": "pass"
+    },
+    {
+      "id": "V009",
+      "result": "pass"
+    }
+  ],
+  "requirement_source": "AC1. Otwarcie listy odbioru pobiera terminy dostępne w tej chwili i pokazuje\nje w tej samej, otwartej liście. Nie ma przycisku odświeżania. Zamknięta lista\nnie podmienia godzin w tle.",
+  "review_excerpts": [
+    "`spec/system/public_ordering_release_gate_spec.rb:222`, example \"G3 recovers from a full slot and unavailable line before creating one valid order\", is not a required check. I did not run it. This review does not record that example as a pass. The known gap is a taken slot clearing without marking the sold-out cart line. If a later run fails that way, it is a finding, and it is still not a pass of the release lane.",
+    "AC1 also says a closed pickup list keeps its hours during the background refresh. The 15 second `CartAvailability#refresh` applies payloads with `slots: false`, so `applyPayload` skips `applyPickupRecovery`. V005 through V008 do not wait for that timer or assert the closed grid. The required evidence cells cover the open-list refresh, so V005 stays a pass on those cells."
+  ],
+  "retained_obligations": [
+    "AC1.open",
+    "AC1.closed"
+  ],
+  "known_findings": [
+    "F-G3"
+  ],
+  "note": "Focused regression inputs from the retained report. Obligations and finding ID are audit labels, not a complete application coverage inventory. Test evidence files are synthetic; application behavior is not rerun."
+}

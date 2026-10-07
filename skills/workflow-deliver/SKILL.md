@@ -37,6 +37,12 @@ Inspect the review's mapping for every behavior within each check, including
 full base-to-head file coverage for diff-scoped checks. A checker exit 0 does not
 resolve gaps in that mapping. Reconcile task statuses with the accepted evidence
 before changing delivery stage; pending proof must remain active.
+Derive required obligation IDs from approved behavior and known finding IDs from
+the run history independently of the receipt, then supply both to the checker.
+Green planned checks do not excuse a missing requirement or an unresolved failure
+in another lane. A rejected report starts authorized repair; a diagnosis or its
+commit is not the delivery boundary. Continue in-scope work until the agreed
+handoff or a named blocker, without asking for the same approval again.
 
 Reuse the batch's open PR when one exists. Stop at `awaiting_review` only when the
 authorized handoff, behavioral proof, required CI and configured code review are

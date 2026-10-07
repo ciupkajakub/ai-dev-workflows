@@ -4,6 +4,9 @@ Review the supplied fixed base/head or retained diff against the original reques
 approved behavior, project rules and actual test evidence. This review inspects
 implemented code and required behavioral scenarios. Derive scenarios from the
 request and approved decisions, then reconcile them with the plan's check IDs.
+Do this before reading the author's verdict. Give each independently observable
+requirement clause a stable obligation reference in the review, even if the plan
+omits it. The receipt must account for that list separately from executed checks.
 Proposal readiness and recorded task completion are claims to
 check, not evidence that the code works. Stay within the change's scope.
 
@@ -28,6 +31,14 @@ requirements omitted from the planned checks as missing proof. Only a check with
 all required behaviors demonstrated may pass. Do not substitute a helper call for
 a required UI/timer trigger, or a replacement scenario for a no-replacement case.
 Name missing proof without claiming an unrun test has passed or failed.
+Missing proof makes the overall review non-passing, even if every planned check
+passes. Never put an uncovered requirement in an "outside this gate" footnote.
+
+Inventory known failures, including those in excluded test lanes, and retain them
+as findings until resolved or rejected through a scope comparison. Trace the
+changed path and use a focused base/head reproduction when needed. A release tag
+or unchanged file does not prove a failure unrelated. Record comparison evidence
+for rejection, or keep the finding open when the relation is unresolved.
 
 For checks scoped to changed files, compare the approved base with the final head,
 including all repairs. List applicable files and map each to actual command

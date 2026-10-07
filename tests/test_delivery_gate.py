@@ -31,10 +31,12 @@ class DeliveryGateTests(unittest.TestCase):
         self.proof = self.directory / 'proof.log'
         self.proof.write_text('Actual caller scenario and review observations\n')
         self.ref = {'path': 'proof.log', 'sha256': hashlib.sha256(self.proof.read_bytes()).hexdigest()}
-        self.receipt = dict(schema=1, batch='B119', head=self.git('rev-parse', 'HEAD'),
+        self.receipt = dict(schema=2, batch='B119', head=self.git('rev-parse', 'HEAD'),
                             feature_revision=5, plan_revision=6, implementer='author', verifier='independent',
                             review={'result': 'pass', 'evidence': self.ref},
                             checks=[{'id': 'V001', 'result': 'pass', 'observed': 'caller -> result', 'evidence': self.ref}],
+                            obligations=[{'id': 'AC1.open', 'result': 'demonstrated', 'checks': ['V001'],
+                                          'observed': 'Actual UI trigger and assertion', 'evidence': self.ref}],
                             findings=[])
 
     def git(self, *args):
@@ -42,14 +44,16 @@ class DeliveryGateTests(unittest.TestCase):
 
     def errors(self, receipt=None, **changes):
         args = dict(head=self.git('rev-parse', 'HEAD'), batch='B119', feature_revision=5, plan_revision=6, required=['V001'])
+        args.update(obligations=['AC1.open'], known_findings=[])
         args.update(changes)
         return gate.validate(self.receipt if receipt is None else receipt, self.directory, **args)
 
-    def cli(self, raw=None):
+    def cli(self, raw=None, extra=()):
         receipt = self.directory / 'verification.json'
         receipt.write_text(json.dumps(self.receipt) if raw is None else raw)
         return subprocess.run(['python3', '-B', str(SCRIPT), '--repository', str(self.repo), '--receipt', str(receipt),
-                               '--batch', 'B119', '--feature-revision', '5', '--plan-revision', '6', '--required', 'V001'],
+                               '--batch', 'B119', '--feature-revision', '5', '--plan-revision', '6', '--required', 'V001',
+                               '--obligation', 'AC1.open', *extra],
                               capture_output=True, text=True)
 
     def test_valid_snapshot_passes_without_mutation(self):
@@ -95,6 +99,8 @@ class DeliveryGateTests(unittest.TestCase):
         finding['status'] = 'resolved'
         self.assertEqual(self.errors(), [])
         finding['status'] = 'rejected'
+        self.assertTrue(self.errors())
+        finding['comparison'] = self.ref
         self.assertEqual(self.errors(), [])
         self.receipt['findings'].append(copy.deepcopy(finding))
         self.assertTrue(self.errors())
@@ -134,6 +140,71 @@ class DeliveryGateTests(unittest.TestCase):
     def test_malformed_or_nonobject_receipts_do_not_pass(self):
         self.assertEqual(self.cli(raw='{').returncode, 2)
         self.assertEqual(self.cli(raw='[]').returncode, 1)
+
+    def test_green_checks_do_not_cover_an_omitted_requirement(self):
+        result = self.cli(extra=['--obligation', 'AC1.closed'])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('AC1.closed: missing required behavior', result.stdout)
+        self.receipt['obligations'].append(dict(id='AC1.closed', result='missing', checks=['V001'],
+                                              observed='Timer was not exercised', evidence=self.ref))
+        result = self.cli(extra=['--obligation', 'AC1.closed'])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('AC1.closed: required behavior is not demonstrated', result.stdout)
+
+    def test_coverage_requires_unique_ids_existing_checks_and_evidence(self):
+        original = copy.deepcopy(self.receipt)
+        for field, value in [('checks', []), ('checks', ['V999']), ('observed', ''), ('evidence', None),
+                             ('result', 'unknown'), ('result', 'contradicted')]:
+            with self.subTest(field=field, value=value):
+                self.receipt = copy.deepcopy(original)
+                self.receipt['obligations'][0][field] = value
+                self.assertTrue(self.errors())
+        self.receipt = copy.deepcopy(original)
+        self.receipt['obligations'].append(copy.deepcopy(self.receipt['obligations'][0]))
+        self.assertTrue(self.errors())
+        for ids in [[], ['AC1.open', 'AC1.open'], [''], [None]]:
+            self.assertTrue(self.errors(obligations=ids))
+
+    def test_known_failure_cannot_disappear_outside_the_selected_lane(self):
+        result = self.cli(extra=['--finding', 'F-G3'])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('F-G3: known finding omitted', result.stdout)
+        self.receipt['findings'] = [dict(id='F-G3', status='rejected', reason='Tagged release, not required',
+                                         evidence=self.ref)]
+        result = self.cli(extra=['--finding', 'F-G3'])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('scope comparison', result.stdout)
+        self.receipt['findings'][0].update(status='open', reason='Base/head relation unresolved')
+        self.assertEqual(self.cli(extra=['--finding', 'F-G3']).returncode, 1)
+        self.receipt['findings'][0].update(status='resolved', reason='Repair verified at this head')
+        self.assertEqual(self.cli(extra=['--finding', 'F-G3']).returncode, 0)
+
+    def test_legacy_receipt_requires_reassessment_not_a_schema_only_bump(self):
+        self.receipt['schema'] = 1
+        del self.receipt['obligations']
+        self.assertEqual(self.cli().returncode, 1)
+        self.receipt['schema'] = 2
+        self.assertEqual(self.cli().returncode, 1)
+
+    def test_retained_b119_green_report_cannot_hide_missing_behavior_and_failure(self):
+        fixture = Path(__file__).parent / 'fixtures/b119-green-report-gaps.json'
+        case = json.loads(fixture.read_text())
+        self.assertEqual(case['recorded_review_result'], 'pass')
+        self.assertTrue(all(c['result'] == 'pass' for c in case['recorded_checks']))
+        self.receipt['checks'] = [dict(c, observed='Retained green command', evidence=self.ref)
+                                  for c in case['recorded_checks']]
+        errors = self.errors(required=[c['id'] for c in case['recorded_checks']],
+                             obligations=case['retained_obligations'], known_findings=case['known_findings'])
+        self.assertIn('AC1.closed: missing required behavior', errors)
+        self.assertIn('F-G3: known finding omitted', errors)
+
+    def test_complete_multi_behavior_proof_and_compared_rejection_pass(self):
+        self.receipt['obligations'].append(dict(id='AC1.closed', result='demonstrated', checks=['V001'],
+                                              observed='Closed timer executed and state asserted', evidence=self.ref))
+        self.receipt['findings'] = [dict(id='F-G3', status='rejected',
+                                         reason='Scope investigation excludes this path', evidence=self.ref,
+                                         comparison=self.ref)]
+        self.assertEqual(self.cli(extra=['--obligation', 'AC1.closed', '--finding', 'F-G3']).returncode, 0)
 
 
 if __name__ == '__main__':

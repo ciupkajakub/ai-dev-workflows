@@ -39,19 +39,32 @@ def evidence(record, directory, label, errors):
         errors.append(f"{label}: evidence digest differs")
 
 
-def validate(receipt, directory, *, head, batch, feature_revision, plan_revision, required):
+def valid_ids(values, *, allow_empty=False):
+    return (isinstance(values, list) and (allow_empty or bool(values))
+            and all(nonempty(x) for x in values) and len(values) == len(set(values)))
+
+
+def validate(receipt, directory, *, head, batch, feature_revision, plan_revision, required,
+             obligations, known_findings):
     errors = []
     if not isinstance(receipt, dict):
         return ["receipt must be a JSON object"]
-    expected = {"schema": 1, "batch": batch, "head": head,
+    expected = {"schema": 2, "batch": batch, "head": head,
                 "feature_revision": feature_revision, "plan_revision": plan_revision}
     for key, value in expected.items():
         if type(receipt.get(key)) is not type(value) or receipt.get(key) != value:
             errors.append(f"{key}: does not match the requested snapshot")
     if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", head):
         errors.append("head: expected a full commit id")
-    if not required or len(required) != len(set(required)) or any(not nonempty(x) for x in required):
+    if not valid_ids(required):
         errors.append("required checks: supply the complete, unique plan check IDs")
+        required = []
+    if not valid_ids(obligations):
+        errors.append("obligations: supply the complete, unique approved behavior IDs")
+        obligations = []
+    if not valid_ids(known_findings, allow_empty=True):
+        errors.append("known findings: supply unique finding IDs from the run history")
+        known_findings = []
     if not nonempty(batch):
         errors.append("batch must be nonempty")
     if feature_revision < 1 or plan_revision < 1:
@@ -82,6 +95,27 @@ def validate(receipt, directory, *, head, batch, feature_revision, plan_revision
         evidence(check.get("evidence"), directory, check_id, errors)
     for check_id in sorted(set(required) - seen):
         errors.append(f"{check_id}: missing required proof")
+    coverage = receipt.get("obligations")
+    if not isinstance(coverage, list):
+        errors.append("obligations: missing requirement coverage")
+        coverage = []
+    covered = set()
+    for obligation in coverage:
+        if not isinstance(obligation, dict) or not nonempty(obligation.get("id")):
+            errors.append("obligation: missing ID")
+            continue
+        obligation_id = obligation["id"]
+        if obligation_id in covered:
+            errors.append(f"{obligation_id}: duplicate obligation")
+        covered.add(obligation_id)
+        if obligation.get("result") != "demonstrated" or not nonempty(obligation.get("observed")):
+            errors.append(f"{obligation_id}: required behavior is not demonstrated")
+        links = obligation.get("checks")
+        if not valid_ids(links) or any(x not in seen for x in links):
+            errors.append(f"{obligation_id}: reference existing executed check IDs")
+        evidence(obligation.get("evidence"), directory, obligation_id, errors)
+    for obligation_id in sorted(set(obligations) - covered):
+        errors.append(f"{obligation_id}: missing required behavior")
     findings = receipt.get("findings")
     if not isinstance(findings, list):
         errors.append("findings: explicit dispositions are required")
@@ -98,6 +132,10 @@ def validate(receipt, directory, *, head, batch, feature_revision, plan_revision
         if finding.get("status") not in ("resolved", "rejected") or not nonempty(finding.get("reason")):
             errors.append(f"{finding_id}: unresolved finding")
         evidence(finding.get("evidence"), directory, finding_id, errors)
+        if finding.get("status") == "rejected":
+            evidence(finding.get("comparison"), directory, f"{finding_id}: scope comparison", errors)
+    for finding_id in sorted(set(known_findings) - finding_ids):
+        errors.append(f"{finding_id}: known finding omitted")
     return errors
 
 
@@ -114,6 +152,10 @@ def main(argv=None):
     parser.add_argument("--feature-revision", type=int, required=True)
     parser.add_argument("--plan-revision", type=int, required=True)
     parser.add_argument("--required", action="append", required=True, help="Repeat for every required check ID")
+    parser.add_argument("--obligation", action="append", required=True,
+                        help="Repeat for every behavior derived from approved requirements, independently of checks")
+    parser.add_argument("--finding", action="append", default=[],
+                        help="Repeat for every known finding, including failures outside selected test lanes")
     args = parser.parse_args(argv)
     try:
         repository = Path(git(args.repository, "rev-parse", "--show-toplevel")).resolve()
@@ -122,7 +164,7 @@ def main(argv=None):
         receipt = json.loads(receipt_path.read_text())
         errors = validate(receipt, receipt_path.parent, head=head, batch=args.batch,
                           feature_revision=args.feature_revision, plan_revision=args.plan_revision,
-                          required=args.required)
+                          required=args.required, obligations=args.obligation, known_findings=args.finding)
         if git(repository, "diff", "HEAD", "--name-only"):
             errors.append("working tree differs from the verified commit")
         for name in filter(None, git(repository, "ls-files", "--others", "--exclude-standard", "-z").split("\0")):

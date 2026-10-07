@@ -97,7 +97,10 @@ unfinished stage. There is no additional command for the operator.
 
 The [publication checker](skills/workflow-deliver/references/publication-gate.md)
 checks a verifier's receipt against the current commit, plan revisions, required
-scenario IDs and retained evidence files. Missing or stale proof blocks handoff.
+check IDs, separate approved-behavior obligations, known finding IDs and retained
+evidence files. Missing obligations or omitted known findings block even when
+all listed tests pass. Receipt schema 2 requires reassessment of older receipts;
+the workflow document schema remains 4. Missing or stale proof blocks handoff.
 It does not authenticate the verifier or prove a test's meaning, and it is not a
 Git hook. The coordinator must inspect the evidence and obey the result. If no
 independent execution facility is available, record a blocker rather than silently

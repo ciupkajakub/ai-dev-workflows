@@ -16,11 +16,19 @@ diff-scoped check, also reconcile the complete base-to-head file set with actual
 command coverage or verified reusable results. The checker validates records,
 not these semantic comparisons: exit 0 cannot override a missing behavior or file.
 
+Receipt schema 2 separates approved behavior obligations from planned check IDs.
+Before inspecting the receipt, the coordinator derives `--obligation` values from
+every independently observable clause in approved requirements and decisions,
+using references such as `AC1.open` and `AC1.closed` in the existing review note.
+Derive `--finding` values from all known failures/findings in the run history,
+including unselected test lanes. Do not derive either list from what the receipt
+chooses to include. No extra state file is needed.
+
 The receipt has this shape; replace all example values with actual observations:
 
 ```json
 {
-  "schema": 1,
+  "schema": 2,
   "batch": "B119",
   "head": "<full final application commit>",
   "feature_revision": 5,
@@ -39,6 +47,15 @@ The receipt has this shape; replace all example values with actual observations:
       "evidence": { "path": "V001.log", "sha256": "<file digest>" }
     }
   ],
+  "obligations": [
+    {
+      "id": "AC1.open",
+      "result": "demonstrated",
+      "checks": ["V001"],
+      "observed": "<required trigger and assertion actually exercised>",
+      "evidence": { "path": "V001.log", "sha256": "<file digest>" }
+    }
+  ],
   "findings": []
 }
 ```
@@ -50,16 +67,31 @@ or `rejected` with supporting evidence clears a finding. Preserve earlier receip
 versions and failures as history. When reusing unaffected evidence, explain the
 original tested revision and why the final diff leaves that proof applicable.
 
+Obligations use `demonstrated`, `missing` or `contradicted`; only demonstrated
+obligations with existing check references and evidence pass. An omitted required
+obligation blocks even when all V checks pass. A known finding omitted from the
+receipt also blocks. A rejected finding additionally needs `comparison` with the
+same path/digest shape, pointing to the scope/base-head investigation, not merely
+a test-lane label. Unresolved scope stays open. The checker checks that comparison
+evidence exists, not whether its argument is sound; the coordinator inspects it.
+
+Schema 1 receipts remain history but cannot authorize publication with this gate.
+Reassess requirement coverage and known failures before writing schema 2; do not
+just change the schema number. Reuse valid existing logs without rerunning them.
+The workflow document schema remains 4.
+
 Run from the application before publication or a PR update:
 
 ```sh
 python3 -B <package>/skills/workflow-deliver/scripts/check_delivery_gate.py \
   --repository . --receipt ai-workflow/work/<batch>/evidence/verification.json \
   --batch <batch> --feature-revision <revision> --plan-revision <revision> \
-  --required V001 --required V002
+  --required V001 --obligation AC1.open
 ```
 
-Repeat `--required` for the complete required pre-publication check list. The checker compares the
+Repeat `--required` for the complete required pre-publication check list,
+`--obligation` for all required behaviors, and `--finding` for every known finding.
+Omit `--finding` only if the run has none. The checker compares the
 receipt with actual HEAD and supplied batch/revisions, checks distinct identities,
 passing observations, dispositions, evidence files/digests and a clean working
 snapshot. Untracked receipt/evidence files are allowed in their separate directory. Keep the

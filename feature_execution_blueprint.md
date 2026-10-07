@@ -1,8 +1,8 @@
 # Feature Execution Blueprint
 
-Blueprint revision: `4.3.2`
+Blueprint revision: `4.4.0`
 Workflow schema: `4`
-Revision date: `2026-10-06`
+Revision date: `2026-10-07`
 
 Use this workflow to turn a business need into an accepted change with recorded
 proof. The operator approves the proposed solution and reviews the result. The
@@ -569,16 +569,28 @@ inspect actual assertions and observe the materially different journeys. Existin
 evidence can be reused after confirming its scope and freshness; do not rerun a
 full suite merely to duplicate the implementer's output.
 
-For each required check, enumerate the behaviors promised by its Required evidence
-cell and reconcile them with the approved requirements. In the existing review
-note, map each behavior to the executed trigger, assertion or direct observation,
-and retained evidence at the tested revision. Mark each as demonstrated, missing
-or contradicted. A check passes only when all its required behaviors are
-demonstrated. A suite count or one passing example cannot cover the other behaviors
-under the same ID. For example, calling a refresh helper while the list is open
-does not prove the collapsed list's timer, and a replacement case does not prove
-the no-replacement path. Missing proof blocks publication even if every command
-exits successfully. Inspect the mapping before accepting the receipt.
+Before reading the pass/fail summary, derive each required behavior from the
+approved FEATURE and operator decisions. Give independently observable clauses
+stable references such as `AC1.open` and `AC1.closed` in the existing review note.
+Reconcile these obligations with the plan's checks, never the reverse. A clause
+missing from the plan remains required: add its check through repair. The
+coordinator derives the obligation list independently of the verifier's receipt.
+
+Map each obligation to an executed trigger, assertion/direct observation, check
+ID and evidence at the tested revision. Record demonstrated, missing or
+contradicted in the receipt. A green suite does not close an unexercised clause.
+Review pass requires all obligations demonstrated and all known findings resolved
+or rejected with evidence. Missing proof is a finding, not a footnote below pass.
+The publication checker requires obligation IDs separately from check IDs.
+
+Inventory known failures from this run's logs and prior findings, including checks
+outside selected lanes. Pass their IDs to the gate independently of the receipt.
+A `release` tag, unchanged test file or absence from the plan cannot dismiss a
+failure on an affected journey. Investigate its relation to the changed path,
+using a focused base/head reproduction when feasible. If execution is unavailable,
+retain an unresolved finding. Reject a finding only with a recorded scope
+comparison; a pre-existing required failure still needs an authorized exception.
+Do not run entire excluded suites merely to classify one observed failure.
 
 For diff-scoped checks such as lint on changed Ruby files, derive the complete
 file set from the approved base to the final head, including repair commits.
@@ -593,6 +605,12 @@ and regression check before editing, implement the correction, then send the
 affected paths for focused verification. Do not commission repeated full plan
 reviews. A surviving failure needs investigation or a reproducer, not another
 prose vote. Product changes alone return to interview/approval.
+An audit-only request ends with findings. During authorized delivery, rejecting a
+report is a transition to repair, not a completed outcome: record the next focused
+check, perform the in-scope diagnosis/repair and obtain affected verification.
+A diagnostic commit does not end that run. Stop only at the agreed boundary or
+an explicit missing resource/decision, with a concrete resume action. Do not
+silently expand into an unrelated fix merely because it would make CI green.
 
 The verifier records a [verification receipt](skills/workflow-deliver/references/publication-gate.md)
 for the final snapshot. The coordinator checks it with the packaged gate checker
