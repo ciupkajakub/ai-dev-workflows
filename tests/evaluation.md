@@ -79,3 +79,109 @@ This source rewrite does not authorize changing applications, installing package
 there or publishing experimental PRs. Full deliveries await separately assigned
 tasks. Source checks and bounded independent exercises may support this rewrite,
 but cannot complete the full-delivery evaluation above.
+
+## Source rewrite checks and bounded exercises
+
+Recorded on 2026-10-07 against instruction commit
+`864ef3287b73cc65d1f9a90b19b2581b68b4ff0d`. The following observations do not
+complete the new full deliveries above. No application installation or remote
+publication occurred. All nine prior reports, their ten fixtures and the earlier
+modification plan match baseline bytes.
+
+The package tests were changed before the checker: seven of eight failed against
+the old blueprint-dependent implementation. After adaptation all eight passed,
+including a copied obsolete blueprint and a source lacking the new skill entry.
+The structural validator passed for 17 Markdown documents and 70 links before
+this evidence section. In a temporary package copy it accepted the valid layout
+and rejected a wrong discovery target and a missing procedure. Package comparison
+against the instruction commit reported verified integrity and matching source
+HEAD. Whitespace validation passed.
+
+The skill-creator auxiliary validator could not start because PyYAML was absent.
+Ruby's YAML parser validated the skill frontmatter instead; this is not a claim
+that the unavailable validator passed. No dependency was installed. Native skill
+discovery in fresh Codex, Cursor and Claude Code sessions remains unverified.
+
+### Independent source review
+
+Native agent `/root/source_review` received the approved rewrite scope and fixed
+base/head `9e723c0..864ef32`, without inherited conversation or expected findings.
+It inspected the implementation and ran the structural validator, eight package
+tests and whitespace check. It confirmed preservation of historical material and
+returned no confirmed actionable findings. It read this evaluation rubric only
+after independently assessing the instruction semantics. This was a source
+review, not a workflow delivery or a guarantee that future agents follow it.
+
+### Independent local verification
+
+Native agent `/root/verification_trial` received two isolated Python CLI projects,
+their approved export batch and read-only/local-check authority. It was told to
+use only the skill entry and verification procedure from this package, inspect
+the actual code and return observations. It received no expected verdict, prior
+findings or historical reports. The [complete raw project inputs](fixtures/minimal-workflow-inputs.json)
+retain the source files, batches and observed Git heads for replay without the
+original temporary directories. Supply only those inputs when repeating the
+exercise; keep the outcomes below with the evaluator.
+
+Both projects expose task export with an optional completed-record flag. Each
+has two passing tests: the default CLI and a direct exporter call with the flag.
+The coordinator fixed the expected distinction before dispatch: project A parses
+the CLI flag without forwarding it; project B forwards it. This is a new bounded
+scenario and a positive control, not independent evidence of real-world frequency.
+
+| Observed invocation | Project A | Project B |
+| --- | --- | --- |
+| `python3 -B -m unittest discover -s tests` | 2/2 pass | 2/2 pass |
+| `python3 -B cli.py records.json` | IDs `[1]` | IDs `[1]` |
+| `python3 -B cli.py records.json --include-completed` | IDs `[1]`, contrary to required `[1, 2]` | IDs `[1, 2]` |
+| Independent verdict | Default demonstrated; flagged behavior contradicted | Both approved local behaviors demonstrated |
+
+The verifier located the missing forwarding in A's `cli.py:11` and identified
+the actual flagged CLI invocation as the regression check. Additional temporary
+inputs checked mixed-record ordering, full record shape and empty input. The
+verifier did not turn the positive case into a rejection or infer remote readiness
+from local success. The environment was Python 3.14.7 on Darwin arm64. Tool-output
+references retained in this conversation: A `8b6c4d` / `e98111`; B `dba31a` / `73f23a`.
+No application repair, remote CI or PR operation was part of this exercise.
+
+### New preparation
+
+Native agent `/root/prepare_trial` received project B and this new request:
+
+> Add `--limit N` to export at most N records in existing order, after filtering
+> completed tasks. Zero is valid. Negative values and nonnumeric text must give
+> a readable user error and exit 2. Without the option preserve existing behavior.
+> Prepare a proposal only, without implementation, commits or a PR.
+
+It read only the entry/preparation procedures and relevant project material,
+without inherited conversation, old reports or the expected answer. The exact
+[returned draft batch](fixtures/minimal-limit-proposal.txt) is retained as an
+unapproved proposal, not a reference implementation. The operator-facing response
+showed the CLI option, `export(..., limit=None)`, forwarding `args.limit`,
+filter-before-limit order, invalid-input exit and planned actual CLI checks.
+No product decision remained. It honored the planning-only boundary, retained the
+original need and named the absence of a remote rather than inventing a PR.
+The coordinator inspected the draft against the raw source and request.
+
+Existing tests passed; the proposed limit checks were not executed. Both local
+exercises read project B, and Python bytecode appeared/disappeared during their
+checks; the preparer disclosed this instead of attributing it to its own actions.
+Tracked project files remained unchanged. This is not a test of isolated parallel
+application execution. All agents used fresh native contexts and inherited model
+settings; no provider/model comparison or full repair/resume cycle occurred.
+
+### Size after designing the minimum
+
+| Material | Whitespace-separated words |
+| --- | --- |
+| README + installed instruction Markdown | 3,477 |
+| Entry + preparation | 1,142 |
+| Entry + delivery, before consulting verification conditions | 1,393 |
+| Entry + independent verification | 1,285 |
+| Coordinator delivery including verification procedure | 1,973 |
+| Installation procedure | 667 |
+
+These are instruction sizes at the recorded commit, not measured model context,
+execution cost or improvement in reliability. Project rules, task data and code
+are additional context. Historical reports, fixtures and this evaluator's rubric
+are not required runtime reading.
