@@ -34,7 +34,7 @@ Merge and deployment require separate decisions. Stop at the requested boundary.
 
 ## Choose the procedure
 
-- New need or unfinished proposal: read `prepare.md`.
+- New need or unfinished proposal: read [prepare.md](prepare.md).
 - Approved work, execution feedback or interrupted delivery: read `deliver.md`.
 - Assigned independent verification: read `verify.md`; return findings to the
   coordinator rather than implementing or publishing changes.
