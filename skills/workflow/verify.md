@@ -12,18 +12,19 @@ using their batch references. Reconcile the plan's checks against that list;
 a requirement missing from the plan still needs proof. Inspect known findings
 and failed results from the run, including failures outside the selected suites.
 
-Review actual code against the approved behavior and project standards. Trace
-affected operations through their real callers, data, validation, side effects
-and consumer state, including continuing the operation after a changed result.
-Compare with the base for behavior that must survive the change. Exercise
-materially different affected implementations at the boundary being claimed.
+Review actual code against the approved behavior and project standards. When a
+state, data meaning or operation timing changes, trace its affected readers,
+writers and side effects for assumptions that no longer hold. Follow the real
+caller through subsequent consumer behavior, comparing with the base for behavior
+that must survive. Exercise materially different affected implementations.
 
 ## Inspect and obtain evidence
 
 For every obligation identify the executed trigger, actual assertion or observed
 result, evidence location and tested revision/environment. Inspect what the tests
-select, execute and assert. Passing isolated checks with constructed inputs do
-not prove the actual caller-to-consumer path. Use the running interface for a
+select, execute and assert, and independently choose checks for obligations they
+leave uncovered. Passing isolated checks with constructed inputs do not prove
+the actual caller-to-consumer path. Use the running interface for a
 claimed user interaction; choose focused checks for isolated contracts. A plan,
 test count, source inspection or reviewer agreement cannot stand in for execution
 when the claim needs it.

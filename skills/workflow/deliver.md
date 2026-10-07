@@ -32,24 +32,24 @@ Preserve unrelated changes; use a separate checkout when needed for a fixed,
 reviewable snapshot. Avoid concurrent writes or tests on shared mutable resources.
 Additional implementation delegation is optional.
 
-Assign a separate non-implementing agent/session the [verification procedure](verify.md),
-the original need, approved decisions, fixed code base/head, project rules, access
-to the application and existing evidence. Supply known findings, but not an
-expected verdict or the implementer's completion claim. Give the verifier only
-the entry contract, its procedure and relevant task context. Confirm the actual
-native assignment and retain its result; a name written in a report is not proof
-that independent verification happened. If this capability is unavailable, keep
-the limitation explicit rather than substituting self-review.
+Assign final verification of a stable candidate to a separate non-implementing
+agent/session using [verify.md](verify.md). Supply the original need, approved
+decisions, fixed base/head or exact diff, project rules, application access and
+existing evidence. Include known findings, not an expected verdict or completion
+claim. Earlier consultations during implementation do not replace this assessment.
+Give the verifier only the entry contract, its procedure and relevant task context.
+Retain the native assignment and result. If independent verification is unavailable,
+report the limitation rather than substituting self-review.
 
 Required CI and configured remote review are part of delivery. Determine the
 review trigger and completion signal; an empty review list is not proof of a
 completed review. If marking ready starts the review, first confirm required
 behavior, independent verification and checks available in draft, then mark ready
 to trigger it. This state is provisional: wait for the result and handle findings
-through the repair loop before handoff. After repairs, obtain applicable checks and review for the
-updated revision. Use native bounded waits; if continuation is unavailable, leave
-an interrupted checkpoint. Checks and review may run alongside independent
-verification when their triggers and resources permit.
+through the repair loop before handoff. After repairs, apply the scoped confirmation
+below, respecting configured review requirements. Use native bounded waits; if
+continuation is unavailable, leave an interrupted checkpoint. Checks and review
+may run alongside independent verification when their triggers and resources permit.
 
 ## Repair and handle feedback
 
@@ -61,12 +61,19 @@ or scope changes return to [preparation](prepare.md) under the entry contract;
 ordinary technical repairs continue with existing authority.
 
 Implement confirmed in-scope corrections, rerun affected checks and request
-focused independent confirmation of the repaired paths and their consumers.
-Retain unaffected proof according to the verification procedure. Continue until
-the handoff conditions hold or a concrete decision/resource prevents progress.
-A diagnostic report or commit is an intermediate result. If attempts stop making
-progress, name the missing fact or resource and next investigation; do not repeat
-the same review or command indefinitely. Unrelated fixes need their own scope.
+focused independent confirmation of repaired paths and their consumers. Retain
+unaffected proof. A new commit alone does not justify another full review; record
+the reason for one, such as a redesign invalidating prior coverage or a project
+requirement. When later reviews uncover independent defects already present in the
+reviewed candidate, diagnose the coverage gap and choose checks for the missed
+dependencies before requesting another full review. Unrelated fixes need their
+own scope.
+
+Continue until handoff conditions hold, an agreed execution budget is reached or
+a concrete decision/resource blocks progress. If budget usage cannot be observed,
+disclose that limitation; do not claim to enforce it. On exhaustion or stalled
+attempts, leave an interrupted checkpoint with unresolved work and the next
+investigation, not a completed delivery or another automatic review round.
 
 ## Hand off or leave a recoverable interruption
 

@@ -36,9 +36,11 @@ select the intended tests. Checks crossing a changed boundary must exercise that
 boundary. Include relevant failure paths and affected existing behavior.
 
 Identify the local checks, required CI and configured reviews needed for this
-task, using project configuration rather than assumed job names. Planned checks
-are not executed evidence. Use the entry contract to resolve the proposed GitHub
-destination and operation before asking for approval.
+task from project configuration. Propose implementation, verification, repairs,
+commits, push and a PR to the concrete destination under the entry contract.
+A narrower delivery scope needs a user instruction or a stated project/environment
+constraint; do not introduce local-only work as a default. Include any agreed
+execution budget and how it can be observed. Planned checks are not executed evidence.
 
 ## Present for one approval
 
