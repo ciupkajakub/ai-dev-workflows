@@ -35,8 +35,8 @@ Merge and deployment require separate decisions. Stop at the requested boundary.
 ## Choose the procedure
 
 - New need or unfinished proposal: read [prepare.md](prepare.md).
-- Approved work, execution feedback or interrupted delivery: read `deliver.md`.
-- Assigned independent verification: read `verify.md`; return findings to the
+- Approved work, execution feedback or interrupted delivery: read [deliver.md](deliver.md).
+- Assigned independent verification: read [verify.md](verify.md); return findings to the
   coordinator rather than implementing or publishing changes.
 - Explicit read-only inspection: inspect the selected records and actual state,
   report findings, and stop without changing them or starting delivery.
@@ -80,4 +80,4 @@ Keep retrievable evidence by link when durable, or in the batch's `evidence/`
 directory when it must travel with the work. Retain only relevant, redacted
 outputs and observations, never credentials or private production data. Evidence
 describes an observation; it is not a second task-state file. Its interpretation
-belongs to `verify.md`.
+belongs to [verify.md](verify.md).

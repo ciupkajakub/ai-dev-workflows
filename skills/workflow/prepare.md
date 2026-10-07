@@ -51,4 +51,4 @@ The approval message itself must expose these changes; linking a detailed plan
 does not replace that explanation. Omit empty sections and repeated design prose.
 If decisions remain, request those decisions rather than execution approval.
 Otherwise identify the exact proposal and ask once for its presented delivery
-scope. On approval, follow `deliver.md`.
+scope. On approval, follow [deliver.md](deliver.md).
