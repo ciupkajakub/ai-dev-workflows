@@ -43,11 +43,12 @@ Merge and deployment require separate decisions. Stop at the requested boundary.
 - Installation, update or package comparison: read [install.md](../install.md).
 
 For an existing batch recover its original need and decisions before selecting
-the next action. Unapproved work returns to preparation. A ready PR with no new
-feedback remains at human review. A closed or merged PR needs an authorized
-follow-up rather than a restarted delivery. Legacy documents require the separate
-migration described in the installation procedure; package replacement alone
-does not migrate work or broaden earlier approval.
+the next action. Unapproved work returns to preparation. A ready PR with completed
+required checks and configured reviews and no new feedback remains at human
+review. A closed or merged PR needs an authorized follow-up rather than a
+restarted delivery. Legacy documents require the separate migration described in
+the installation procedure; package replacement alone does not migrate work or
+broaden earlier approval.
 
 ## One batch record
 

@@ -20,9 +20,11 @@ technical facts through inspection or a permitted focused check. Ask the user
 only about decisions that affect outcome or scope, with a recommendation and its
 consequences. Reuse answers already given.
 
-Keep the same batch while refining its proposal. A material unknown prevents an
-execution-ready proposal. A technical uncertainty needs investigation, not an
-invented product choice or another vote on unchanged prose.
+Keep the same batch while refining its proposal. When a decision changes, reconcile
+dependent requirements, user-facing messages, interfaces and checks before asking
+for approval; remove superseded promises from the active proposal. A material
+unknown prevents an execution-ready proposal. A technical uncertainty needs
+investigation, not an invented product choice or another vote on unchanged prose.
 
 ## Make the proposal executable
 

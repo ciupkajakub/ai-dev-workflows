@@ -49,10 +49,10 @@ with confirmation, rejected with evidence or explicitly waived by the authorized
 user. Preserve those dispositions rather than dropping earlier failures. Report
 which required CI/review results remain pending or inaccessible.
 
-A PR is ready only when required behavior has adequate proof, independent
+Delivery is complete only when required behavior has adequate proof, independent
 verification is complete, known findings are resolved and required project checks
 and configured reviews are complete for the applicable final revision. Missing
-proof, unresolved findings and unavailable required checks prevent readiness.
+proof, unresolved findings and unavailable required checks prevent handoff.
 An authorized exception must remain visible as an exception, never a passed test.
 The coordinator applies these conditions to current GitHub state at handoff.
 

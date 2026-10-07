@@ -11,14 +11,16 @@ Use existing results where valid instead of restarting preparation.
 For newly approved work, record its exact approval and commit the batch before
 changing the proposal. Push the checkpoint to the authorized branch and open a
 draft PR, or reuse the authorized open PR. Link it from the batch at the next
-checkpoint. Keep unfinished work in draft; subsequent commits can trigger CI.
+checkpoint. Keep unfinished work in draft except when readiness is the configured
+review trigger described below; subsequent commits can trigger CI.
 If publication is unavailable, record the limitation and continue independent
 local work already authorized. Local progress is not a published checkpoint.
 
 For resumed work, select the unfinished action from the batch and observed state.
 Preserve existing approval, decisions and completed work. Reconcile a stale next
-action instead of repeating a push or creating another PR. A ready result without
-new work stays at human review; the entry contract governs closed or merged PRs.
+action instead of repeating a push or creating another PR. A ready result with
+completed required checks and configured reviews and no new work stays at human
+review; the entry contract governs closed or merged PRs.
 
 ## Implement and verify
 
@@ -39,9 +41,15 @@ native assignment and retain its result; a name written in a report is not proof
 that independent verification happened. If this capability is unavailable, keep
 the limitation explicit rather than substituting self-review.
 
-Required CI and configured remote review are part of delivery. Inspect results
-on the PR's current head and use native bounded waits while work is pending.
-They can run alongside independent verification when resources permit.
+Required CI and configured remote review are part of delivery. Determine the
+review trigger and completion signal; an empty review list is not proof of a
+completed review. If marking ready starts the review, first confirm required
+behavior, independent verification and checks available in draft, then mark ready
+to trigger it. This state is provisional: wait for the result and handle findings
+through the repair loop before handoff. After repairs, obtain applicable checks and review for the
+updated revision. Use native bounded waits; if continuation is unavailable, leave
+an interrupted checkpoint. Checks and review may run alongside independent
+verification when their triggers and resources permit.
 
 ## Repair and handle feedback
 
@@ -65,9 +73,10 @@ the same review or command indefinitely. Unrelated fixes need their own scope.
 Before handoff apply the [readiness conditions](verify.md#result-and-evidence)
 to the final change, inspect any changes since the verified snapshot and fetch
 current required GitHub results. Resolve missing proof through the same repair
-loop. Mark the PR ready only after those conditions hold. Present the delivered
-behavior, material interface changes, PR, demonstration/evidence, tested revisions
-and any departures from the proposal. Human review follows.
+loop. Mark the PR ready if it was not already needed to trigger review; ready
+state alone does not establish completion. Present the delivered behavior,
+material interface changes, PR, demonstration/evidence, tested revisions and any
+departures from the proposal. Human review follows.
 
 When interrupted, save the next action, outstanding findings and evidence links
 in the batch and publish the checkpoint when permitted and possible. Another
