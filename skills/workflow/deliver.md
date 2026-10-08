@@ -25,11 +25,14 @@ review; the entry contract governs closed or merged PRs.
 ## Implement and verify
 
 Confirm the environment needed for the selected checks actually works. Start
-with the smallest working path through the changed boundary with the greatest
-uncertainty, from the real caller to the consumer's result. Verify it before
-building dependent changes, using the cheapest check that crosses that boundary
-and the nearest existing compatibility checks. Continue in small steps and
-retain outputs needed by the verifier. Update the batch when a decision,
+with the smallest path that tests the solution's most uncertain assumption.
+Identify what could fail and what observation would resolve that uncertainty.
+Choose a scenario that exercises that mechanism from the real caller to the
+consumer's result. Before building dependent changes, confirm that the executed
+check actually covered it; success in a simpler scenario does not resolve that
+uncertainty. Use the cheapest sufficient check and the nearest existing
+compatibility checks. Continue in small steps and retain outputs needed by the
+verifier. Update the batch when a decision,
 finding or next action changes, and commit/push useful checkpoints within scope.
 Preserve unrelated changes; use a separate checkout when needed for a fixed,
 reviewable snapshot. Avoid concurrent writes or tests on shared mutable resources.
