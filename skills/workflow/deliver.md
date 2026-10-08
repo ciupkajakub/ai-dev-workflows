@@ -24,9 +24,12 @@ review; the entry contract governs closed or merged PRs.
 
 ## Implement and verify
 
-Confirm the environment needed for the selected checks actually works. Implement
-the smallest sufficient change in verifiable steps and run focused development
-checks. Retain outputs needed by the verifier. Update the batch when a decision,
+Confirm the environment needed for the selected checks actually works. Start
+with the smallest working path through the changed boundary with the greatest
+uncertainty, from the real caller to the consumer's result. Verify it before
+building dependent changes, using the cheapest check that crosses that boundary
+and the nearest existing compatibility checks. Continue in small steps and
+retain outputs needed by the verifier. Update the batch when a decision,
 finding or next action changes, and commit/push useful checkpoints within scope.
 Preserve unrelated changes; use a separate checkout when needed for a fixed,
 reviewable snapshot. Avoid concurrent writes or tests on shared mutable resources.
