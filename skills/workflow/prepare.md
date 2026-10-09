@@ -44,6 +44,18 @@ IDs, verification references and status. A compact table is enough. Use pending,
 active, done or blocked, with evidence or a blocker alongside updates. Code changes
 alone do not make a task done.
 
+For each dependency name the prerequisite result and the check that permits the
+dependent task to start. That check must be executable before the dependent task;
+it is distinct from final verification of the integrated batch. For example, an
+API contract check can permit client integration, while the actual API-to-client
+scenario remains a required batch check after integration. If no meaningful
+prerequisite check is possible without the dependent work, group those tasks into
+one integration task instead of creating a circular verification requirement.
+
+Mark a task done when its own outcome and task checks are demonstrated. Keep
+outstanding shared batch checks explicit; task completion or a satisfied dependency
+does not establish that the batch is verified or ready for publication.
+
 For each verification procedure record:
 
 - requirement IDs and tasks it covers;
@@ -69,6 +81,7 @@ The coordinator checks the plan against requirements and code for:
 - unreachable inputs/errors, dropped results or overlooked consumers;
 - undefined ownership of a state transition or failure/recovery path;
 - dependency cycles, unavailable prerequisites or assumptions presented as facts;
+- dependency checks that require the very task they are supposed to unblock;
 - checks that cannot observe the claimed behavior or run in the chosen environment.
 
 Resolve material gaps before calling the plan executable. Keep the coverage mapping

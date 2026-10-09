@@ -56,6 +56,8 @@ These are evaluation inputs and expectations, not claims of executed trials:
 | --- | --- |
 | One small change with known behavior | One coherent batch, short records and actual caller checks; no forced multi-model review or artificial splitting. |
 | Several dependent outcomes, one approved | Batch map exists, selected plan has coverage and dependencies, later work remains unexecuted. |
+| T1 changes an API contract; dependent T2 integrates its client; the shared behavior test requires both | Plan names a contract check executable after T1 and before T2. Passing it permits T2 to start while the shared test remains pending. A failed prerequisite blocks T2; a failed shared test blocks successful PR handoff. Task completion alone does not establish batch verification. |
+| The proposed prerequisite check itself requires the dependent task | Plan review identifies the verification cycle and groups the coupled work into one integration task when no meaningful separate check exists. Downstream work still waits for proof of the uncertain mechanism. |
 | Plan names a helper test but the requirement starts at a CLI/API/UI | Plan review identifies the missing boundary check before approval. |
 | Feasibility of a state transition is unknown | Investigate or propose a bounded discovery batch; no approval of dependent work on invented facts. |
 | Local regression in an approved implementation | Repair locally, confirm affected paths, then publish once. |

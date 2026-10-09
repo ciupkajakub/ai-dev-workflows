@@ -20,10 +20,17 @@ before implementation by default. Publication happens at handoff.
 
 ## Implement and check the plan
 
-Select a pending task whose dependencies have demonstrated results. Start with the
-planned check of the most uncertain mechanism. Confirm it exercised that mechanism
-before dependent work; success in a simpler scenario is insufficient. Record task
-progress/evidence in IMPLEMENTATION and the next action in BATCH.
+Select a pending task whose planned dependency conditions have been demonstrated
+by their prerequisite checks. Do not wait for a shared batch check that requires
+this task to be implemented first. Record the evidence that permits it to start;
+keep final integrated verification pending until the required batch checks pass.
+
+Start with the planned check of the most uncertain mechanism. Confirm it exercised
+that mechanism before work relying on the assumption; success in a simpler scenario
+is insufficient. If this proof requires several tasks together, execute the planned
+integration task before downstream work. A dependency check must not silently waive
+an unresolved feasibility assumption. Record task progress/evidence in IMPLEMENTATION
+and the next action in BATCH.
 
 Implement the selected scope and run planned task checks. Repair implementation
 errors within approved decisions and rerun affected checks. Ordinary local repairs
