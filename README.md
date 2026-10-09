@@ -1,41 +1,55 @@
 # AI Dev Workflows
 
-A business need becomes a technical proposal. One approval starts implementation,
-independent verification, repairs and required checks through a review-ready PR.
-Merge and deployment remain separate decisions.
+A business need becomes requirements, a batch map and an executable technical
+plan. The developer reviews and approves the selected scope. The agent implements
+it in an isolated environment, checks it locally, opens or updates a PR and stops.
+CI and remote review can finish afterwards. Feedback returns to planning on request.
 
 One `workflow` skill runs the same process in Codex, Cursor and Claude Code using
-their native tools. One `BATCH.md` records the task; GitHub supplies current PR and
-CI state. A new session can continue from those records.
+their native tools. `FEATURE.md` owns requirements and the batch map, `BATCH.md`
+owns scope, approval and continuation, and `IMPLEMENTATION.md` owns technical
+tasks, dependencies and checks. GitHub supplies current PR and CI state.
 
 ## Use
 
 After [installation](skills/install.md), invoke `$workflow <need>` in Codex or
 `/workflow <need>` in Cursor/Claude Code. The agent inspects the project and presents
-behavior, interface changes, decisions and proposed checks before approval.
+behavior, interface changes, decisions, batch dependencies and proposed checks
+before approval. It checks requirement coverage and feasibility against real code.
 Reply with your decisions or approve the presented proposal in ordinary language.
 
-To continue, invoke the same skill with a batch path or PR and your request, such
-as `continue this batch` or `address this feedback`. No separate delivery, feedback
-or resume command is needed. Explicit planning-only and audit requests keep their
-stated scope. The [entry contract](skills/workflow/SKILL.md) owns these boundaries.
+To resume interrupted implementation, provide the batch path. To address feedback
+after PR handoff, provide the PR/batch and findings; the agent assesses them and
+proposes a continuation for approval before changing code. Existing tasks and
+valid evidence survive that continuation. There is no automatic PR repair loop.
+Planning-only and audit requests retain their scope. The
+[entry contract](skills/workflow/SKILL.md) owns these boundaries.
 
 ```mermaid
 flowchart LR
-    need[Need] --> proposal[Discovery and proposal]
-    proposal --> approval[Approval]
-    approval --> draft[Batch checkpoint and draft PR]
-    draft --> implement[Implementation]
-    implement --> verify[Independent verification and checks]
-    verify -->|Finding| repair[Repair]
-    repair --> verify
-    verify -->|Complete| ready[PR ready for human review]
+    need[Business need] --> feature[Requirements and batch map]
+    feature --> plan[Technical plan and plan review]
+    plan --> approval[Human approval of selected scope]
+    approval --> implement[Isolated implementation]
+    implement --> verify[Local verification]
+    verify -->|In-scope implementation defect| implement
+    verify -->|Design decision needed| plan
+    verify -->|Demonstrated| pr[Open or update PR and STOP]
+    pr -.-> remote[CI and remote review]
+    remote -->|User requests continuation| feedback[Assess feedback and update plan]
+    feedback --> plan
 ```
 
 The agent follows [prepare](skills/workflow/prepare.md) before approval and
-[deliver](skills/workflow/deliver.md) afterwards. The independent verifier reads
-[verify](skills/workflow/verify.md). Instructions are loaded for the current role
-and stage. There is no custom orchestrator or publication receipt.
+[deliver](skills/workflow/deliver.md) afterwards, applying
+[verify](skills/workflow/verify.md) to local results. Independent plan or code
+reviews are optional unless the approved plan or project requires them. There is
+no fixed model count. A small change can stay one batch; later batches receive
+detailed plans once their assumptions are stable.
+
+The sandbox is the agreed isolated checkout and test environment, not a technology
+mandated by this package. These instructions do not provision infrastructure or
+technically enforce agent transitions. Merge and deployment remain separate decisions.
 
 ## Install or update
 

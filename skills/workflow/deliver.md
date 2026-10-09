@@ -1,100 +1,86 @@
-# Deliver or resume a batch
+# Execute an approved plan
 
-The coordinator owns continuation, implementation, repair and PR handoff. Read
-the [entry contract](SKILL.md) and selected batch, then reconcile the checkout
-with the actual branch, PR, checks and review on GitHub. Inspect unpublished
-changes and any native workers before taking over; one coordinator owns the work.
-Use existing results where valid instead of restarting preparation.
+Use the [entry contract](SKILL.md), selected requirements, BATCH and IMPLEMENTATION.
+Recover exact approval and distinguish interrupted execution from completed PR
+handoff. Remote feedback alone does not reopen execution.
 
-## Establish the shared checkpoint
+## Establish the execution environment
 
-For newly approved work, record its exact approval and commit the batch before
-changing the proposal. Push the checkpoint to the authorized branch and open a
-draft PR, or reuse the authorized open PR. Link it from the batch at the next
-checkpoint. Keep unfinished work in draft except when readiness is the configured
-review trigger described below; subsequent commits can trigger CI.
-If publication is unavailable, record the limitation and continue independent
-local work already authorized. Local progress is not a published checkpoint.
+Reconcile actual checkout, branch/base, local changes and any existing PR. Preserve
+unrelated work and inspect active workers before taking ownership. Avoid concurrent
+writes or tests against shared mutable resources. Use a suitable isolated checkout
+and isolated mutable test resources
+for the approved scope. Sandbox means the agreed execution environment; this package
+does not provision Kubernetes, containers or remote workers. Confirm the necessary
+tools, dependencies and checks work there.
 
-For resumed work, select the unfinished action from the batch and observed state.
-Preserve existing approval, decisions and completed work. Reconcile a stale next
-action instead of repeating a push or creating another PR. A ready result with
-completed required checks and configured reviews and no new work stays at human
-review; the entry contract governs closed or merged PRs.
+Retain the approved snapshot before revising the plan. Local commits may preserve
+progress within authority. Do not push a planning checkpoint or open a draft PR
+before implementation by default. Publication happens at handoff.
 
-## Implement and verify
+## Implement and check the plan
 
-Confirm the environment needed for the selected checks actually works. Start
-with the smallest path that tests the solution's most uncertain assumption.
-Identify what could fail and what observation would resolve that uncertainty.
-Choose a scenario that exercises that mechanism from the real caller to the
-consumer's result. Before building dependent changes, confirm that the executed
-check actually covered it; success in a simpler scenario does not resolve that
-uncertainty. Use the cheapest sufficient check and the nearest existing
-compatibility checks. Continue in small steps and retain outputs needed by the
-verifier. Update the batch when a decision,
-finding or next action changes, and commit/push useful checkpoints within scope.
-Preserve unrelated changes; use a separate checkout when needed for a fixed,
-reviewable snapshot. Avoid concurrent writes or tests on shared mutable resources.
-Additional implementation delegation is optional.
+Select a pending task whose dependencies have demonstrated results. Start with the
+planned check of the most uncertain mechanism. Confirm it exercised that mechanism
+before dependent work; success in a simpler scenario is insufficient. Record task
+progress/evidence in IMPLEMENTATION and the next action in BATCH.
 
-Assign final verification of a stable candidate to a separate non-implementing
-agent/session using [verify.md](verify.md). Supply the original need, approved
-decisions, fixed base/head or exact diff, project rules, application access and
-existing evidence. Include known findings, not an expected verdict or completion
-claim. Earlier consultations during implementation do not replace this assessment.
-Give the verifier only the entry contract, its procedure and relevant task context.
-Retain the native assignment and result. If independent verification is unavailable,
-report the limitation rather than substituting self-review.
+Implement the selected scope and run planned task checks. Repair implementation
+errors within approved decisions and rerun affected checks. Ordinary local repairs
+need no new approval; record the correction and regression check. Run shared batch
+checks at integration points instead of repeating the full suite per task. Reuse
+unaffected evidence with its original revision.
 
-Required CI and configured remote review are part of delivery. Determine the
-review trigger and completion signal; an empty review list is not proof of a
-completed review. If marking ready starts the review, first confirm required
-behavior, independent verification and checks available in draft, then mark ready
-to trigger it. This state is provisional: wait for the result and handle findings
-through the repair loop before handoff. After repairs, apply the scoped confirmation
-below, respecting configured review requirements. Use native bounded waits; if
-continuation is unavailable, leave an interrupted checkpoint. Checks and review
-may run alongside independent verification when their triggers and resources permit.
+If execution disproves a design assumption or needs material behavior/scope changes,
+save the observation and return to preparation. Do not rewrite approved requirements
+to fit code. An adjacent defect remains outside this execution.
 
-## Repair and handle feedback
+Apply [verify.md](verify.md) to the integrated candidate. The coordinator can verify
+directly; use an independent reviewer only when the approved plan or project requires
+one. Planning consultations are not evidence that the resulting code works.
 
-Assess findings from verification, tests, CI and user feedback against the
-approved outcome and actual code. Record each as confirmed, unresolved, duplicate
-of a retained finding, or rejected with evidence. Before changing code, record
-the intended correction and its regression check in the batch. Material behavior
-or scope changes return to [preparation](prepare.md) under the entry contract;
-ordinary technical repairs continue with existing authority.
+Stop with a recoverable checkpoint for a missing resource/decision, an agreed budget
+limit, or repeated attempts without new evidence. Record attempts and the next
+investigation. Do not loop indefinitely or claim enforcement of unobservable usage.
 
-Implement confirmed in-scope corrections, rerun affected checks and request
-focused independent confirmation of repaired paths and their consumers. Retain
-unaffected proof. A new commit alone does not justify another full review; record
-the reason for one, such as a redesign invalidating prior coverage or a project
-requirement. When later reviews uncover independent defects already present in the
-reviewed candidate, diagnose the coverage gap and choose checks for the missed
-dependencies before requesting another full review. Unrelated fixes need their
-own scope.
+## Publish once and stop
 
-Continue until handoff conditions hold, an agreed execution budget is reached or
-a concrete decision/resource blocks progress. If budget usage cannot be observed,
-disclose that limitation; do not claim to enforce it. On exhaustion or stalled
-attempts, leave an interrupted checkpoint with unresolved work and the next
-investigation, not a completed delivery or another automatic review round.
+After required pre-publication behavior/checks are demonstrated, inspect the full
+candidate diff and final working changes. Preserve the tested revision or exact diff
+and explain reused evidence. Known local failures and missing required local proof
+block successful handoff unless an explicit applicable exception exists. Never label
+exceptions as passed tests.
 
-## Hand off or leave a recoverable interruption
+Commit and push approved work. Open the PR to the approved target or update the
+authorized existing PR. Recheck state before mutation; do not reopen a closed PR
+or restore a deleted branch under ordinary update authority. If publication fails,
+retain the unpublished checkpoint and report interruption. On resume inspect remote
+state before retrying to avoid duplicate PRs or pushes.
 
-Before handoff apply the [readiness conditions](verify.md#result-and-evidence)
-to the final change, inspect any changes since the verified snapshot and fetch
-current required GitHub results. Resolve missing proof through the same repair
-loop. Mark the PR ready if it was not already needed to trigger review; ready
-state alone does not establish completion. Present the delivered behavior,
-material interface changes, PR, demonstration/evidence, tested revisions and any
-departures from the proposal. Human review follows.
+In the PR and handoff identify the approved snapshot and continuation, delivered
+behavior, scope, verification evidence and revision, limitations and external checks
+not yet observed. Use a draft when project
+policy or outstanding evidence requires it. Local success does not establish merge
+readiness; required CI/review can run after publication.
 
-When interrupted, save the next action, outstanding findings and evidence links
-in the batch and publish the checkpoint when permitted and possible. Another
-session must be able to start from the batch and GitHub without the original chat.
-Report pending work as pending. Claim continued monitoring only after a native
-mechanism has confirmed it will continue after the turn; retain its reference and
-expiry when provided. Otherwise state that execution is interrupted and how to
-resume. A saved checkpoint does not itself restart an agent.
+Record the PR link and completed execution handoff in BATCH without mirroring live
+CI status. Identify any final local-only record. The published diff and absence of
+remaining approved execution tasks also establish the boundary if another clone
+lacks that local record. Resolve uncertain publication outcomes through read-only
+inspection before deciding whether execution remains.
+
+End the run. Do not poll/wait for CI or remote review, schedule monitoring, repair
+new PR findings, trigger another review round, or start the next mapped batch.
+If remote results are already available, report their observed state without
+starting repairs. Later requested feedback returns to [prepare.md](prepare.md).
+A status-only request remains read-only.
+
+## Resume interrupted execution
+
+Compare the checkpoint with actual code, evidence and remote state. Continue only
+unfinished work covered by approval. Preserve results whose inputs/scope still apply
+and rerun affected checks. Do not restart discovery or reapprove unchanged work.
+
+A pending remote check after successful PR publication is not interrupted execution.
+A saved checkpoint does not schedule another run. Save the next action and missing
+decision/resource so another session can resume without the original chat.

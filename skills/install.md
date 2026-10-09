@@ -53,7 +53,7 @@ in every tool; provider differences below concern discovery only.
    commit/publication scope. Report the source commit, content comparison and
    discovery actually checked.
 
-## Transition from the five-skill package
+## Transition from earlier layouts
 
 This is an incompatible instruction/document layout. An authorized package update
 replaces the old blueprint and five skill directories with the new package.
@@ -64,15 +64,25 @@ application-specific rules. Leave other links and all existing batches intact.
 
 The old source commit remains the source for interpreting an unmigrated batch.
 Package update alone does not rename its documents, revoke decisions or expand
-approval. To continue old work with the new workflow, obtain an explicit request
-to migrate that selected batch; do not migrate every batch during setup.
+approval. The same applies to the former single-`BATCH.md` layout. To continue old
+work with the new workflow, obtain a request to migrate that selected batch; do
+not migrate every batch during setup.
 
 For that migration, preserve the old files through Git history or an unchanged
-archive. Read its original request, FEATURE, IMPLEMENTATION, PROGRESS and relevant
-index entry; compare them with the actual checkout and GitHub. Reconcile them
-into the four [batch sections](workflow/SKILL.md#one-batch-record), preserving
-requirements, identities, approvals, limitations and evidence links. Record the
-old snapshot and retire only that batch's redundant current records after the
-comparison. Legacy completion labels are claims to reconcile, not new approval.
-Resolve material contradictions instead of guessing. Migration itself does not
-start application delivery unless the user's instruction also authorizes it.
+archive. Read the original request and available records: legacy FEATURE,
+IMPLEMENTATION, PROGRESS/index, or the single BATCH's Context, Proposal, Approval
+and Continuation. Compare them with the checkout and GitHub.
+
+Reconcile them into the current [work records](workflow/SKILL.md#work-records):
+feature requirements and batch map in FEATURE, technical tasks and checks in
+IMPLEMENTATION, scope/approvals/next action in BATCH. Preserve identities, exact
+approved snapshots, limitations and evidence. Keep historical approval bound to
+its original content; migration cannot manufacture approval of a new plan.
+Record the old snapshot and retire only redundant records of the selected batch
+after comparison.
+
+Distinguish unfinished local execution from an already published handoff. A
+legacy record waiting only for CI/review must not restart automatic repairs under
+the new workflow. Present any changed execution boundary or unresolved feedback
+for reconciliation; legacy completion labels are claims, not new approval.
+Migration does not start application delivery unless explicitly authorized.

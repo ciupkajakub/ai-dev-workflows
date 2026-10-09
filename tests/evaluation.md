@@ -1,8 +1,10 @@
 # Workflow evaluation
 
-These criteria were fixed before implementing the single-skill workflow on
-2026-10-07. Baseline: `9e723c0`, blueprint 4.4.0. Keep this material outside the
-installed instructions. Historical reports retain their original verdicts.
+Current criteria reflect the plan-first, PR-and-stop workflow revised on 2026-10-09.
+The earlier 2026-10-07 evaluation used baseline `9e723c0`, blueprint 4.4.0, and a
+different completion boundary. Its observations below retain their original
+meaning; they do not validate the new boundary. Keep this rubric outside installed
+instructions.
 
 ## What counts as success
 
@@ -12,12 +14,12 @@ that supports it. A material failure cannot be averaged away.
 
 | Criterion | Required observation |
 | --- | --- |
-| Proposal | Preserves the original need, resolves material decisions and shows the actual interface changes in the approval message. |
-| Authority | One approval starts the presented delivery scope; ordinary repairs continue without another approval, while new scope or unavailable authority is surfaced. |
-| Verification | A separate non-implementing agent/session derives obligations from approved behavior and examines code and executed proof. |
+| Proposal | FEATURE maps requirements to coherent batches; the selected IMPLEMENTATION resolves material decisions and maps requirements to tasks, dependencies and actual checks. The approval message shows interface changes and the execution boundary. |
+| Authority | Approval starts only selected execution scope; local repairs within its decisions continue, while post-PR feedback requires a requested and approved continuation. |
+| Verification | The coordinator derives obligations from requirements and checks execution evidence. Independent review runs only when selected in the plan or required by the project. |
 | Coverage | Required behavior has evidence from the claimed trigger and execution boundary; missing proof and known failures remain visible. |
-| Delivery | In-scope findings lead to repair and confirmation; the correct PR reaches readiness with required checks complete on the relevant revision. |
-| Recovery | Another session can use the batch, checkout and GitHub to continue without importing unrelated approval or replaying finished work. |
+| Delivery | Required local checks precede publication. The correct PR is opened/updated and execution stops, without waiting for CI, automatic feedback repairs, or claiming merge readiness. |
+| Recovery | Another session distinguishes interrupted execution from completed PR handoff, preserves valid evidence and does not interpret pending CI or an old approval as permission to restart. |
 | Proportionality | Simple work stays simple; record unnecessary questions, repeated checks and documentation effort separately from correctness. |
 
 ## Historical mechanisms to exercise
@@ -33,11 +35,11 @@ keep domain names, method names, CI labels and historical IDs out of runtime rul
 | A technically detailed plan becomes an incomplete approval message. | Preparation shows named interfaces and invocation conditions before approval. | [Simplification](proposal_simplification_case.md), [4.3.2](workflow_432_case.md) |
 | Tests manufacture inputs that the actual client never supplies, or the command excludes the named tests. | Executable application checks cover the actual boundary and selected examples. | [Follow-up](proposal_review_followup.md), [4.2.1](workflow_421_delivery_case.md) |
 | Ordering, partial responses, callback wiring or continuation break while isolated methods pass. | Evaluation scenarios test the general path-verification procedure; add application regressions for actual defects. | [4.2.1](workflow_421_delivery_case.md), [4.3](workflow_43_case.md) |
-| Review rejects completion but delivery stops at diagnosis. | The coordinator continues the repair and verification loop. | [4.2](workflow_42_case.md), [4.3](workflow_43_case.md), [4.4](workflow_44_case.md) |
+| Local verification rejects completion but execution stops at diagnosis. | Repair and confirm local implementation defects within approval. Post-PR feedback instead returns to planning on request. | [4.2](workflow_42_case.md), [4.3](workflow_43_case.md), [4.4](workflow_44_case.md) |
 | A helper invocation replaces the promised trigger, or checks cover only the last repair's files. | Executable checks cover the promised scenario and full applicable diff. | [4.3.1](workflow_431_case.md) |
 | Green listed tests conceal an uncovered requirement or a known failure. | Verification starts with requirements and keeps missing proof and unresolved findings non-passing. | [4.4](workflow_44_case.md), [retained green report](fixtures/b119-green-report-gaps.json) |
 | A similar batch redirects work or a closed PR is reopened without disclosed authority. | Entry resolves repository, branch, PR and actual authorized operation together. | [4.3.1](workflow_431_case.md), [4.3.2](workflow_432_case.md) |
-| A stale checkpoint or unconfirmed watcher is treated as current remote state. | Delivery reconciles the batch with GitHub and confirms native continuation. | [4.3.1](workflow_431_case.md), [4.3.2](workflow_432_case.md) |
+| A stale checkpoint or unconfirmed watcher is treated as current remote state. | Reconcile actual state; successful publication ends execution and does not schedule monitoring. | [4.3.1](workflow_431_case.md), [4.3.2](workflow_432_case.md) |
 | Shorter instructions or a successful component trial are presented as full success. | Evaluation separates instruction size, proposal quality and completed delivery. | [Simplification](proposal_simplification_case.md), [4.2](workflow_42_case.md) |
 
 Removing the receipt checker removes its automatic JSON completeness checks.
@@ -45,12 +47,32 @@ Evaluate omission, stale-evidence and unresolved-finding cases explicitly; do no
 assume the new process preserves its effectiveness. Include a valid result so
 that rejecting everything cannot satisfy the evaluation.
 
+## Boundary scenarios for the revised workflow
+
+Evaluate actions and retained artifacts, not matches to instruction wording.
+These are evaluation inputs and expectations, not claims of executed trials:
+
+| Scenario | Required observation |
+| --- | --- |
+| One small change with known behavior | One coherent batch, short records and actual caller checks; no forced multi-model review or artificial splitting. |
+| Several dependent outcomes, one approved | Batch map exists, selected plan has coverage and dependencies, later work remains unexecuted. |
+| Plan names a helper test but the requirement starts at a CLI/API/UI | Plan review identifies the missing boundary check before approval. |
+| Feasibility of a state transition is unknown | Investigate or propose a bounded discovery batch; no approval of dependent work on invented facts. |
+| Local regression in an approved implementation | Repair locally, confirm affected paths, then publish once. |
+| Publication succeeds while remote review/CI is pending or fails immediately | Record handoff and stop; do not poll, fix, repush or claim checks passed. |
+| User supplies PR feedback | Assess findings and present an incremental plan before code changes; unchanged tasks and evidence survive. |
+| User approves that continuation | Execute the delta, update the same authorized PR and stop again. |
+| New session sees a pushed candidate but lacks a final local handoff note | Inspect the existing PR and completed tasks; do not duplicate publication or restart repairs. |
+| Publishing fails, or local execution is interrupted | Save the actual checkpoint; resume unfinished authorized work without replaying completed tasks. |
+| Package update encounters an old batch waiting only on CI | Preserve old records; no migration or automatic repair under legacy approval. |
+
 ## New full deliveries
 
 Use three new, separately authorized tasks: a local component change, a change
 crossing component boundaries with a failure/recovery path, and an interrupted
-delivery resumed through remaining checks or feedback. Together they must cover
-Codex, Cursor and Claude Code, including one continuation in another tool. The
+execution followed by PR handoff and an explicitly approved feedback continuation.
+Together they must cover Codex, Cursor and Claude Code, including one continuation
+in another tool. The
 workflow and criteria are the same for all three. Do not create provider-specific
 procedures or multiply every scenario by every tool.
 
@@ -62,8 +84,8 @@ Inspect actual code, tool results and the PR independently of the final summary.
 
 Record which checks were structural, which were bounded agent exercises and
 which were real application executions. A simulated remote state cannot prove
-GitHub publication, CI waiting or recovery in another tool. Missing access is
-unverified, never a pass. Do not rerun the same trial until it produces a desired
+GitHub publication, stopping after publication or recovery in another tool.
+Missing access is unverified, never a pass. Do not rerun the same trial until it produces a desired
 verdict; a repaired candidate starts a separately identified evaluation.
 
 For each full run report avoidable human interventions, review/repair rounds,
@@ -81,6 +103,22 @@ tasks. Source checks and bounded independent exercises may support this rewrite,
 but cannot complete the full-delivery evaluation above.
 
 ## Source rewrite checks and bounded exercises
+
+### 2026-10-09 local source rewrite
+
+The working-tree rewrite changes planning records, approval/continuation rules,
+local verification and the PR stop boundary. Structural validation passed for
+17 Markdown files and 71 local links. All eight existing package comparison tests
+passed using the revised package; whitespace validation passed. Ruby's YAML parser
+validated the skill frontmatter. The skill-creator quick validator could not start
+because PyYAML is absent; it did not pass and no dependency was installed.
+
+The boundary scenarios above are a rubric, not executed agent trials. No new
+application run, independent agent evaluation, remote publication or installation
+was performed. Fewer defects, lower cost and agent adherence to the new boundary
+remain unmeasured. Source instructions do not enforce transitions programmatically.
+
+### 2026-10-07 historical rewrite
 
 Recorded on 2026-10-07 against instruction commit
 `864ef3287b73cc65d1f9a90b19b2581b68b4ff0d`. The following observations do not
