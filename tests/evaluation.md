@@ -1,6 +1,7 @@
 # Workflow evaluation
 
-Current criteria reflect the plan-first, PR-and-stop workflow revised on 2026-10-09.
+Current criteria reflect the plan-first, PR-and-stop workflow revised on 2026-10-09,
+with lifecycle scenario and completion-evidence rules added on 2026-10-13.
 The earlier 2026-10-07 evaluation used baseline `9e723c0`, blueprint 4.4.0, and a
 different completion boundary. Its observations below retain their original
 meaning; they do not validate the new boundary. Keep this rubric outside installed
@@ -59,6 +60,12 @@ These are evaluation inputs and expectations, not claims of executed trials:
 | T1 changes an API contract; dependent T2 integrates its client; the shared behavior test requires both | Plan names a contract check executable after T1 and before T2. Passing it permits T2 to start while the shared test remains pending. A failed prerequisite blocks T2; a failed shared test blocks successful PR handoff. Task completion alone does not establish batch verification. |
 | The proposed prerequisite check itself requires the dependent task | Plan review identifies the verification cycle and groups the coupled work into one integration task when no meaningful separate check exists. Downstream work still waits for proof of the uncertain mechanism. |
 | Plan names a helper test but the requirement starts at a CLI/API/UI | Plan review identifies the missing boundary check before approval. |
+| Success can be followed by cancellation or compensation before the client returns | Before approval, the plan defines persisted/client state, resources and the next permitted action for each applicable outcome. Verification follows recovery through that action, while unknown outcomes retain their required restrictions. Backend success alone cannot close the task. |
+| An interrupted client retains an older operation while shared state points to a newer one | Plan includes reconciliation, reload and late responses. Evidence exercises the conflicting states and proves recovery neither leaves a resolved operation blocked nor overwrites or unblocks an unresolved newer operation. |
+| Acceptance depends on time after a lock or external response, with two different resource models | Plan names both models and actual boundary-crossing waits with valid-before/invalid-after observations. Static timestamps or proof for only the simpler model leave the other required variant missing. |
+| A changed promise is shown immediately and later in history or notifications | Plan identifies the affected consumers; verification compares their outputs from the real operation. Checking only the initial response leaves later consumers unverified. |
+| All selected tests pass, but a required lifecycle variant is absent or its assertions stop before the next action | The scenario remains missing and the task/finding/batch claim covering it remains incomplete. Dependency-only evidence may permit downstream work without declaring the integrated batch verified. |
+| Every applicable variant has matching final-candidate evidence and no required check remains unresolved | Mark the covered task or batch verified and proceed to its authorized next step; do not require another reviewer, full-suite rerun or inapplicable lifecycle scenarios. |
 | Feasibility of a state transition is unknown | Investigate or propose a bounded discovery batch; no approval of dependent work on invented facts. |
 | Local regression in an approved implementation | Repair locally, confirm affected paths, then publish once. |
 | Publication succeeds while remote review/CI is pending or fails immediately | Record handoff and stop; do not poll, fix, repush or claim checks passed. |

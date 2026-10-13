@@ -19,9 +19,18 @@ Exercise materially different affected paths.
 
 ## Obtain evidence proportional to the claim
 
-For each obligation identify the executed trigger, assertion or observation, evidence
-location and tested revision/environment. Inspect what commands select and tests
-assert. Add focused checks for coverage gaps within approved scope.
+For each required scenario variant in IMPLEMENTATION, record demonstrated, missing
+or contradicted alongside the expected and observed result, evidence location and
+tested revision/environment. Inspect the executed trigger, selected tests and actual
+assertions; a test name or green suite total does not establish scenario coverage.
+Add focused checks for coverage gaps within approved scope.
+
+For stateful behavior, continue through the planned recovery and next user action.
+Confirm client permissions and persisted state/resources agree after each outcome;
+a successful backend transition alone does not prove the consumer can continue.
+Timing and concurrency evidence must actually cross the planned boundary using
+the real wait or ordering mechanism. Do not substitute a fixed timestamp or a
+simpler path for the required delayed or competing operation.
 
 Isolated tests with constructed inputs do not prove the caller-to-consumer path.
 Use the running interface for a claimed user interaction and focused checks for
@@ -40,8 +49,15 @@ new evidence justifies it.
 
 ## Result and publication boundary
 
-In IMPLEMENTATION mark required pre-publication behavior demonstrated, missing or
-contradicted, with evidence links. Findings remain open until repaired and confirmed,
+Reconcile the scenario mapping with requirements and the final candidate before
+marking a task done, a finding resolved or the batch verified. Every required variant
+for that claim needs matching evidence. Missing or contradicted variants keep the
+claim incomplete, even when all executed tests pass. A prerequisite check can still
+unblock dependent work; shared integration scenarios keep the batch unverified,
+not an otherwise completed prerequisite task. Explicitly authorized exceptions stay
+labelled as exceptions, never demonstrated behavior.
+
+Findings remain open until repaired and confirmed,
 rejected with evidence or explicitly waived by the authorized user. Pre-existing
 failures of required local checks still need a visible disposition.
 

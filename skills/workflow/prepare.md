@@ -39,6 +39,23 @@ Explain transactions, concurrency, retries, expiry or recovery where the changed
 behavior depends on them. Leave private helper design to implementation. Use a
 diagram when it clarifies multiple boundaries.
 
+For a changed stateful operation, map its applicable outcomes in IMPLEMENTATION
+before approval: success, rejection, cancellation, expiry, compensation and unknown
+result. For each, name persisted/server and client state, retained or released
+resources, and the next action the user can or cannot perform. Follow the operation
+through recovery and the next attempt, not just its first successful response.
+Include reload, interrupted clients, conflicting old/new operation state and late
+responses where those mechanisms exist. State what resolves an unknown result;
+do not treat it as a completed failure or leave a certain outcome blocked forever.
+
+Derive verification variants from these transitions and the affected code. Identify
+all consumers of changed values, including later reads and notifications. Where
+validity can change during a lock or external call, plan checks on both sides of
+the validity boundary with the real wait in place, for each materially different path.
+A simpler path cannot stand in for a different resource or ownership model. Keep
+these scenarios in the existing verification mapping and select mechanisms used
+by the changed flow; do not require an exhaustive cross-product of outcomes and paths.
+
 Give each task a stable ID, requirement references, observable outcome, dependency
 IDs, verification references and status. A compact table is enough. Use pending,
 active, done or blocked, with evidence or a blocker alongside updates. Code changes
@@ -59,7 +76,8 @@ does not establish that the batch is verified or ready for publication.
 For each verification procedure record:
 
 - requirement IDs and tasks it covers;
-- actual entry point, scenario and expected observation;
+- actual entry point, applicable scenario variants and expected observations,
+  including the next user action and preserved state/resources where relevant;
 - executable project command or concrete manual procedure;
 - required environment and whether it runs per task, once for the batch, or remotely.
 
@@ -80,6 +98,8 @@ The coordinator checks the plan against requirements and code for:
 - requirements without tasks and meaningful verification;
 - unreachable inputs/errors, dropped results or overlooked consumers;
 - undefined ownership of a state transition or failure/recovery path;
+- outcomes with no defined next action, stale client state with no reconciliation,
+  or required variants represented only by a simpler scenario;
 - dependency cycles, unavailable prerequisites or assumptions presented as facts;
 - dependency checks that require the very task they are supposed to unblock;
 - checks that cannot observe the claimed behavior or run in the chosen environment.
