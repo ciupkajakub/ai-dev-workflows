@@ -25,6 +25,18 @@ tested revision/environment. Inspect the executed trigger, selected tests and ac
 assertions; a test name or green suite total does not establish scenario coverage.
 Add focused checks for coverage gaps within approved scope.
 
+Reconcile the before/after graphs and services/contracts table with the final diff.
+Include consumers discovered during implementation and attach checks for their
+changed or preserved behavior. Confirm primary and fallback/legacy paths separately,
+including competing records when selection is part of the requirement.
+
+For each planned check, record the planned command/procedure, the actual execution
+and its result or missing evidence in IMPLEMENTATION. Expand project scripts when
+comparing substitutions: running the test runner alone does not prove compilation
+or declaration generation performed by the project command. A substitution needs
+evidence that it covers the same required steps and scenarios; omitted steps remain
+unverified. Reused evidence retains its original command, revision and environment.
+
 For stateful behavior, continue through the planned recovery and next user action.
 Confirm client permissions and persisted state/resources agree after each outcome;
 a successful backend transition alone does not prove the consumer can continue.
@@ -55,7 +67,8 @@ for that claim needs matching evidence. Missing or contradicted variants keep th
 claim incomplete, even when all executed tests pass. A prerequisite check can still
 unblock dependent work; shared integration scenarios keep the batch unverified,
 not an otherwise completed prerequisite task. Explicitly authorized exceptions stay
-labelled as exceptions, never demonstrated behavior.
+labelled as exceptions, never demonstrated behavior. Confirm the separate explicit
+exception decision under the entry contract; general plan approval is insufficient.
 
 Findings remain open until repaired and confirmed,
 rejected with evidence or explicitly waived by the authorized user. Pre-existing

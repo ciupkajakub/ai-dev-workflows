@@ -36,8 +36,23 @@ the batch or batch group for the next approval and its publication boundary.
 In IMPLEMENTATION describe material decisions and the before/after flow: named
 callers, inputs, outputs, invocation conditions, state ownership and side effects.
 Explain transactions, concurrency, retries, expiry or recovery where the changed
-behavior depends on them. Leave private helper design to implementation. Use a
-diagram when it clarifies multiple boundaries.
+behavior depends on them. Leave private helper design to implementation.
+
+Include compact before and after flow graphs, using Mermaid or an equivalent
+diagram. Name real entry points, services/functions, persisted data and consumers
+from the code; mark proposed additions. Show the changed path and affected readers,
+writers and side effects, including dependencies through shared response schemas
+or generated contracts. A small change needs only small graphs.
+
+Include a services/contracts table with these columns:
+
+| Service/function or contract | Caller and trigger | Inputs/outputs and behavior before → after | Affected consumers/state/side effects | Requirement and verification references |
+| --- | --- | --- | --- | --- |
+
+Use actual code names and describe each changed element or affected contract
+consumer. Group identical impacts where useful; a file inventory is insufficient.
+Every materially affected consumer needs a check of its changed or preserved
+behavior. The graphs and table expose dependencies; they are not execution evidence.
 
 For a changed stateful operation, map its applicable outcomes in IMPLEMENTATION
 before approval: success, rejection, cancellation, expiry, compensation and unknown
@@ -56,6 +71,11 @@ A simpler path cannot stand in for a different resource or ownership model. Keep
 these scenarios in the existing verification mapping and select mechanisms used
 by the changed flow; do not require an exhaustive cross-product of outcomes and paths.
 
+Map primary and fallback/legacy paths separately. Apply related requirements
+together: historical compatibility does not waive correctness of the selected data.
+When behavior chooses a record, include a competing record that must not be chosen
+and demonstrate why the intended one wins in each materially different path.
+
 Give each task a stable ID, requirement references, observable outcome, dependency
 IDs, verification references and status. A compact table is enough. Use pending,
 active, done or blocked, with evidence or a blocker alongside updates. Code changes
@@ -73,7 +93,12 @@ Mark a task done when its own outcome and task checks are demonstrated. Keep
 outstanding shared batch checks explicit; task completion or a satisfied dependency
 does not establish that the batch is verified or ready for publication.
 
-For each verification procedure record:
+Maintain a requirement-to-check table in IMPLEMENTATION:
+
+| Requirement | Scenario/path | Actual entry point | Expected consumer result | Command/manual procedure reference | Why this check proves the requirement; gaps/exceptions |
+| --- | --- | --- | --- | --- | --- |
+
+For each referenced verification procedure record:
 
 - requirement IDs and tasks it covers;
 - actual entry point, applicable scenario variants and expected observations,
@@ -81,10 +106,22 @@ For each verification procedure record:
 - executable project command or concrete manual procedure;
 - required environment and whether it runs per task, once for the batch, or remotely.
 
+Inspect project scripts and CI configuration. Record full executable commands and
+their relevant steps, including compilation, declaration generation, migrations
+or setup when applicable. Use the project's applicable checks; explain any planned
+substitution and which steps it preserves or omits. Classifying a check as remote
+does not remove the need for adequate pre-publication proof of required behavior.
+
 Verify that commands select the intended tests. Checks must exercise changed
 boundaries through their real callers and consumers; constructed helper inputs
 alone cannot establish that the application reaches that behavior. Cover relevant
 negative paths and regressions, not every imaginable edge case.
+
+For a requirement about visible UI or user interaction, plan execution through the
+running interface, with concrete setup and observations. API tests do not establish
+rendering, and typechecking does not establish interaction. Small diffs and difficult
+test-data setup do not justify omitting required proof. Inspect available setup and
+plan necessary prerequisites within scope before proposing an exception.
 
 Order the most uncertain mechanism before dependent work. Investigate unknown
 feasibility within preparation authority, or propose a bounded discovery batch
@@ -104,6 +141,11 @@ The coordinator checks the plan against requirements and code for:
 - dependency checks that require the very task they are supposed to unblock;
 - checks that cannot observe the claimed behavior or run in the chosen environment.
 
+Reconcile every requirement with the check table, graphs and services/contracts
+table. A missing check, weaker substitute or omitted affected path is a material
+gap even when all rows have verification references. Do not present a plan with
+such a gap as executable without a separately approved exception.
+
 Resolve material gaps before calling the plan executable. Keep the coverage mapping
 in IMPLEMENTATION; no separate readiness report is required. Repeat review only
 for changed decisions, new evidence or unresolved concerns.
@@ -118,8 +160,16 @@ not replace testing its implementation.
 
 Present in the user's language the outcome, selected batches, decisions, before/after
 interfaces, dependencies, risks and planned proof. The message must expose material
-changes; links to files alone are insufficient. State the actual sandbox/environment,
+changes, both flow graphs, the services/contracts table and requirement-to-check
+mapping; links to files alone are insufficient. State the actual sandbox/environment,
 branch/base and PR destination, plus any execution budget and how to observe it.
+
+Expose any requested verification exception as a distinct decision: affected
+requirement/scenario, missing check, reason, attempted or considered setup, and the
+remaining uncertainty. It may be decided alongside plan approval, but requires an
+explicit answer of its own under the entry contract. General approval or silence
+cannot waive it. Preserve mandatory project checks and label approved exceptions
+as unverified behavior.
 
 Separate pre-publication checks from asynchronous CI/review. Default scope is
 implementation, local verification and in-scope repairs, commit/push, open or update

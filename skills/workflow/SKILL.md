@@ -32,6 +32,10 @@ destination. Skill selection alone supplies no approval. Reuse clear authorizati
 already given; preserve narrower user instructions and project/environment controls.
 Merge and deployment remain separate decisions.
 
+A verification exception needs a separate explicit user decision naming the missing
+check and affected requirements. General plan approval does not approve an exception.
+Record that decision in BATCH and retain it with the approved snapshot.
+
 Default execution ends after opening or updating the PR and recording the handoff.
 Do not wait for CI or remote review, repair PR feedback, repush, or start another
 batch after this boundary. A comment, failing check or old approval cannot restart
@@ -62,7 +66,7 @@ No central backlog or status allocator is required.
 | --- | --- |
 | `ai-workflow/features/<feature-id>/FEATURE.md` | Original need/source, observable requirements with stable IDs, scope/exclusions, business decisions, batch map with outcomes and dependencies. |
 | `ai-workflow/work/<batch-id>/BATCH.md` | Feature link and selected requirement IDs, repository/branch/base and instruction source commit, batch scope, exact approval and delivery boundary, execution checkpoint, feedback dispositions and evidence links. |
-| `ai-workflow/work/<batch-id>/IMPLEMENTATION.md` | Technical decisions/interfaces, tasks and dependencies, requirement coverage, verification procedures and task execution results. |
+| `ai-workflow/work/<batch-id>/IMPLEMENTATION.md` | Technical decisions, before/after flow graphs and services/contracts table, tasks and dependencies, requirement-to-check mapping, verification procedures and planned/actual execution results. |
 
 A small change uses one batch and short records. Map a larger feature first and
 detail batches only when their assumptions are stable. A map does not authorize

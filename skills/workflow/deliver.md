@@ -38,6 +38,13 @@ need no new approval; record the correction and regression check. Run shared bat
 checks at integration points instead of repeating the full suite per task. Reuse
 unaffected evidence with its original revision.
 
+Run the full planned project commands, preserving their relevant steps. Record
+actual commands and results alongside the planned checks in IMPLEMENTATION;
+justify substitutions with equivalent evidence under [verify.md](verify.md).
+Update the before/after graphs and services/contracts table when in-scope repairs
+reveal additional affected consumers, and include their checks. Preserve the
+approved snapshot; material scope or behavior changes return to preparation.
+
 If execution disproves a design assumption or needs material behavior/scope changes,
 save the observation and return to preparation. Do not rewrite approved requirements
 to fit code. An adjacent defect remains outside this execution.
