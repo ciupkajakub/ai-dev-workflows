@@ -65,6 +65,15 @@ and explain reused evidence. Known local failures and missing required local pro
 block successful handoff unless an explicit applicable exception exists. Never label
 exceptions as passed tests.
 
+Before publication, reconcile the final report and current flow graphs with the
+delivered behavior and actual check results. Correct disproved assumptions in the
+current plan while preserving approved snapshots. Report failed or waived checks
+explicitly; do not summarize the run as all checks passing.
+
+Follow the repository's PR template and publication rules. Preserve its required
+sections when task metadata is missing; identify the missing value without inventing
+it. If that value is a publication prerequisite, resolve it before publishing.
+
 Commit and push approved work. Open the PR to the approved target or update the
 authorized existing PR. Recheck state before mutation; do not reopen a closed PR
 or restore a deleted branch under ordinary update authority. If publication fails,

@@ -44,6 +44,12 @@ Timing and concurrency evidence must actually cross the planned boundary using
 the real wait or ordering mechanism. Do not substitute a fixed timestamp or a
 simpler path for the required delayed or competing operation.
 
+Before recommending a workaround, retry or repair of historical data, verify
+that the user can perform it from the affected state with their permissions,
+and trace its effect through the result they need. Distinguish source-inspected
+procedures from executed ones; label any unverified step. This applies to advice
+in the handoff as well as planned changes and does not authorize data repair.
+
 Isolated tests with constructed inputs do not prove the caller-to-consumer path.
 Use the running interface for a claimed user interaction and focused checks for
 isolated contracts. A plan, source inspection, test count or reviewer agreement
