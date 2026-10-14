@@ -9,6 +9,8 @@ Read the original request, project rules, affected code and existing checks.
 Trace the operation from its real caller through validation, data changes and side
 effects to the consumer's result. Inspect materially different affected paths.
 Confirm that proposed inputs, errors and outputs can travel this route.
+Support design-critical assumptions, including claims that no caller or path exists,
+with successful code/history inspection or tests. Failed checks leave them unknown.
 
 Present a preliminary solution, then ask only unresolved product/scope questions,
 with recommendations and consequences. Inspect technical facts instead of asking
@@ -73,6 +75,9 @@ by the changed flow; do not require an exhaustive cross-product of outcomes and 
 
 Map primary and fallback/legacy paths separately. Apply related requirements
 together: historical compatibility does not waive correctness of the selected data.
+When required data is missing or ambiguous, identify what can be established and
+agree on observable behavior before adding heuristics. A best-effort result needs
+an explicit requirement decision; a verification exception cannot authorize it.
 When behavior chooses a record, include a competing record that must not be chosen
 and demonstrate why the intended one wins in each materially different path.
 
@@ -166,10 +171,11 @@ branch/base and PR destination, plus any execution budget and how to observe it.
 
 Expose any requested verification exception as a distinct decision: affected
 requirement/scenario, missing check, reason, attempted or considered setup, and the
-remaining uncertainty. It may be decided alongside plan approval, but requires an
-explicit answer of its own under the entry contract. General approval or silence
-cannot waive it. Preserve mandatory project checks and label approved exceptions
-as unverified behavior.
+remaining uncertainty. For deferred checks also name the owner, environment and
+stage that requires their result, referencing the planned procedure.
+Each exception needs its own explicit answer under the entry contract, even when
+decided alongside plan approval. General approval or silence cannot waive it.
+Preserve mandatory project checks and label exceptions as unverified behavior.
 
 Separate pre-publication checks from asynchronous CI/review. Default scope is
 implementation, local verification and in-scope repairs, commit/push, open or update
