@@ -6,9 +6,10 @@ description: Turn a business need into reviewed batch plans, execute an approved
 # Software development workflow
 
 One coordinator owns preparation, execution and handoff. Use native tools and
-session controls. Extra agents and independent reviews are optional, selected
-during planning for a concrete risk and within available authority. This package
-supplies instructions, not a sandbox runner or scheduler.
+session controls. Select independent implementation review under the risk criteria
+in [prepare.md](prepare.md#review-the-plan-before-approval), within available
+authority. Other delegation is optional. This package supplies instructions,
+not a sandbox runner or scheduler.
 
 Default flow: business need, requirements and batch map, technical plan, human
 approval, isolated execution with local checks, PR publication, then stop.

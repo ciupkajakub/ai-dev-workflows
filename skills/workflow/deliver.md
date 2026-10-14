@@ -9,10 +9,9 @@ handoff. Remote feedback alone does not reopen execution.
 Reconcile actual checkout, branch/base, local changes and any existing PR. Preserve
 unrelated work and inspect active workers before taking ownership. Avoid concurrent
 writes or tests against shared mutable resources. Use a suitable isolated checkout
-and isolated mutable test resources
-for the approved scope. Sandbox means the agreed execution environment; this package
-does not provision Kubernetes, containers or remote workers. Confirm the necessary
-tools, dependencies and checks work there.
+and isolated mutable test resources for the approved scope. Sandbox means the agreed
+execution environment; this package does not provision infrastructure. Confirm the
+necessary tools, dependencies and checks work there.
 
 Retain the approved snapshot before revising the plan. Local commits may preserve
 progress within authority. Do not push a planning checkpoint or open a draft PR
@@ -49,9 +48,11 @@ If execution disproves a design assumption or needs material behavior/scope chan
 save the observation and return to preparation. Do not rewrite approved requirements
 to fit code. An adjacent defect remains outside this execution.
 
-Apply [verify.md](verify.md) to the integrated candidate. The coordinator can verify
-directly; use an independent reviewer only when the approved plan or project requires
-one. Planning consultations are not evidence that the resulting code works.
+Apply [verify.md](verify.md) to the integrated candidate, including independent
+implementation review selected under [prepare.md](prepare.md#review-the-plan-before-approval).
+If implementation reveals a materially different risk, reassess and reconcile the
+review scope before publication. Planning consultations do not establish that the
+resulting code works.
 
 Stop with a recoverable checkpoint for a missing resource/decision, an agreed budget
 limit, or repeated attempts without new evidence. Record attempts and the next
@@ -84,7 +85,7 @@ In the PR and handoff identify the approved snapshot and continuation, delivered
 behavior, scope, verification evidence and revision, limitations and external checks
 not yet observed. Use a draft when project
 policy or outstanding evidence requires it. Local success does not establish merge
-readiness; required CI/review can run after publication.
+readiness; required CI and remote PR review can run after publication.
 
 Record the PR link and completed execution handoff in BATCH without mirroring live
 CI status. Identify any final local-only record. The published diff and absence of

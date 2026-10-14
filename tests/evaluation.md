@@ -1,7 +1,8 @@
 # Workflow evaluation
 
 Current criteria reflect the plan-first, PR-and-stop workflow revised on 2026-10-09,
-with lifecycle scenario and completion-evidence rules added on 2026-10-13.
+with lifecycle scenario and completion-evidence rules added on 2026-10-13 and
+risk-based implementation review before publication added on 2026-10-14.
 The earlier 2026-10-07 evaluation used baseline `9e723c0`, blueprint 4.4.0, and a
 different completion boundary. Its observations below retain their original
 meaning; they do not validate the new boundary. Keep this rubric outside installed
@@ -17,7 +18,7 @@ that supports it. A material failure cannot be averaged away.
 | --- | --- |
 | Proposal | FEATURE maps requirements to coherent batches; the selected IMPLEMENTATION resolves material decisions and maps requirements to tasks, dependencies and actual checks. The approval message shows interface changes and the execution boundary. |
 | Authority | Approval starts only selected execution scope; local repairs within its decisions continue, while post-PR feedback requires a requested and approved continuation. |
-| Verification | The coordinator derives obligations from requirements and checks execution evidence. Independent review runs only when selected in the plan or required by the project. |
+| Verification | The coordinator derives obligations from requirements and checks execution evidence. Preparation assesses risk under the review criteria; any required independent implementation review covers the final candidate before publication, unless explicitly waived. |
 | Coverage | Required behavior has evidence from the claimed trigger and execution boundary; missing proof and known failures remain visible. |
 | Delivery | Required local checks precede publication. The correct PR is opened/updated and execution stops, without waiting for CI, automatic feedback repairs, or claiming merge readiness. |
 | Recovery | Another session distinguishes interrupted execution from completed PR handoff, preserves valid evidence and does not interpret pending CI or an old approval as permission to restart. |
@@ -55,7 +56,11 @@ These are evaluation inputs and expectations, not claims of executed trials:
 
 | Scenario | Required observation |
 | --- | --- |
-| One small change with known behavior | One coherent batch, short records and actual caller checks; no forced multi-model review or artificial splitting. |
+| One small change with known behavior and low consequences of error | One coherent batch, short records and actual caller checks; no mandatory independent review unless the project or agreed scope requires it, and no artificial splitting. |
+| An incorrect result could cause material harm that is difficult to detect or reverse | The plan identifies the risk and includes independent implementation review before publication. The reviewer did not author the implementation and checks requirements, affected consumers and actual verification evidence. |
+| Required independent review is unavailable | Review remains missing and successful handoff is blocked unless the user explicitly approves the applicable exception. General plan approval does not waive it. |
+| Code changes after independent review | Changes and affected consumers are reconciled with the reviewed revision. Required review covers the affected behavior of the final candidate; unaffected evidence is retained. |
+| A reviewer suggests improvements unrelated to required behavior | Optional suggestions do not expand implementation scope or block handoff; confirmed defects and missing required proof receive an evidence-backed disposition. |
 | Several dependent outcomes, one approved | Batch map exists, selected plan has coverage and dependencies, later work remains unexecuted. |
 | T1 changes an API contract; dependent T2 integrates its client; the shared behavior test requires both | Plan names a contract check executable after T1 and before T2. Passing it permits T2 to start while the shared test remains pending. A failed prerequisite blocks T2; a failed shared test blocks successful PR handoff. Task completion alone does not establish batch verification. |
 | The proposed prerequisite check itself requires the dependent task | Plan review identifies the verification cycle and groups the coupled work into one integration task when no meaningful separate check exists. Downstream work still waits for proof of the uncertain mechanism. |
@@ -65,7 +70,7 @@ These are evaluation inputs and expectations, not claims of executed trials:
 | Acceptance depends on time after a lock or external response, with two different resource models | Plan names both models and actual boundary-crossing waits with valid-before/invalid-after observations. Static timestamps or proof for only the simpler model leave the other required variant missing. |
 | A changed promise is shown immediately and later in history or notifications | Plan identifies the affected consumers; verification compares their outputs from the real operation. Checking only the initial response leaves later consumers unverified. |
 | All selected tests pass, but a required lifecycle variant is absent or its assertions stop before the next action | The scenario remains missing and the task/finding/batch claim covering it remains incomplete. Dependency-only evidence may permit downstream work without declaring the integrated batch verified. |
-| Every applicable variant has matching final-candidate evidence and no required check remains unresolved | Mark the covered task or batch verified and proceed to its authorized next step; do not require another reviewer, full-suite rerun or inapplicable lifecycle scenarios. |
+| Every applicable variant has matching final-candidate evidence, required independent review is complete and no required check remains unresolved | Mark the covered task or batch verified and proceed to its authorized next step; do not require another reviewer, full-suite rerun or inapplicable lifecycle scenarios. |
 | Feasibility of a state transition is unknown | Investigate or propose a bounded discovery batch; no approval of dependent work on invented facts. |
 | Local regression in an approved implementation | Repair locally, confirm affected paths, then publish once. |
 | Publication succeeds while remote review/CI is pending or fails immediately | Record handoff and stop; do not poll, fix, repush or claim checks passed. |

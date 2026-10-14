@@ -34,7 +34,7 @@ flowchart LR
     implement --> verify[Local verification]
     verify -->|In-scope implementation defect| implement
     verify -->|Design decision needed| plan
-    verify -->|Demonstrated| pr[Open or update PR and STOP]
+    verify -->|Checks and required independent review complete| pr[Open or update PR and STOP]
     pr -.-> remote[CI and remote review]
     remote -->|User requests continuation| feedback[Assess feedback and update plan]
     feedback --> plan
@@ -42,8 +42,10 @@ flowchart LR
 
 The agent follows [prepare](skills/workflow/prepare.md) before approval and
 [deliver](skills/workflow/deliver.md) afterwards, applying
-[verify](skills/workflow/verify.md) to local results. Independent plan or code
-reviews are optional unless the approved plan or project requires them. There is
+[verify](skills/workflow/verify.md) to local results. Preparation determines whether
+independent implementation review is required before publication using its
+[risk criteria](skills/workflow/prepare.md#review-the-plan-before-approval).
+Plan review is optional unless the project or agreed scope requires it. There is
 no fixed model count. A small change can stay one batch; later batches receive
 detailed plans once their assumptions are stable.
 

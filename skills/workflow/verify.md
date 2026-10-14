@@ -1,10 +1,14 @@
 # Verify the planned behavior
 
 Use the [entry contract](SKILL.md), selected requirements and IMPLEMENTATION.
-The coordinator verifies locally unless the approved plan or project requires an
-independent reviewer. An assigned independent reviewer returns findings/evidence
-without implementing or publishing changes. Do not start agents or model comparisons
-merely to satisfy a fixed review count.
+The coordinator owns local verification. When independent implementation review is
+selected under [prepare.md](prepare.md#review-the-plan-before-approval), assign a
+reviewer who did not author the implementation. Supply approved requirements and
+decisions, base and candidate revisions, relevant code and verification evidence.
+The reviewer applies the procedure below to the full change and returns findings
+and evidence without implementing or publishing changes. Keep the reviewed revision
+and findings in the existing batch evidence. Do not start model comparisons merely
+to satisfy a fixed review count.
 
 ## Start with the required outcome
 
@@ -28,27 +32,28 @@ Add focused checks for coverage gaps within approved scope.
 Reconcile the before/after graphs and services/contracts table with the final diff.
 Include consumers discovered during implementation and attach checks for their
 changed or preserved behavior. Confirm primary and fallback/legacy paths separately,
-including competing records when selection is part of the requirement.
+including competing candidates and selection conditions where applicable.
 
 For each planned check, record the planned command/procedure, the actual execution
 and its result or missing evidence in IMPLEMENTATION. Expand project scripts when
-comparing substitutions: running the test runner alone does not prove compilation
-or declaration generation performed by the project command. A substitution needs
-evidence that it covers the same required steps and scenarios; omitted steps remain
-unverified. Reused evidence retains its original command, revision and environment.
+comparing substitutions. A substitute needs evidence that it performs all required
+steps, produces the required outputs and checks the same properties and scenarios.
+Omitted steps remain unverified. Reused evidence retains its original command,
+revision and environment.
 
 For stateful behavior, continue through the planned recovery and next user action.
 Confirm client permissions and persisted state/resources agree after each outcome;
 a successful backend transition alone does not prove the consumer can continue.
-Timing and concurrency evidence must actually cross the planned boundary using
-the real wait or ordering mechanism. Do not substitute a fixed timestamp or a
-simpler path for the required delayed or competing operation.
+Timing and concurrency evidence must cross the relevant execution boundary through
+the actual timing or ordering mechanism and observe conditions at their point of use.
+Constructed values or simpler paths that bypass this mechanism cannot establish
+the behavior of the delayed or competing operation.
 
-Before recommending a workaround, retry or repair of historical data, verify
-that the user can perform it from the affected state with their permissions,
-and trace its effect through the result they need. Distinguish source-inspected
-procedures from executed ones; label any unverified step. This applies to advice
-in the handoff as well as planned changes and does not authorize data repair.
+Before recommending a procedure, verify that the user can perform it from the
+affected state with their permissions and trace its effect through the result they
+need. Distinguish source-inspected procedures from executed ones; label unverified
+steps. This applies to handoff advice as well as planned changes. A recommendation
+does not authorize execution.
 
 Isolated tests with constructed inputs do not prove the caller-to-consumer path.
 Use the running interface for a claimed user interaction and focused checks for
@@ -60,10 +65,14 @@ Reuse evidence only when its inputs and scope remain valid. Investigate known fa
 against the changed path; a filename or CI label does not prove they are unrelated.
 Keep evidence supporting that disposition.
 
-Return defects/missing proof with requirement references, triggers, consequences and
-the check confirming a repair. Distinguish observed failures from hypotheses. Confirm
-repaired paths and consumers without repeating unaffected reviews or suites unless
-new evidence justifies it.
+Return findings with requirement references, triggers, consequences and supporting
+evidence. Distinguish confirmed defects, missing required proof, hypotheses and
+optional improvements. The coordinator repairs defects within approved scope under
+[deliver.md](deliver.md); changes to approved behavior return to preparation.
+Optional improvements do not expand scope. Confirm repairs and affected consumers;
+when independent review is required, the reviewer rechecks the affected behavior
+and evidence. Retain valid findings and checks without repeating unaffected reviews
+or suites.
 
 ## Result and publication boundary
 
@@ -81,9 +90,11 @@ rejected with evidence or explicitly waived by the authorized user. Pre-existing
 failures of required local checks still need a visible disposition.
 
 The local candidate is verified when required pre-publication behavior/checks have
-adequate evidence and any planned independent review is complete. Missing proof or
-confirmed unresolved local failures prevent successful handoff unless an explicit
-applicable exception exists. Unavailable required checks are not passed checks.
+adequate evidence and required independent review covers the final candidate.
+Reconcile changes after review with its findings and recheck affected behavior.
+Missing required proof, unavailable required review or confirmed unresolved local
+failures prevent successful handoff unless an explicit applicable exception exists.
+Unavailable required checks are not passed checks.
 
 PR publication completes default execution. CI/remote review may be pending and must
 not be described as passed or merge-ready. Later findings return to planning on user

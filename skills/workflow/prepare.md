@@ -56,30 +56,29 @@ consumer. Group identical impacts where useful; a file inventory is insufficient
 Every materially affected consumer needs a check of its changed or preserved
 behavior. The graphs and table expose dependencies; they are not execution evidence.
 
-For a changed stateful operation, map its applicable outcomes in IMPLEMENTATION
-before approval: success, rejection, cancellation, expiry, compensation and unknown
-result. For each, name persisted/server and client state, retained or released
-resources, and the next action the user can or cannot perform. Follow the operation
-through recovery and the next attempt, not just its first successful response.
-Include reload, interrupted clients, conflicting old/new operation state and late
-responses where those mechanisms exist. State what resolves an unknown result;
-do not treat it as a completed failure or leave a certain outcome blocked forever.
+For a changed stateful operation, derive reachable outcomes and transitions from
+the actual flow and record them in IMPLEMENTATION before approval. For each, name
+persisted/server and client state, retained or released resources, and the next
+permitted or blocked user actions. Follow recovery and the next attempt, including
+how the flow reconciles interrupted execution and conflicting state where applicable.
+Distinguish unresolved outcomes from confirmed ones; name what resolves uncertainty
+and what allows progress after a confirmed outcome.
 
 Derive verification variants from these transitions and the affected code. Identify
-all consumers of changed values, including later reads and notifications. Where
-validity can change during a lock or external call, plan checks on both sides of
-the validity boundary with the real wait in place, for each materially different path.
-A simpler path cannot stand in for a different resource or ownership model. Keep
-these scenarios in the existing verification mapping and select mechanisms used
-by the changed flow; do not require an exhaustive cross-product of outcomes and paths.
+all consumers of changed values. When correctness depends on a condition remaining
+valid until use, plan checks where it changes across the actual execution boundary,
+using the mechanism that controls timing or ordering. Cover each materially
+different path; a simpler path cannot stand in for a different resource or ownership
+model. Keep applicable scenarios in the existing verification mapping without
+requiring an exhaustive cross-product of outcomes and paths.
 
 Map primary and fallback/legacy paths separately. Apply related requirements
 together: historical compatibility does not waive correctness of the selected data.
 When required data is missing or ambiguous, identify what can be established and
 agree on observable behavior before adding heuristics. A best-effort result needs
 an explicit requirement decision; a verification exception cannot authorize it.
-When behavior chooses a record, include a competing record that must not be chosen
-and demonstrate why the intended one wins in each materially different path.
+When behavior selects among candidates, include alternatives that must not be
+selected and demonstrate the selection conditions in each materially different path.
 
 Give each task a stable ID, requirement references, observable outcome, dependency
 IDs, verification references and status. A compact table is enough. Use pending,
@@ -111,11 +110,11 @@ For each referenced verification procedure record:
 - executable project command or concrete manual procedure;
 - required environment and whether it runs per task, once for the batch, or remotely.
 
-Inspect project scripts and CI configuration. Record full executable commands and
-their relevant steps, including compilation, declaration generation, migrations
-or setup when applicable. Use the project's applicable checks; explain any planned
-substitution and which steps it preserves or omits. Classifying a check as remote
-does not remove the need for adequate pre-publication proof of required behavior.
+Inspect project scripts and CI configuration. Record full executable commands,
+their required steps and expected outputs. Use the project's applicable checks;
+explain whether a planned substitution preserves those steps and the properties
+being checked. Classifying a check as remote does not remove the need for adequate
+pre-publication proof of required behavior.
 
 Verify that commands select the intended tests. Checks must exercise changed
 boundaries through their real callers and consumers; constructed helper inputs
@@ -155,11 +154,20 @@ Resolve material gaps before calling the plan executable. Keep the coverage mapp
 in IMPLEMENTATION; no separate readiness report is required. Repeat review only
 for changed decisions, new evidence or unresolved concerns.
 
-An independent plan review is optional. Propose one for a specific risk such as
-coupled state transitions or difficult concurrency. If selected and authorized,
-supply requirements and relevant code, reconcile findings before approval and
-retain the result. No fixed number of models is required. Reviewing a plan does
-not replace testing its implementation.
+Assess the consequences of an incorrect result and how readily it would be detected
+and corrected. Require independent implementation review before publication when
+the change could cause material harm that is difficult to detect or reverse, or
+when project rules or agreed scope require it. Otherwise it is optional. Record the
+concrete risk, review decision and scope in IMPLEMENTATION. Include the review and
+in-scope repairs in the proposed execution scope so plan approval covers them.
+Reassess this decision if implementation reveals a materially different risk.
+Use [verify.md](verify.md) for the review and publication gate; unavailable required
+review needs an explicit exception under the entry contract.
+
+Independent plan review remains optional unless required by the project or agreed
+scope. If selected and authorized, supply requirements and relevant code, reconcile
+findings before approval and retain the result. It does not replace implementation
+review or execution evidence. No particular model or fixed review count is required.
 
 ## Present one concrete approval
 
