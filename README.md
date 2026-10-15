@@ -28,8 +28,10 @@ Planning-only and audit requests retain their scope. The
 ```mermaid
 flowchart LR
     need[Business need] --> feature[Requirements and batch map]
-    feature --> plan[Technical plan and plan review]
-    plan --> approval[Human approval of selected scope]
+    feature --> plan[Draft technical plan]
+    plan --> planReview[Independent plan review]
+    planReview -->|Blocking findings| plan
+    planReview -->|Review recorded and blocking findings resolved| approval[Human approval of selected scope]
     approval --> implement[Isolated implementation]
     implement --> verify[Local verification]
     verify -->|In-scope implementation defect| implement
@@ -45,9 +47,12 @@ The agent follows [prepare](skills/workflow/prepare.md) before approval and
 [verify](skills/workflow/verify.md) to local results. Preparation determines whether
 independent implementation review is required before publication using its
 [risk criteria](skills/workflow/prepare.md#review-the-plan-before-approval).
-Plan review is optional unless the project or agreed scope requires it. There is
-no fixed model count. A small change can stay one batch; later batches receive
-detailed plans once their assumptions are stable.
+Independent plan review is required before presenting a plan for approval. An agent
+who did not author the plan checks it against the original requirements and code.
+The coordinator records the review and resolves blocking findings before requesting
+approval. Missing required review is reported, not replaced by self-review. No
+particular model is required. A small change can stay one batch; later batches
+receive detailed plans once their assumptions are stable.
 
 The sandbox is the agreed isolated checkout and test environment, not a technology
 mandated by this package. These instructions do not provision infrastructure or

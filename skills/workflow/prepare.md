@@ -174,10 +174,22 @@ Reassess this decision if implementation reveals a materially different risk.
 Use [verify.md](verify.md) for the review and publication gate; unavailable required
 review needs an explicit exception under the entry contract.
 
-Independent plan review remains optional unless required by the project or agreed
-scope. If selected and authorized, supply requirements and relevant code, reconcile
-findings before approval and retain the result. It does not replace implementation
-review or execution evidence. No particular model or fixed review count is required.
+Before presenting a plan for approval, have an agent who did not author it review
+the original requirements, draft plan, project rules and relevant code against this
+section's criteria. The reviewer returns findings and evidence without editing files.
+
+Keep the review in the batch's evidence/ and link it from IMPLEMENTATION, identifying
+the reviewed plan snapshot, code revision, checks performed and supporting sources.
+No findings is valid; an approval label alone is not a review record.
+
+Resolve each finding through a plan correction, rejection supported by evidence,
+or a question to the user. Have the reviewer recheck blocking fixes and material
+changes, including affected dependencies; reuse evidence for unchanged parts.
+
+Request approval only after review and resolution of blocking findings. Ask about
+unresolved decisions instead. If no independent reviewer is available, report the
+gap; self-review does not satisfy it. Plan review does not replace implementation
+review or execution evidence.
 
 ## Present one concrete approval
 

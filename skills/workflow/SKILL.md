@@ -6,13 +6,15 @@ description: Turn a business need into reviewed batch plans, execute an approved
 # Software development workflow
 
 One coordinator owns preparation, execution and handoff. Use native tools and
-session controls. Select independent implementation review under the risk criteria
-in [prepare.md](prepare.md#review-the-plan-before-approval), within available
-authority. Other delegation is optional. This package supplies instructions,
-not a sandbox runner or scheduler.
+session controls. Require independent plan review before presenting a plan for
+approval. Select independent implementation review under the risk criteria in
+[prepare.md](prepare.md#review-the-plan-before-approval). Respect available authority;
+report unavailable required review rather than silently omitting it. Other delegation
+is optional. This package supplies instructions, not a sandbox runner or scheduler.
 
-Default flow: business need, requirements and batch map, technical plan, human
-approval, isolated execution with local checks, PR publication, then stop.
+Default flow: business need, requirements and batch map, technical plan, independent
+plan review and resolution of findings, human approval, isolated execution with
+local checks, PR publication, then stop.
 Remote feedback starts a separately requested planning cycle.
 
 Resolve this skill's real directory before following relative references. The
