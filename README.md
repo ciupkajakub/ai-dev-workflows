@@ -44,15 +44,20 @@ flowchart LR
 
 The agent follows [prepare](skills/workflow/prepare.md) before approval and
 [deliver](skills/workflow/deliver.md) afterwards, applying
-[verify](skills/workflow/verify.md) to local results. Preparation determines whether
+[verify](skills/workflow/verify.md) to planned checks and local results. Preparation determines whether
 independent implementation review is required before publication using its
 [risk criteria](skills/workflow/prepare.md#review-the-plan-before-approval).
 Independent plan review is required before presenting a plan for approval. An agent
 who did not author the plan checks it against the original requirements and code.
-The coordinator records the review and resolves blocking findings before requesting
-approval. Missing required review is reported, not replaced by self-review. No
+The review assesses both the design choice and the planned proof. The coordinator
+resolves blocking findings before requesting approval. Missing required review is reported, not replaced by self-review. No
 particular model is required. A small change can stay one batch; later batches
 receive detailed plans once their assumptions are stable.
+
+Each rule has one owning procedure: entry and authority in `SKILL.md`, design and
+plan review in `prepare.md`, evidence and completion in `verify.md`, execution in
+`deliver.md`. Plans retain requirements, decisions and checks; diagrams and contract
+tables are used where they clarify the change, not as mandatory duplicate records.
 
 The sandbox is the agreed isolated checkout and test environment, not a technology
 mandated by this package. These instructions do not provision infrastructure or

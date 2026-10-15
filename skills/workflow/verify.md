@@ -1,109 +1,79 @@
-# Verify the planned behavior
+# Evidence and implementation review
 
-Use the [entry contract](SKILL.md), selected requirements and IMPLEMENTATION.
-The coordinator owns local verification. When independent implementation review is
-selected under [prepare.md](prepare.md#review-the-plan-before-approval), assign a
-reviewer who did not author the implementation. Supply approved requirements and
-decisions, base and candidate revisions, relevant code and verification evidence.
-The reviewer applies the procedure below to the full change and returns findings
-and evidence without implementing or publishing changes. Keep the reviewed revision
-and findings in the existing batch evidence. Do not start model comparisons merely
-to satisfy a fixed review count.
+Use the [entry contract](SKILL.md), requirements and IMPLEMENTATION. During preparation,
+use the evidence standard to plan checks. During execution, collect results against
+it. The coordinator owns local verification.
 
-## Start with the required outcome
+## Evidence standard
 
-Derive observable obligations from requirements and approved decisions before reading
-completion claims. Reconcile planned checks with them; an omitted requirement still
-needs proof. Inspect known findings and failures, including those outside selected suites.
+Derive obligations from original requirements and approved decisions before relying
+on the plan's coverage or completion claims. Reconcile them with the whole changed
+flow and affected consumers. An omitted obligation still needs proof.
 
-Review code against approved behavior and project rules. Trace changed state, data
-meaning or timing through affected readers, writers and side effects. Follow the
-real caller to the consumer's result and compare preserved behavior with the base.
-Exercise materially different affected paths.
+Select evidence that can observe each required result:
 
-## Obtain evidence proportional to the claim
+- Exercise the real caller through the changed boundary to the consumer. For visible
+  UI or interaction, use the running interface. Isolated helper/API tests prove only
+  their covered contracts; mocked boundaries leave integration unverified. Inspect
+  available setup before proposing an exception for required application behavior.
+- Cover materially different primary and fallback/legacy paths under the same required
+  correctness, including relevant failures and preserved behavior. For candidate selection, include alternatives that must
+  not be chosen. Derive variants from the actual change, not an exhaustive cross-product.
+- For stateful behavior, follow recovery through the next user action and check
+  server/client state and resources agree. For timing or concurrency, exercise the
+  actual ordering mechanism and conditions at use; constructed values that bypass
+  it cannot establish that behavior. A simpler ownership/resource model does not
+  stand in for a materially different one.
+- Inspect project scripts and CI configuration. Use applicable full commands and
+  confirm they select the intended checks. A substitution must preserve required
+  steps, outputs and observed properties. Remote checks cannot silently replace
+  required pre-publication proof.
 
-For each required scenario variant in IMPLEMENTATION, record demonstrated, missing
-or contradicted alongside the expected and observed result, evidence location and
-tested revision/environment. Inspect the executed trigger, selected tests and actual
-assertions; a test name or green suite total does not establish scenario coverage.
-Add focused checks for coverage gaps within approved scope.
+Keep the requirement-to-check mapping in IMPLEMENTATION. Record each required
+scenario as planned, demonstrated, missing or contradicted, with procedure, expected
+and observed result, evidence and actual tested revision/environment. Inspect test
+assertions and executed triggers; passing counts and reviewer agreement are not proof
+of uncovered behavior. Include dirty changes in the tested revision or exact diff.
 
-Reconcile the before/after graphs and services/contracts table with the final diff.
-Include consumers discovered during implementation and attach checks for their
-changed or preserved behavior. Confirm primary and fallback/legacy paths separately,
-including competing candidates and selection conditions where applicable.
+Before recommending a user procedure, confirm it is reachable from the affected
+state with the user's permissions and leads to the required result. Distinguish
+source-inspected steps from executed ones; recommending a procedure does not authorize it.
 
-For each planned check, record the planned command/procedure, the actual execution
-and its result or missing evidence in IMPLEMENTATION. Expand project scripts when
-comparing substitutions. A substitute needs evidence that it performs all required
-steps, produces the required outputs and checks the same properties and scenarios.
-Omitted steps remain unverified. Reused evidence retains its original command,
-revision and environment.
+## Independent implementation review
 
-For stateful behavior, continue through the planned recovery and next user action.
-Confirm client permissions and persisted state/resources agree after each outcome;
-a successful backend transition alone does not prove the consumer can continue.
-Timing and concurrency evidence must cross the relevant execution boundary through
-the actual timing or ordering mechanism and observe conditions at their point of use.
-Constructed values or simpler paths that bypass this mechanism cannot establish
-the behavior of the delayed or competing operation.
+Apply the review decision from [preparation](prepare.md#review-the-plan-before-approval);
+reassess it if the actual change reveals materially different risk. When required,
+use an agent who did not author the implementation. Supply original requirements,
+approved decisions, base/candidate revisions, relevant code and verification evidence.
 
-Before recommending a procedure, verify that the user can perform it from the
-affected state with their permissions and trace its effect through the result they
-need. Distinguish source-inspected procedures from executed ones; label unverified
-steps. This applies to handoff advice as well as planned changes. A recommendation
-does not authorize execution.
+The reviewer evaluates the full change against required behavior and this evidence
+standard, including known failures outside selected suites. Trace changed data,
+meaning and timing through readers, writers and side effects. Return findings and
+evidence without implementing or publishing. Keep the reviewed revision and result
+in the batch's `evidence/`.
 
-Isolated tests with constructed inputs do not prove the caller-to-consumer path.
-Use the running interface for a claimed user interaction and focused checks for
-isolated contracts. A plan, source inspection, test count or reviewer agreement
-cannot replace execution when the claim requires it.
+## Findings and completion
 
-Select affected checks from the full base-to-candidate diff, including repairs.
-Reuse evidence only when its inputs and scope remain valid. Investigate known failures
-against the changed path; a filename or CI label does not prove they are unrelated.
-Keep evidence supporting that disposition.
+Give findings a requirement reference, trigger, consequence and supporting evidence.
+Distinguish confirmed defects, missing proof, unresolved hypotheses, duplicates and
+optional improvements. Resolve each material finding by confirmed repair, rejection
+with evidence or an explicit applicable user decision. Pre-existing failures of
+required checks still need a disposition; optional improvements do not expand scope.
 
-Return findings with requirement references, triggers, consequences and supporting
-evidence. Distinguish confirmed defects, missing required proof, hypotheses and
-optional improvements. The coordinator repairs defects within approved scope under
-[deliver.md](deliver.md); changes to approved behavior return to preparation.
-Optional improvements do not expand scope. Confirm repairs and affected consumers;
-when independent review is required, the reviewer rechecks the affected behavior
-and evidence. Retain valid findings and checks without repeating unaffected reviews
-or suites.
+After any repair, select checks from the full change and recheck affected behavior
+and consumers. Required independent review must cover the final candidate's affected
+behavior. Reuse unaffected evidence with its original revision; repeat only when
+changes, new evidence or unresolved concerns invalidate it. Updating a report alone
+does not invalidate application checks.
 
-## Result and publication boundary
+A task is done when its own outcome and checks are demonstrated. A prerequisite
+check may permit dependent work while shared integration checks remain pending.
+The batch is locally verified only when required pre-publication scenarios/checks
+have adequate evidence, material findings are resolved and required review covers
+the final candidate. Missing or contradicted proof prevents that claim.
 
-Reconcile the scenario mapping with requirements and the final candidate before
-marking a task done, a finding resolved or the batch verified. Every required variant
-for that claim needs matching evidence. Missing or contradicted variants keep the
-claim incomplete, even when all executed tests pass. A prerequisite check can still
-unblock dependent work; shared integration scenarios keep the batch unverified,
-not an otherwise completed prerequisite task. Explicitly authorized exceptions stay
-labelled as exceptions, never demonstrated behavior. Confirm the separate explicit
-exception decision under the entry contract; general plan approval is insufficient.
-
-Findings remain open until repaired and confirmed,
-rejected with evidence or explicitly waived by the authorized user. Pre-existing
-failures of required local checks still need a visible disposition.
-
-The local candidate is verified when required pre-publication behavior/checks have
-adequate evidence and required independent review covers the final candidate.
-Reconcile changes after review with its findings and recheck affected behavior.
-Missing required proof, unavailable required review or confirmed unresolved local
-failures prevent successful handoff unless an explicit applicable exception exists.
-Unavailable required checks are not passed checks.
-
-PR publication completes default execution. CI/remote review may be pending and must
-not be described as passed or merge-ready. Later findings return to planning on user
-request; they do not keep execution running. Honor stricter project publication
-requirements settled in the approved plan.
-
-Record commands/procedures, environment, observations and the code actually tested.
-Inspect working changes rather than assuming HEAD identifies everything. After a
-change explain which results still apply and rerun affected checks. Report-only
-commits do not require rerunning unchanged application tests. Never relabel older
-results as current-revision execution. Retain evidence under the entry contract;
-no separate receipt or duplicate status file is needed.
+Apply explicit exceptions under the entry contract and label affected behavior
+unverified, never passed. Honor mandatory project publication checks. Local success
+does not establish remote CI success or merge readiness. Once the publication
+conditions are met, proceed to the authorized handoff without extra review rounds
+or unchanged test reruns.

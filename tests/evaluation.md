@@ -2,7 +2,9 @@
 
 Current criteria reflect the plan-first, PR-and-stop workflow revised on 2026-10-09,
 with lifecycle scenario and completion-evidence rules added on 2026-10-13 and
-risk-based implementation review before publication added on 2026-10-14.
+risk-based implementation review before publication added on 2026-10-14, and
+independent plan review added on 2026-10-15. Presentation formats are proportional
+to the change; required behavior, review and evidence remain the evaluation basis.
 The earlier 2026-10-07 evaluation used baseline `9e723c0`, blueprint 4.4.0, and a
 different completion boundary. Its observations below retain their original
 meaning; they do not validate the new boundary. Keep this rubric outside installed
@@ -16,7 +18,7 @@ that supports it. A material failure cannot be averaged away.
 
 | Criterion | Required observation |
 | --- | --- |
-| Proposal | FEATURE maps requirements to coherent batches; the selected IMPLEMENTATION resolves material decisions and maps requirements to tasks, dependencies and actual checks. The approval message shows interface changes and the execution boundary. |
+| Proposal | FEATURE maps requirements to coherent batches; the selected IMPLEMENTATION resolves material decisions and maps requirements to tasks, dependencies and actual checks. Independent review assesses the design and planned proof against the original request and code. The approval message explains material changes, risks and the execution boundary without requiring duplicated formats. |
 | Authority | Approval starts only selected execution scope; local repairs within its decisions continue, while post-PR feedback requires a requested and approved continuation. |
 | Verification | The coordinator derives obligations from requirements and checks execution evidence. Preparation assesses risk under the review criteria; any required independent implementation review covers the final candidate before publication, unless explicitly waived. |
 | Coverage | Required behavior has evidence from the claimed trigger and execution boundary; missing proof and known failures remain visible. |
@@ -56,7 +58,7 @@ These are evaluation inputs and expectations, not claims of executed trials:
 
 | Scenario | Required observation |
 | --- | --- |
-| One small change with known behavior and low consequences of error | One coherent batch, short records and actual caller checks; no mandatory independent review unless the project or agreed scope requires it, and no artificial splitting. |
+| One small change with known behavior and low consequences of error | One coherent batch, short records and actual caller checks; independent plan review; implementation review optional unless the project or agreed scope requires it; no artificial splitting or duplicate diagram/table presentations. |
 | An incorrect result could cause material harm that is difficult to detect or reverse | The plan identifies the risk and includes independent implementation review before publication. The reviewer did not author the implementation and checks requirements, affected consumers and actual verification evidence. |
 | Required independent review is unavailable | Review remains missing and successful handoff is blocked unless the user explicitly approves the applicable exception. General plan approval does not waive it. |
 | Code changes after independent review | Changes and affected consumers are reconciled with the reviewed revision. Required review covers the affected behavior of the final candidate; unaffected evidence is retained. |
