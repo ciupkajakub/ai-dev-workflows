@@ -12,10 +12,20 @@ Confirm that proposed inputs, errors and outputs can travel this route.
 Support design-critical assumptions, including claims that no caller or path exists,
 with successful code/history inspection or tests. Failed checks leave them unknown.
 
+Distinguish required outcomes and acceptance criteria from suggested implementation.
+Before selecting an approach, check whether existing mechanisms can achieve the
+required outcome with less complexity. Briefly justify material costs and risks
+of the selected approach. Present any proposed change to acceptance criteria as
+an explicit decision.
+
 Present a preliminary solution, then ask only unresolved product/scope questions,
 with recommendations and consequences. Inspect technical facts instead of asking
 the user to guess. Reuse decisions already given. Tie every proposed change to a
 requirement or explain why the result needs it; adjacent defects do not expand scope.
+An existing defect is relevant to the plan when the proposed outcome depends on
+the affected behavior being correct or the change increases the consequences of
+that defect. Resolve how to handle it before presenting the plan for approval;
+its relevance alone does not authorize implementation.
 
 Write observable requirements with stable IDs in FEATURE, including failure behavior
 and existing behavior that must survive. Reconcile dependent requirements, messages,
