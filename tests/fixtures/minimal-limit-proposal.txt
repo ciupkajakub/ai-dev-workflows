@@ -1,0 +1,62 @@
+# Export limit — propozycja
+
+## Context
+
+Oryginalna potrzeba: „Chcę opcję --limit N w eksporcie zadań. Wynik ma zawierać najwyżej N rekordów, w obecnej kolejności, po filtrowaniu ukończonych zadań. Zero jest poprawne; liczba ujemna i tekst zamiast liczby mają kończyć polecenie czytelnym błędem użytkownika i kodem 2. Bez --limit zachowaj obecne działanie. Przygotuj tylko propozycję, bez implementacji, commitów i PR.”
+
+Projekt: `/private/var/folders/1m/0vrdpvm177v5wf8gl42p7bg00000gn/T/workflow-verification-obvfdpyq/project-b`. Checkout: `main`; lokalna baza: `fb14c71` (`input`). Nie skonfigurowano remote. Nowa potrzeba otrzymuje oddzielny identyfikator `export-limit`; istniejący batch `export` pozostaje poza zakresem.
+
+Pakiet instrukcji: `/Users/ciupek/Desktop/programowanie/prywatne/ai-dev-workflows/skills/workflow`, HEAD repozytorium źródłowego `864ef3287b73cc65d1f9a90b19b2581b68b4ff0d`. Przeczytano wyłącznie jego `SKILL.md` i `prepare.md`. W projekcie przeczytano `AGENTS.md`, `cli.py`, `exporter.py`, `tests/test_export.py`, `records.json` oraz lokalne metadane Git.
+
+Zasady projektu: wyłącznie biblioteka standardowa Pythona; testy `python3 -B -m unittest discover -s tests`; bez sieci, instalacji i publikacji zdalnej. Przy odczycie zastano nieśledzony katalog `__pycache__/`; nie zmieniano go.
+
+## Proposal
+
+### Wymagania
+
+- R1: `python3 -B cli.py records.json --limit N` zwraca najwyżej N rekordów, zachowując kolejność wejściową.
+- R2: ograniczenie następuje po istniejącym filtrowaniu: domyślnie pomijane są rekordy z `completed=true`, a `--include-completed` dopuszcza je do limitowanej listy.
+- R3: `--limit 0` zwraca JSON `[]` i kod 0.
+- R4: ujemna liczba i tekst zamiast liczby powodują komunikat błędu na stderr oraz kod 2, bez tracebacka i bez wyniku JSON na stdout.
+- R5: pominięcie `--limit` zachowuje dotychczasowy wynik oraz działanie `--include-completed`.
+
+### Zakres i kontrakt
+
+Zmiany obejmą wyłącznie `cli.py`, `exporter.py` i testy dotyczące tej opcji. Nie obejmują innych zmian eksportu, formatu JSON, sortowania ani istniejącego batcha.
+
+| Granica | Obecnie | Propozycja |
+| --- | --- | --- |
+| CLI | ścieżka pliku, opcjonalnie `--include-completed` | dodatkowo `--limit N`, domyślnie `None`; parser przyjmuje nieujemną liczbę całkowitą |
+| CLI → eksport | `export(records, include_completed=args.include_completed)` | dodatkowy argument nazwany `limit=args.limit` |
+| API eksportera | `export(records, include_completed=False)` | `export(records, include_completed=False, limit=None)`; dotychczasowi wywołujący działają bez zmian |
+| Wynik | filtrowanie → serializacja JSON | filtrowanie → pierwsze N rekordów, gdy limit podano → ta sama serializacja JSON |
+| Wywołania i efekty | odczyt pliku i JSON, eksport, wypisanie na stdout | poprawny limit, także 0, zachowuje te wywołania; niepoprawny limit kończy parsowanie przed otwarciem pliku |
+
+Walidację CLI zapewni konwerter argumentu `argparse` zgłaszający `ArgumentTypeError`, np. „--limit musi być nieujemną liczbą całkowitą”. Dzięki temu zachowany będzie standardowy kod błędu parsera 2. Kontrakt nowego argumentu eksportera to `None` albo nieujemny `int`; nie wprowadza się odrębnego publicznego kontraktu obsługi błędnych wywołań API Python.
+
+Limit nie zmienia sposobu wczytywania pliku: cały JSON nadal jest czytany i filtrowany. To ograniczenie liczby wyników, bez obietnicy mniejszego zużycia pamięci. Główne ryzyko implementacyjne to przycięcie listy przed filtrowaniem; test musi zawierać ukończony rekord przed nieukończonymi.
+
+### Małe kroki implementacji i planowane sprawdzenie
+
+1. Dodać testy kontraktu eksportera: przeplatane rekordy ukończone i nieukończone, limit 1 i 2, limit większy niż wynik, zero, puste wejście i brak limitu; sprawdzać pełne rekordy oraz ich kolejność.
+2. Dodać opcjonalny `limit` do eksportera i przyciąć przefiltrowaną listę przed obecną serializacją.
+3. Dodać argument CLI z walidacją i przekazać go do eksportera. Dodać testy subprocess uruchamiające rzeczywisty `cli.py` na tymczasowym JSON: oba warianty `--include-completed`, poprawne limity, brak limitu oraz błędy `--limit -1` i `--limit tekst`.
+4. Uruchomić `python3 -B -m unittest discover -s tests` z `PYTHONDONTWRITEBYTECODE=1`, aby również subprocessy nie zapisywały bytecode. Sprawdzić zakres diffu.
+
+Dane rozstrzygające R1/R2: kolejno rekordy `(id=1, completed=true)`, `(id=2, completed=false)`, `(id=3, completed=false)`, `(id=4, completed=true)`. Domyślnie `--limit 1` ma zwrócić id `[2]`, `--limit 2` id `[2,3]`; z `--include-completed --limit 2` wynik to `[1,2]`. `--limit 9` daje odpowiednio `[2,3]` i `[1,2,3,4]`. Zero zawsze daje `[]`. Bez limitu wyniki pozostają `[2,3]` i `[1,2,3,4]`. Dla pustego wejścia wynik to `[]`.
+
+Dla R4 testy CLI sprawdzą kod 2, niepuste stderr wskazujące argument i wymaganą nieujemną liczbę całkowitą, puste stdout oraz brak tracebacka. Dodatkowe wywołanie z nieistniejącym plikiem i błędnym limitem potwierdzi, że walidacja odbywa się przed odczytem wejścia.
+
+Repozytorium nie zawiera śledzonej konfiguracji CI ani skonfigurowanych przeglądów; nie zakłada się dodatkowych jobów. Docelowym wynikiem tego zlecenia jest wyłącznie niniejsza lokalna propozycja. Nie wyznacza się gałęzi publikacyjnej ani PR, ponieważ użytkownik wykluczył implementację, commity i PR.
+
+## Approval
+
+Brak zgody na realizację. Użytkownik zamówił tylko propozycję. Nie ma brakujących decyzji produktowych potrzebnych do opisania tej zmiany; nie prosi się teraz o zgodę na szerszy zakres.
+
+## Continuation
+
+Przygotowanie zakończone. Nie wykonano implementacji, commitów, publikacji ani zmian w repozytoriach.
+
+Wykonane sprawdzenie stanu obecnego: `PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -v` — 2 testy PASS (`test_default`, `test_completed`). Obecne CLI zwraca dla `records.json` id `[1]`, a z `--include-completed` id `[1,2]`. To dowód zachowania bazowego, nie wykonania planowanych testów limitu.
+
+Kolejny krok wymaga osobnego polecenia użytkownika dotyczącego realizacji tej propozycji; obecne zadanie kończy się na jej przedstawieniu.

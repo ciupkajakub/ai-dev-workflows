@@ -1,0 +1,27 @@
+{
+  "instruction_commit": "864ef3287b73cc65d1f9a90b19b2581b68b4ff0d",
+  "projects": {
+    "project-a": {
+      "head": "2fc23afcb13ebb4630da422d8932ee13c4ff6efc",
+      "files": {
+        "AGENTS.md": "Use Python standard library only. Run checks with python3 -B -m unittest discover -s tests. The CLI is invoked as python3 -B cli.py records.json. No network, installs, or remote publication.\n",
+        "ai-workflow/work/export/BATCH.md": "# Export completed tasks\n\n## Context\nOriginal request: Add --include-completed to the task export CLI so completed tasks can be included. Keep the current default and JSON format.\n\n## Proposal\nAC1. Without the flag the CLI exports only incomplete records, in input order.\nAC2. With --include-completed the CLI exports every input record, in input order.\nAdd a CLI boolean option and an optional include_completed argument to exporter.export. Preserve the record shape. Verify both CLI invocations and the focused export checks.\n\n## Approval\nThe user approved this outcome and implementation. The current assignment is independent local verification only; no commit, push, PR or deployment is authorized.\n\n## Continuation\nImplementation is available in HEAD. Obtain independent verification of the approved behavior.\n",
+        "cli.py": "import argparse\nimport json\nfrom exporter import export\n\nparser = argparse.ArgumentParser()\nparser.add_argument(\"input\")\nparser.add_argument(\"--include-completed\", action=\"store_true\")\nargs = parser.parse_args()\nwith open(args.input) as source:\n    records = json.load(source)\nprint(export(records))\n",
+        "exporter.py": "import json\n\ndef export(records, include_completed=False):\n    return json.dumps([r for r in records if include_completed or not r[\"completed\"]])\n",
+        "records.json": "[{\"id\": 1, \"completed\": false}, {\"id\": 2, \"completed\": true}]\n",
+        "tests/test_export.py": "import json\nimport subprocess\nimport sys\nimport unittest\nfrom exporter import export\n\nclass ExportTests(unittest.TestCase):\n    def test_default(self):\n        result = subprocess.check_output([sys.executable, \"cli.py\", \"records.json\"], text=True)\n        self.assertEqual([r[\"id\"] for r in json.loads(result)], [1])\n\n    def test_completed(self):\n        self.assertEqual(json.loads(export([{\"id\": 2, \"completed\": True}], include_completed=True)), [{\"id\": 2, \"completed\": True}])\n"
+      }
+    },
+    "project-b": {
+      "head": "fb14c712f33016c1cfb7c19c3ed8630da475a825",
+      "files": {
+        "AGENTS.md": "Use Python standard library only. Run checks with python3 -B -m unittest discover -s tests. The CLI is invoked as python3 -B cli.py records.json. No network, installs, or remote publication.\n",
+        "ai-workflow/work/export/BATCH.md": "# Export completed tasks\n\n## Context\nOriginal request: Add --include-completed to the task export CLI so completed tasks can be included. Keep the current default and JSON format.\n\n## Proposal\nAC1. Without the flag the CLI exports only incomplete records, in input order.\nAC2. With --include-completed the CLI exports every input record, in input order.\nAdd a CLI boolean option and an optional include_completed argument to exporter.export. Preserve the record shape. Verify both CLI invocations and the focused export checks.\n\n## Approval\nThe user approved this outcome and implementation. The current assignment is independent local verification only; no commit, push, PR or deployment is authorized.\n\n## Continuation\nImplementation is available in HEAD. Obtain independent verification of the approved behavior.\n",
+        "cli.py": "import argparse\nimport json\nfrom exporter import export\n\nparser = argparse.ArgumentParser()\nparser.add_argument(\"input\")\nparser.add_argument(\"--include-completed\", action=\"store_true\")\nargs = parser.parse_args()\nwith open(args.input) as source:\n    records = json.load(source)\nprint(export(records, include_completed=args.include_completed))\n",
+        "exporter.py": "import json\n\ndef export(records, include_completed=False):\n    return json.dumps([r for r in records if include_completed or not r[\"completed\"]])\n",
+        "records.json": "[{\"id\": 1, \"completed\": false}, {\"id\": 2, \"completed\": true}]\n",
+        "tests/test_export.py": "import json\nimport subprocess\nimport sys\nimport unittest\nfrom exporter import export\n\nclass ExportTests(unittest.TestCase):\n    def test_default(self):\n        result = subprocess.check_output([sys.executable, \"cli.py\", \"records.json\"], text=True)\n        self.assertEqual([r[\"id\"] for r in json.loads(result)], [1])\n\n    def test_completed(self):\n        self.assertEqual(json.loads(export([{\"id\": 2, \"completed\": True}], include_completed=True)), [{\"id\": 2, \"completed\": True}])\n"
+      }
+    }
+  }
+}

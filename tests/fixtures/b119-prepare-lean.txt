@@ -1,0 +1,704 @@
+Historical experimental output, not instructions or an approved proposal.
+One bounded lean preparation; full proposal gate not passed.
+Application code: 10a5226206851e98a5360d68efba21188be1be7f.
+Trailing line whitespace is normalized only in this retained fixture.
+
+===== FEATURE.md =====
+Raw SHA256: 62f4c259fbc04e620213e51fb271bec009213e3227b6b5955e3836048683ce8e
+Retained SHA256: 62f4c259fbc04e620213e51fb271bec009213e3227b6b5955e3836048683ce8e
+
+# Feature: Świeże godziny i sprawdzenie wyboru
+
+Batch: B119-trial
+Workflow schema: 4
+Feature revision: 2
+Source items: [oryginalne polecenie](request.md)
+Completion level: feature
+
+## Outcome and scope
+
+Klient odbioru i dowozu widzi świeże terminy przy otwarciu listy. Klik sprawdza termin od razu; jeśli termin przestał pasować, modal wyjaśnia odmowę i aplikacja zaznacza najbliższy dostępny. Checkout powtarza kontrolę i obsługuje wyścig po wyborze. Oglądanie i klikanie nie zajmuje pojemności. Zakres obejmuje istniejący endpoint dostępności, UI koszyka i odzyskiwanie po odrzuceniu checkoutu, oba obecne mechanizmy dowozu.
+
+Bez zmian pojemności, wag obciążenia, modelu holdu, nowych tabel, minimum strefy, dopłaty za mały koszyk, usług płatniczych i wdrożenia. To propozycja, nie wykonana zmiana. Decyzje D1–D3 poniżej pozostają otwarte; dokument nie jest gotowy do bezwarunkowej realizacji.
+
+## Acceptance criteria
+
+AC1. Otwarcie istniejącego „Zmień” odbioru wymusza świeży katalog, również przy pustym koszyku. Dowóz otrzymuje analogiczny zwijany panel z „Zmień”; jego otwarcie oraz jawne ponowne pytanie wymuszają nową wycenę dla aktualnego adresu i koszyka. Przy brakujących danych UI podaje rzeczywistą przyczynę zamiast udawać otrzymanie terminów; zakres pustego koszyka dowozu wymaga D1.
+
+AC2. Zwinięta lista nie wywołuje zapytań o katalog terminów. Istniejące odświeżanie pozycji/markerów koszyka może działać, ale nie wylicza i nie podmienia list odbioru ani dowozu. Żaden nowy polling list nie powstaje. Zmiana adresu i świadome ponowne zapytanie są zdarzeniami użytkownika, nie pollingiem.
+
+AC3. Klik odbioru zawsze wykonuje sprawdzenie wskazanego terminu przed potwierdzeniem wyboru, także przy pustym koszyku i przed telefonem. Sukces nie pobiera pełnego katalogu. Odmowa pobiera najbliższy realny zamiennik i pokazuje modal „Na wybraną godzinę jest już za późno”; zamiennik pozostaje zaznaczony w widoku, sesji i zapisie lokalnym. Przykład: 13:20 odpada, 13:40 pozostaje wybrane. Brak jakiegokolwiek zamiennika wymaga D2.
+
+AC4. Klik dowozu sprawdza wybrane okno na serwerze, w kontekście aktualnej lokalizacji, adresu i koszyka. Odmowa lub wygaśnięcie oferty po ponownym pytaniu prowadzi do świeżej wyceny i modalu z najbliższym żywym oknem, jeśli istnieje. Sam timer wygaśnięcia nie pobiera katalogu: zachowuje widoczną godzinę jako wymagającą ponownego sprawdzenia. Następne otwarcie, klik lub „Zamawiam” wykonuje świeżą kontrolę; „Zamawiam” w takim stanie nie wysyła zamówienia przed jej wynikiem. Odnowiony token, cena, etykieta, termin płatności i wymaganie zgody pochodzą z nowej oferty. Klient nigdy nie uzyskuje automatycznie zgody na dłuższe oczekiwanie.
+
+AC5. „Zamawiam” pozostaje drugą bramką. Odmowa terminu z właściwego checkoutu (odbiór i oba mechanizmy dowozu) oraz preflight OTP odbioru płatnego przy odbiorze daje ten sam modal i rzeczywisty zamiennik, bez utraty koszyka i danych kontaktowych, bez automatycznego ponowienia zamówienia. Późniejsze showErrors/render nie kasuje zamiennika ani nie zastępuje modalu ogólnym „Brak wolnych terminów dostawy.”. Inne błędy, np. adres, minimum, płatność lub limit obliczeń, zachowują własne znaczenie.
+
+AC6. Odczyt listy i klik nie tworzą zamówienia, holdu, KitchenWork ani claimu i nie zmieniają liczników pojemności. Dwa sprawdzenia mogą zaakceptować tę samą godzinę przed holdem. Checkout korzysta z istniejących blokad i holdu; nie przepełnia kubełka i nie pozostawia częściowego zapisu po odmowie. Dla odbioru oba zamówienia przyjmowane są, gdy obydwa mieszczą się przy zapisie; przy jednym miejscu zapisuje się jedno. Dalszy klik po zapełnieniu otrzymuje zamiennik. Dodatkowe ograniczenie wersji oferty wspólnej floty wymaga D3.
+
+AC7. `catalog: false` pomija klucz `day_groups` w JSON, również przy odmowie. UI nie interpretuje braku katalogu jako pustej listy. Opóźniona odpowiedź na poprzedni klik, adres lub koszyk nie nadpisuje nowszego wyboru. Błąd sieci nie potwierdza niesprawdzonego terminu i nie oznacza braku dostępności.
+
+## Decisions and constraints
+
+C1. Wymaganie użytkownika: istniejące rezerwacje dopiero przy zamówieniu, bez rezerwacji na ekran. Nie zmieniamy `PreparationCapacity`, `OwnFleet::CheckoutHold` ani wielkości kubełków.
+C2. Techniczne, oparte na kodzie: pusty odbiór sprawdzamy istniejącym `remaining_capacity?` w wariancie bez obciążeń (`cart_items: nil`), czyli wolne miejsce w domyślnej puli. `[]` daje pustą mapę obciążeń i `all? == true`, więc nie nadaje się do tego przypadku. Nie wymyślamy fikcyjnego produktu ani ilości.
+C3. Techniczne: publiczna ścieżka OTP dotyczy gościa płacącego przy odbiorze. Dowóz wymusza online i omija OTP, więc plan nie dodaje walidacji dowozu do endpointu OTP ani nie obiecuje tam zatrzymania SMS-a dla ręcznie wysłanego żądania dowozu. Taki dodatkowy hardening jest poza zakresem. Klient nie może użyć całego `CheckoutPreflight` jako walidatora kliknięcia — wymaga danych kontaktowych i niepustego koszyka. Współdzielimy tylko walidację dostępności; checkout zachowuje autorytatywne reguły zapisu i kontaktu.
+C4. Wymaganie: `DeliveryPricingZone.minimum_subtotal_cents` i odpowiedź `below_minimum` pozostają bez zmian. Nie maskujemy odmowy minimum jako braku okien ani nie omijamy minimum pustym koszykiem.
+C5. Techniczne: obejmujemy tradycyjne `DeliveryPromises::Window` oraz `OwnFleet::DeliveryOffer::Window` w trybach shared/draining. Draining nie produkuje nowej oferty w obecnym kodzie; nowy UI tego nie obchodzi.
+C6. Techniczne: podpis, lokalizacja, aktualny adres, koszyk, czas i pojemność są sprawdzane serwerowo. Klik/lista nie wysyła SMS-a i nie wywołuje płatności. Brak odpowiedzi nie jest sukcesem walidacji.
+C7. Proponowana interpretacja „najbliższy”: najwcześniejszy obecnie dostępny termin w istniejącym horyzoncie dla bieżącego kontekstu, z sortowaniem po czasie odbioru/dostarczenia; przy równym czasie zachowujemy typ okna. Oferta następnego dnia może być zamiennikiem. Nie wydłużamy horyzontu.
+C8. Techniczne/UI: jeden modal z opisem zmiany i przyciskiem zamknięcia, obsługą klawiatury i przywróceniem fokusu do nowego wyboru. Żadnej automatycznej wysyłki zamówienia. Opóźnione żądania mają kontrolę kolejności i kontekstu; stan pochodzący z odpowiedzi jest stosowany atomowo.
+
+D1. Decyzja produktu — pusty koszyk dowozu: zarówno `DeliveryPromises#valid_request?`, jak i `OwnFleet::DeliveryOffer#available?` wymagają pozycji; minimum może dodatkowo blokować wycenę. Czy pusty dowóz ma pokazywać wyjaśnienie „dodaj pozycję, aby sprawdzić godziny”, czy wymaga orientacyjnych godzin bez znajomości obciążenia? Pierwsza opcja jest wyjątkiem od ogólnego wymagania pustego koszyka i wymaga zgody; druga wymaga jawnej definicji obciążenia, nie wolno jej dopowiadać. Pozostały plan nie zakłada rozstrzygnięcia.
+D2. Decyzja produktu — rzeczywiście brak zamienników: jak ma wyglądać stan, kiedy serwer nie znajduje żadnej godziny? Propozycja: modal informuje o braku alternatywy, zachowuje koszyk i nie pozwala wysłać zamówienia bez ważnego wyboru. To nie może udawać dostępnego terminu. Zakaz „pustki” w poleceniu nie określa tego stanu.
+D3. Decyzja produktu — dwa zapisy wspólnej floty: obecna ważność oferty obejmuje wersję planu i fingerprint; istniejący test wymaga jednego sukcesu z dwóch jednoczesnych checkoutów tej samej wersji. Czy zachowujemy tę odmowę z natychmiastowym modalem i świeżą ofertą, czy oba mają się zapisać, jeśli świeże planowanie nadal mieści oba zamówienia? Druga opcja wymaga doprecyzowania odnowienia oferty przy zapisie i osobnej rewizji planu; nie wynika automatycznie z „nie zmieniaj modelu rezerwacji”.
+
+## Verification
+
+Planowane: request/service specs walidacji i serializacji; rzeczywiste interakcje przeglądarki (otwarcie, klik przed telefonem, modal, wybór po renderze, checkout); kontrolowane równoczesne checkouty i kontrola braku zapisów przy odczytach; RuboCop na zmienionych plikach. Szczegóły i komendy w IMPLEMENTATION. Nie uruchomiono testów, usług, migracji ani instalacji. Lokalny wynik `feature` nie będzie dowodem działania produkcji. D1–D3 uniemożliwiają obecnie domknięcie całego pokrycia.
+
+===== IMPLEMENTATION.md =====
+Raw SHA256: 6a69c1cd7b19f56c4d61f0c7d6c3c813d63211cd6c1019fec12a411e62f42552
+Retained SHA256: 6a69c1cd7b19f56c4d61f0c7d6c3c813d63211cd6c1019fec12a411e62f42552
+
+# Implementation: Świeże godziny i sprawdzenie wyboru
+
+Batch: B119-trial
+Workflow schema: 4
+Plan revision: 2
+Feature revision: 2
+
+## Execution context
+
+Application (read only in this trial): `/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails`.
+Base inspected: `10a5226206851e98a5360d68efba21188be1be7f`; application code had no listed changes. Existing workflow changes are unrelated and were preserved; prior B119 and backlog contents were not read. This proposal is held only in trial output; branch/PR and lifecycle: [WORK_INDEX](WORK_INDEX.md).
+Instructions: supplied candidate blueprint 4.1.0, schema 4; app router records source commit `259cdc5d10de0e12067ff95ef9f3ef149e0a86e4`, but candidate integrity/currentness against that commit was not compared. App `AGENTS.md`, `ai-workflow/SECURITY.md`, `ai-workflow/TESTING_POLICY.md` apply. Setup reference: app `README.md`, Local Development/Testing and `bin/spec`; setup is not authorized or tested here.
+
+Authority now: preparation, local source reads, artifact writes here, native read-only proposal review only. No application edits, tests/services, dependencies, Git mutations, external publication or implementation. Intended future delivery scope to approve after D1–D3: implementation and listed local checks in an isolated checkout/database, no commits/push/PR until separately authorized with a named destination. Push destination and PR authority: unset, not inferred. Environment resources must be identified and connection targets verified before future tests; use isolated PostgreSQL/PostGIS, fake/stub external providers and synthetic data, dynamic browser ports. No credentials or production data in evidence. Native workers may inherit the selected model; no model-selection mechanism is recorded.
+
+## Tasks
+
+All tasks below are planned, not authorized for execution. Tasks affected by D1–D3 cannot start until those choices are reconciled into a new baseline.
+
+| Task | Status | Outcome | Feature refs | Depends on | Checks |
+| --- | --- | --- | --- | --- | --- |
+| T1 | planned | Read-only pickup selection and response contract, including empty cart and replacement | AC1–3, AC6–7, C1–3,C6–7 | D2/C7 approval | V1,V5 |
+| T2 | planned | Read-only delivery selection check using both offer implementations, fresh quotation and classification | AC1,AC4,AC6–7,C1,C4–7 | T1 shared contract; D1,D2 | V2,V5 |
+| T3 | planned | Expand/list/click UI, modal, durable replacement selection and request ordering | AC1–4,AC7,C2,C4–8 | T1,T2 | V3,V6 |
+| T4 | planned | Recover slot-related checkout and OTP refusals through the same selection flow | AC5–6,C1,C3–8 | T1,T2,T3; D3 | V4,V5,V6 |
+| T5 | planned | Focused combined regression, races, changed-file lint and review of scoped diff | AC1–7,C1–8 | T1–T4 | V1–V6 |
+
+### Shared contract and owning changes
+
+Proposed names below are design choices, not existing APIs. Extend the existing `Public::CartRecoveryController#availability` POST; no new tables or reservation endpoint. Add optional `slot_intent: list | check | recover | background`. Existing remove-line/remove-unavailable routes and callers without the field retain their cart-cleanup contract. `catalog` retains its meaning for pickup JSON; false always omits `day_groups`.
+
+For new callers add `slot_selection: {kind, state, requested_token, selected, replacement, reason, message}`; `kind` pickup/delivery, `state` accepted/replaced/unavailable/blocked. `selected` exists on acceptance; `replacement` exists only after a fresh successful alternative check. Pickup descriptors carry signed token, starts_at, label and surface_label. Delivery descriptors are complete newly serialized windows including token, promise times, fee/address context, expiry/deadline and consent requirement. `unavailable` is genuinely no alternative (D2); `blocked` names unmet prerequisites, minimum, geocoding or computation failure, never fabricated capacity loss. Client transport failure is separately retryable and must not become accepted. The server trusts signed tokens and its own pricing/time data, not client labels.
+
+A proposed `Public::SlotSelectionPreview` owns this small orchestration and is called by availability and public checkout-recovery serializers (OTP caller pickup-only). It uses existing domain validators/quoters, not a second capacity algorithm. `CartRecovery` remains owner of line/discount reconciliation; shared context uses current location, canonical `Orders::CartLines` lines, actual subtotal and address. Unknown menu lines continue to produce existing errors; preview never authorizes order placement.
+
+| Component / task / evidence | Before → after | Material interfaces and responsibilities | Callers / consumers |
+| --- | --- | --- | --- |
+| T1: `cart_recovery_controller.rb`, `public/cart_recovery.rb`, `public/pickup_slot_state.rb`, `queries/pickup_slots_query.rb` | preview with empty `[]` can accept full bucket; `catalog:false` has no next slot → explicit selection intent, correctly normalized empty pickup, separate next-candidate lookup on refusal | Input adds intent; selected token + location + actual cart feed open/time/public eligibility and `remaining_capacity?`. `[]` becomes nil only for empty pickup capacity inspection. Existing capacity math stays unchanged. Output adds selection result/one replacement; false catalog omits groups. | `CartAvailability`, `Pickup`; checkout serializers reuse same preview |
+| T2: `public/delivery_cart_quote.rb`, `orders/checkout/delivery_selection.rb`, `delivery_promises.rb`, `own_fleet/delivery_offer.rb` | quote ignores submitted selected token; click never validates → explicit check of submitted offer followed by fresh quote on refusal | Extract the read-only selected-window validation from DeliverySelection as necessary, retaining location/signature, address/cart, lead time, pricing/minimum, expiry and availability. UI check does not require phone/payment proof or pre-existing long-wait consent. Checkout still enforces online payment and consent. Existing quote serializes fresh windows. | Delivery, checkout recovery; availability service |
+| T3: views `_pickup`, `_delivery`, `cart_controller`, `cart_availability`, `pickup`, `delivery`, `cart_owners`, `cart_runtime` | static HTML and cached refresh/unguarded click → open-triggered forced list request and awaited single selection check | Pickup details gains toggle action; delivery windows move inside analogous details with one Zmień control (replace existing standalone retry button). Explicit address changes may re-quote; timer never requests lists. New modal partial/owner can be introduced, scoped to this behavior. | DOM, CartSession, CartStorage, submit label and consent/deadline UI |
+| T4: `orders/checkout`, public `orders_controller`, `checkout_phone_proofs_controller`, `public/pickup_slots_recovery_payload`, `completion`, `cart_owners` | pickup recovery only clears, queries without cart; delivery errors have no recovery producer → canonical cart-aware selection recovery on known slot errors, applied once | Recognize pickup_slot_full/unavailable and delivery_offer_expired/window_unavailable at response production even if service recovery is nil. Do not map other errors into this group. Build preview with submitted context after failed/rolled-back attempt, then return same selection envelope. | Checkout.submit, OTP.request, Completion, Pickup/Delivery |
+
+### T1 pickup flow
+
+List opening sends current pickup cart and `slot_intent:list,catalog:true`, bypassing acceptedFingerprint/marker shortcuts and empty-count return. `PickupSlotState` + query produce eligible, sorted groups for the current location. Click sends only intended token plus cart context, `check,catalog:false`; it validates location/signature, opening/time eligibility, status and remaining capacity. On success return selected descriptor only; no full-horizon lookup. On rejection query the current eligible horizon once for the nearest fitting slot (C7), return one replacement and modal reason, without `day_groups`. Separate next-slot selection from the current `catalog` guard; do not flip false to true just to get an alternative. No mutation of capacity or reservations.
+
+Use the same normalized context for selected validity, replacement lookup and selected_pickup_slot output; otherwise CartRecovery and PickupSlotState disagree. Preserve legacy cart cleanup fields; Basket.applyCartRecovery must continue working. If replacement descriptor is absent from cached groups, `Pickup.applyRecovery` must insert/update its day and slot before selection, storage and `syncSelectedSlotButton`. Then update selected day, aria-pressed, label, submit text and stored slot together. Never select first and let sync clear it because its old button is absent. A list response may update groups but cannot override a newer click.
+
+### T2 delivery flow
+
+For a nonempty cart and complete address, list/requery bypasses `CartAvailability.needsQuote` and guardedQuote and always calls `DeliveryCartQuote`. Pricing uses actual canonical subtotal with unchanged MatchZone minimum and fees. Incomplete address, below_minimum, geocoder failure and planning timeout remain distinct blocking results. Empty-cart behavior stays unresolved (D1), not a hidden early return deemed success.
+
+A click sends window_token + current address/cart/location to the read-only validation subset. Traditional tokens: verify signature/location, reconstruct DeliveryPromises::Window, apply current zone/commercial quote and `DeliveryPromises.available?`. Shared/draining: `OwnFleet::DeliveryOffer.expired?`, `verify` and recomputation check actual validity; `available?` is not a substitute for fleet verification. `verify` may itself replan; this is still checking the selected offer, not a full UI catalog poll. Invalid/tampered/foreign tokens are refused without accepting their metadata. No request calls `CheckoutHold` or the writing checkout.
+
+On capacity/time/expired-token refusal, run a fresh DeliveryCartQuote once. Choose chronological nearest returned viable offer, include complete new descriptor and modal. For ordinary delivery, narrow `DeliveryPromises.available?` to retrieve the signed window’s preparation slot within the existing location/horizon scope before applying unchanged kitchen/time/capacity/commercial checks. Today `candidate_slots.find` first scans the whole horizon. The list/offer path still uses the full horizon. A successful check must not inspect unrelated slots or generate a full catalog; only failure starts the alternative lookup. For fleet, the selected offer can legitimately allocate multiple kitchen buckets and replan its route, so single-offer check means no unrelated offer-list generation, not one kitchen-row read. Fresh token strings are not stable identities: do not decide an old offer is alive merely by matching labels, or dead solely because a new signature differs. On acceptance use server-validated descriptor. On replacement atomically apply windows, selected token, price, address, deadline, timers and cleared long-wait consent. `Delivery.applyRecovery` must paint the received selected/replacement offer before any token-presence cleanup; old `quote()`/`clearWindow()` and expiry callbacks cannot clear the new token afterward. Explicit requery uses this same route. Timer expiry is a separate local transition: mark the selected offer `needs_recheck` (proposed state), keep its token/label as an unconfirmed historical choice, and show that it needs checking; do not clear the list or fetch a quote, whether the details are closed or open. Opening the panel or clicking a time starts the normal list/check path. Pressing Zamawiam while `needs_recheck` first runs the check/recovery request as an explicit user action, without creating an order; after refusal/replacement show the modal and require another submit, never auto-submit the changed offer. Separate ability to trigger this recovery from readiness to send an order, so expiry does not permanently disable the only recovery action. A pending check disables duplicate submits. Stale responses/timers cannot affect a subsequent selection.
+
+No checkout-retry/changed fleet admission is designed pending D3. Current shared fleet may refuse due to version changes despite remaining capacity; this is exposed, not treated as proof of AC6.
+
+### T3 request and UI lifecycle
+
+`CartAvailability.refresh` keeps marker/line inspection but explicitly uses background with catalog false; the server background path does not calculate delivery window lists, and omitted `delivery` is not read as `{windows:[]}`. List methods force an actual fetch; click does not reuse a polling cache. Remove empty-cart bypass only from selection; do not silently change add/quantity guard behavior. On check success apply selected server descriptor, rather than stale event.currentTarget text. On check refusal apply replacement then show modal, before contact interaction. Do not reuse the current `allowProposed` fail-open catch for checks.
+
+A monotonically increasing selection/list request identity and context fingerprint cover cart, fulfillment, location/address and requested token. Abort or ignore older responses; disable dependent selection/submit while its required check is pending. Closing details cancels/ignores list work; no recurring list refresh is scheduled. Programmatic opening caused by recovery must not create an endless toggle→fetch→recovery loop. No full catalog while closed on initial CartRuntime.connect or later 15-second ticks, including marker changes; fresh list fetch happens only on open or explicit user requery/recovery (including Zamawiam after expiry or a failed checkout), never from the expiry timer. Existing HTML initial content is retained as initial rendering, not evidence of live availability.
+
+One accessible modal shows refusal and new time, is visible before focus can move to telephone, and returns focus to selected choice when dismissed. Preserve typed contact/cart data. Ensure controller/runtime disconnect disposes delivery expiry timers as well as availability timers; this is required to stop old UI state callbacks from invalidating a new selection, not a general refactor.
+
+### T4 checkout result and downstream state
+
+OTP scope is pickup with guest pay_on_pickup only: `checkout_dom.js:152–153` selects that payment mode for OTP; `checkout_dom.js:164–167` and `Delivery.select` force delivery online. `Orders::Checkout#read_only_call:108–114` explicitly skips delivery selection. This proposal neither adds a delivery OTP validator nor claims no-SMS delivery preflight behavior; manually submitted delivery OTP requests are outside the requested normal journey. Testing the real pickup OTP endpoint is required; no stubbed preflight error may replace its actual validator.
+
+Pickup: `PickupSelection` already produces full/unavailable errors under location lock; OTP preflight calls it after static validation. Both public controllers currently decorate pickup recovery with `PickupSlotsQuery` lacking cart loads. Replace this projection with canonical lines and the same new preview/response contract, including next selection. Outer invalid-signature failure also gets refusal recovery rather than error only.
+
+Delivery: `DeliverySelection` produces refusal before write; `LockedAttempt.lock_delivery_admission!` and hold failures produce refusal inside the transaction. `Orders::Checkout#recovery_payload` currently only adds pickup/unavailable-lines/bonus. Public response serialization must recognize delivery slot errors even when recovery is absent, invoke the fresh preview after rollback with original current cart/address, and include it. No new hold on recovery, no swallowing of unrelated payment/consent/budget failures, no retry of checkout. The public controllers own response formatting; domain holds remain unchanged.
+
+`Checkout.submit` applies recovery before showErrors; `cart_owners.showErrors` currently clears delivery for these codes and would undo a successful replacement. Remove that unconditional clearing when a valid replacement was applied; use one canonical outcome consumer shared with OTP.request/Completion. Consume modal notification once and preserve selected time through Completion.render, Delivery.paint, Pickup.syncSelectedSlotButton and Basket persistence. Generic error copy remains for non-slot errors. If no alternative, follow D2 only after decision; never manufacture a live choice. Pickup OTP slot failure must not send an SMS; failed checkout leaves no committed partial graph, while successful checkout follows current hold/payment path.
+
+## Verification checks
+
+Planned only. Commands are run from a future authorized isolated application checkout; `bin/spec` was read and supports explicit paths and disjoint browser lane. Existing paths below were found in the repository. New examples are to be added at those seams; a dedicated new service spec may be added once helper ownership is final. No tests/services were executed in this preparation.
+
+| Check | Scope | Command or observable procedure | Required evidence |
+| --- | --- | --- | --- |
+| V1 | focused T1 | `bin/spec spec/requests/public/cart_recovery_spec.rb spec/queries/pickup_slots_query_spec.rb` | Empty pickup list excludes full/closed/past/foreign slots; check live accepts, full returns next; weighted multi-pool cart replacement fits; false catalog omits key on both outcomes; pickup check success avoids horizon/catalog; legacy cleanup still works. No Order/hold/KitchenWork/claim/count delta. |
+| V2 | focused T2 | `bin/spec spec/requests/public/fleet_delivery_quotes_spec.rb spec/requests/public/fleet_checkout_spec.rb spec/services/orders/fleet_checkout_spec.rb spec/services/orders/checkout_spec.rb` | Traditional and fleet live check, expired/changed address/foreign/invalid token, full selected with next viable, real no offers, closed/draining, consent not pre-required at click but required at checkout. Below_minimum and normal fee unchanged; empty delivery scenario after D1. Timeout distinct from no capacity. Traditional successful selected-window check touches only its selected preparation candidate; offer-list query unchanged. No reservation writes on preview. |
+| V3 | focused T3 | `bin/spec browser spec/system/public_pickup_slot_labels_spec.rb spec/system/public_delivery_checkout_spec.rb spec/system/fleet_checkout_payment_spec.rb` | Network-count assertions: open fetches with empty/full pickup; unchanged markers never suppress open. Closed timer/initial connect makes no catalog requests, including changed markers. Empty/full click denied → visible dialog and next pressed button before phone. Alternate-response ordering, rejected fetch, list without replacement DOM button, token regeneration and changed address; advance past expiry with details collapsed and assert zero list requests, preserved unconfirmed label, then open/click/Zamawiam and observe fresh request, modal and selected replacement without an automatic order; selection survives rerender/local storage reload. D1/D2 scenarios explicit after decisions. |
+| V4 | focused T4 | `bin/spec spec/requests/public/orders_spec.rb spec/requests/public/checkout_phone_proofs_spec.rb spec/requests/public/fleet_checkout_spec.rb spec/services/orders/checkout_spec.rb spec/services/orders/fleet_checkout_concurrency_spec.rb` | Slot becomes full after successful click: HTTP error includes cart-aware replacement for pickup, traditional and fleet delivery; pickup/pay-on-pickup OTP produces recovery without SMS through its real validator; delivery online journey never requests OTP; rollback leaves no partial Order/payment/hold/claim. Existing idempotent replay unchanged. D3 must define final fleet race expectation. |
+| V5 | focused T1/T2/T4 | Extend real threaded races in checkout_spec and fleet_checkout_concurrency_spec; run via V2/V4, no duplicate command | Two read-only checks both accept before hold; capacity 2 + load 1 pickup saves both, capacity 1 saves one; counts never exceed limits. Then next check returns next real slot. Delivery resource limits also asserted, including fleet's existing stricter version refusal and D3 decision. No stubbing internal capacity validator. |
+| V6 | focused UI + batch lint | `bin/spec browser spec/system/customer_checkout_spec.rb spec/system/public_delivery_checkout_spec.rb spec/system/fleet_checkout_payment_spec.rb`; `bin/spec visual spec/system/public_pickup_slot_labels_spec.rb spec/system/public_delivery_checkout_spec.rb` for focused tagged modal geometry examples; then `bin/rubocop <explicit changed Ruby/spec paths>` | Fill contact after selection, lose time, submit → modal, replacement remains selected after showErrors, consent/deadline update, existing data survives. Keyboard/focus in browser lane; add a small tagged `:visual` modal example in the named files for representative desktop/mobile sizes, selected by the explicit visual command (browser excludes visual tags); capture local evidence if permitted. At delivery time replace lint placeholder with exact changed files and retain invocation; no repo-wide lint. |
+
+Request/spec paths above were confirmed by local file listing. This is not a claimed passing check. No whole fast/browser/visual/release lane, new installs, production proof or external CI are required by this feature proposal. Browser examples should use fake time/network boundaries and synthetic fixtures, without mocking the internal availability decisions being proved. Broader batch check is scoped diff/coverage review and changed-file lint; no full-suite addition.
+
+## Coverage
+
+| Feature refs / affected consumers | Task and check IDs |
+| --- | --- |
+| AC1–2; details, initial connect, timers, address/requery | T1–3; V1–3 |
+| AC3; pickup selected descriptor, day grid, session and storage | T1,T3; V1,V3,V6 |
+| AC4; traditional/fleet token, quote/expiry/consent | T2,T3; V2,V3,V6; D1/D2 remain open |
+| AC5; Orders response, pickup OTP response, Completion/showErrors/render | T4; V4,V6 |
+| AC6,C1; preview side effects and real checkout concurrency | T1,T2,T4; V1,V2,V4,V5; D3 remains open |
+| AC7; serializer omission, latency/errors, background omission | T1–3; V1,V3 |
+| C2,C3; no-cart pickup versus whole checkout eligibility | T1,T4; V1,V4 |
+| C4,C5,C6; minimum, both quote engines, signatures, no SMS/payment at click | T2,T4; V2,V4,V5 |
+| C7; nearest/next-day interpretation | T1,T2; V1,V2; explicit proposal in approval draft |
+| C8; dialog, focus, response ordering, persistent choice | T3,T4; V3,V6 |
+| D1–D3 | Product decisions needed; no execution-ready claim. Revise affected FEATURE/IMPLEMENTATION/checks before implementation. |
+
+===== PROGRESS.md =====
+Raw SHA256: 349e075ff2e36edc637d31d085e169ff9e056fef6e67217bd8562854b794a7e0
+Retained SHA256: 349e075ff2e36edc637d31d085e169ff9e056fef6e67217bd8562854b794a7e0
+
+# Progress: Świeże godziny i sprawdzenie wyboru
+
+Batch: B119-trial
+Workflow schema: 4
+
+## Current
+
+Trial preparation is complete at FEATURE 2 / IMPLEMENTATION 2, **not execution-ready**. Lifecycle is awaiting_approval in the simulated WORK_INDEX, pending D1–D3 and C7 product decisions plus the small F3 verification-assignment correction. Final R1 unknown, R2 unknown, R3 fail, R4 pass, R5 pass; basis below and in review/REVIEW-2.md. No implementation is authorized or started.
+
+The single repair and focused rereview allowance is exhausted. Stop here; do not launch another review or alter the proposal to close F3. The next authorized continuation must resolve the product choices, assign the delivery-no-OTP browser assertion to V3/V6, and reconcile the resulting baseline before implementation approval. F3 is a technical documentation gap, not a question to make the operator design.
+
+Recovery inputs: original request.md, supplied candidate package, current FEATURE/IMPLEMENTATION, FINAL Polish decision presentation, review/original and review/repaired immutable snapshots with hashes, both REVIEW files, DISPOSITIONS, exact REVIEWER-REQUEST files and PROVENANCE. The reviewed approval draft is review/repaired/FINAL.md; root FINAL.md additionally reports the final review outcome, without changing the planned design. No application files/tests/services/dependencies/Git state/publication were modified or run.
+
+## History
+
+- 2026-10-01: Read original request, supplied candidate workflow-prepare, entry-rules and blueprint 4.1.0. Read app root/router/security/testing policies. App router recorded package commit 259cdc5d10de0e12067ff95ef9f3ef149e0a86e4; supplied candidate overrides installed package, integrity/currentness unverified.
+- 2026-10-01: Inspected application source at HEAD 10a5226206851e98a5360d68efba21188be1be7f; code had no listed modifications. Existing workflow edits left alone; forbidden prior proposal/backlog/transcripts/source repo/trial results not read. Local file listing confirmed the intended request/browser spec paths; bin/spec routing was read, no test invoked.
+- 2026-10-01: Produced FEATURE 1 and IMPLEMENTATION 1, exact Polish decision draft FINAL.md. Identified D1–D3 from real no-cart offer checks and fleet version admission; these are unresolved product boundaries, not authority to expand implementation. C7 is a proposed interpretation for approval.
+- 2026-10-01: Author readiness before independent review: R1 unknown (D1–D3; requirement conflicts explicit); R2 unknown (D1/D2/D3-dependent flows not finalized; ordinary pickup/delivery/recovery producer/consumer paths specified); R3 unknown (checks map all AC/C, but D1–D3 require finalized expected results); R4 pass (component/contract table and concrete validation/result/render/storage chains); R5 pass (FINAL exposes same scope, interfaces, decisions and limits). Evidence: FEATURE Decisions, IMPLEMENTATION shared contract/flow/coverage, FINAL. These are proposal judgments, not test results.
+
+- 2026-10-01: First native independent read-only review by `/root/prepare_lean_trial/proposal_review`, spawned with `fork_turns:none`, inherited model. Input hashes retained in review/original/SHA256.json; exact task and provenance recorded. Result REVIEW-1: R1 unknown, R2 fail, R3 unknown, R4 fail, R5 pass. F1 OTP producer/scope and F2 expiry lifecycle were confirmed proposal gaps; no application tests run.
+- 2026-10-01: One repair produced FEATURE 2 / IMPLEMENTATION 2: narrowed OTP to actual pickup/pay-on-pickup journey; local-only expiry with explicit user-triggered recheck; narrowed traditional delivery candidate lookup; separated focused visual lane. All original artifacts retained unchanged. Dispositions and revised snapshot/hash in review/. No product decisions presumed.
+- 2026-10-01: Single focused rereview by the same native reviewer, exact follow-up in REVIEWER-REQUEST-2 and provenance. REVIEW-2 closes F1/F2 at proposal level, confirms normal technical flow, and reports remaining F3: V4's request/service commands cannot prove the browser never requests delivery OTP. Author independently agrees from Checkout.submit and CheckoutDom evidence: record this limitation, no second repair in this bounded trial.
+- 2026-10-01: Final author reconciliation at FEATURE 2 / IMPLEMENTATION 2: R1 unknown (D1–D3/C7); R2 unknown (conditional product branches remain unresolved); R3 fail (F3 plus unresolved expected outcomes); R4 pass (owners/contracts/flow explicit for specified paths); R5 pass (reviewed draft and final review note disclose scope, revisions, planned-only checks and unresolved work). Evidence: FEATURE decisions, IMPLEMENTATION V3/V4/V6 and flows, REVIEW-2, FINAL. Reviewer agreement is not implementation proof. No tests or services executed; app source remained read-only.
+
+===== FINAL.md =====
+Raw SHA256: c848e7fe7677778e187e9e41696777930d24ce8d2f09f7a979fd1bbe18730dee
+Retained SHA256: c848e7fe7677778e187e9e41696777930d24ce8d2f09f7a979fd1bbe18730dee
+
+Przygotowałem propozycję **B119-trial**, FEATURE 2 / IMPLEMENTATION 2. **Nie jest jeszcze gotowa do realizacji: potrzebne są trzy decyzje produktowe.** Kod aplikacji pozostał bez zmian.
+
+Po otwarciu „Zmień” klient dostanie świeże godziny. Klik sprawdzi wybrany termin przed wpisywaniem telefonu; odmowa pokaże modal i zaznaczy dostępny zamiennik. „Zamawiam” ponowi kontrolę, a odzyskany termin pozostanie wybrany także po przerysowaniu koszyka. Samo wygaśnięcie dowozu nie pobierze niczego w tle: godzina pozostanie widoczna jako wymagająca sprawdzenia przy następnym otwarciu, kliknięciu lub „Zamawiam”. Proponuję rozumieć „najbliższy” jako najwcześniejszy dostępny od teraz, również kolejnego dnia, w obecnym horyzoncie. Oglądanie i kliknięcie niczego nie rezerwują.
+
+| Element | Proponowana zmiana |
+| --- | --- |
+| `CartAvailability` i panel „Zmień” | Otwarcie wymusza pobranie danych zamiast polegać na markerach. Zwinięty panel nie pobiera katalogu. Dowóz otrzyma analogiczny zwijany panel; bez drugiego przycisku odświeżania. |
+| `CartRecovery`, `PickupSlotState` | Nowy cel żądania odróżnia listę, kontrolę, odzyskiwanie i tło. Kontrola zwraca wynik i ewentualny pojedynczy zamiennik. Pusty odbiór sprawdza realnie wolne miejsce; `catalog:false` pomija `day_groups`. |
+| `DeliveryCartQuote`, walidacja `DeliverySelection` | Klik sprawdza podpisane okno w obu mechanizmach dowozu; tradycyjny dowóz zawęża sprawdzenie do wskazanej godziny. Odmowa uruchamia świeżą wycenę, z nowym tokenem, ceną i terminem. Minimum strefy i opłaty pozostają bez zmian. Zgoda na dłuższe oczekiwanie wymaga ponownego potwierdzenia. |
+| `Pickup`, `Delivery`, `Completion` i kontrolery checkoutu/OTP | Jeden sposób stosowania odpowiedzi utrzymuje zamiennik w liście, sesji i zapisie lokalnym. Odmowa checkoutu produkuje dane odzyskiwania, a późniejsze wyświetlanie błędów ich nie kasuje. OTP obejmuje odbiór płatny przy odbiorze; dowóz online przechodzi przez właściwy checkout. Blokady i hold pozostają obecne. |
+
+Do rozstrzygnięcia:
+
+1. **Pusty koszyk dowozu:** obecne algorytmy potrzebują produktów. Czy wtedy pokazać „dodaj pozycję, aby sprawdzić godziny”, czy mają powstać godziny orientacyjne? Pierwsze oznacza wyjątek od ogólnego wymagania pustego koszyka; drugie wymaga ustalenia obciążenia, którego nie da się wywnioskować z kodu. Nie przyjąłem żadnego wariantu.
+2. **Rzeczywiście brak alternatyw:** proponuję modal z tą informacją, zachowanie koszyka i zablokowanie wysyłki bez ważnego wyboru. Nie można zaznaczyć następnej godziny, gdy żadna nie istnieje. Ten przypadek wymaga zaakceptowania zachowania.
+3. **Wyścig wspólnej floty:** dziś dwa checkouty tej samej wersji oferty dają jeden sukces, nawet jeśli sama kuchnia ma większą pojemność. Czy zachować to ograniczenie i pokazać świeży zamiennik, czy wymagać obu zapisów, jeśli nadal się mieszczą? Drugi wariant wymaga dopracowania odnowienia oferty przy zapisie; obecny plan go nie przemyca.
+
+Największe ryzyka to odpowiedzi przychodzące w innej kolejności, wygasające oferty i skasowanie zamiennika przez dalszy render. Plan obejmuje specy obu mechanizmów dowozu, pustego odbioru, serializacji, checkoutu/OTP, rzeczywistych wyścigów i interakcji przeglądarki oraz RuboCop na zmienionych plikach. **To planowane sprawdzenia — żadnych testów ani usług nie uruchomiono.** Wynik lokalny nie będzie dowodem wdrożenia.
+
+Proszę o rozstrzygnięcie D1–D3 i interpretacji „najbliższego”. Potem trzeba zaktualizować wskazaną bazę dokumentów przed zgodą na implementację i lokalną weryfikację. Ta próba kończy się na przygotowaniu; commit, push, PR i wdrożenie nie są objęte zgodą, a cel publikacji pozostaje nieustalony.
+
+
+Wynik końcowego niezależnego przeglądu: wcześniejsze uwagi dotyczące OTP i wygaśnięcia są rozwiązane w propozycji. Pozostaje też mała luka techniczna w planie: dowód, że przeglądarka nie wysyła żądania OTP dla dowozu, trzeba przypisać do V3/V6 zamiast testów request/service V4. Nie wymaga to decyzji produktowej. Po wykorzystaniu jednej dozwolonej poprawki i ponownego przeglądu zatrzymałem próbę z tą luką jawną. Końcowa gotowość: R1/R2 unknown, R3 fail, R4/R5 pass — bez zgody na realizację. Szczegóły: [końcowy przegląd](review/REVIEW-2.md) i [stan przygotowania](PROGRESS.md).
+
+===== review/original/FEATURE.md =====
+Raw SHA256: 919123ec05be40de5de9f6d8b99648ae7895b59ae523061fa1db4e958b8d05a8
+Retained SHA256: 919123ec05be40de5de9f6d8b99648ae7895b59ae523061fa1db4e958b8d05a8
+
+# Feature: Świeże godziny i sprawdzenie wyboru
+
+Batch: B119-trial
+Workflow schema: 4
+Feature revision: 1
+Source items: [oryginalne polecenie](request.md)
+Completion level: feature
+
+## Outcome and scope
+
+Klient odbioru i dowozu widzi świeże terminy przy otwarciu listy. Klik sprawdza termin od razu; jeśli termin przestał pasować, modal wyjaśnia odmowę i aplikacja zaznacza najbliższy dostępny. Checkout powtarza kontrolę i obsługuje wyścig po wyborze. Oglądanie i klikanie nie zajmuje pojemności. Zakres obejmuje istniejący endpoint dostępności, UI koszyka i odzyskiwanie po odrzuceniu checkoutu, oba obecne mechanizmy dowozu.
+
+Bez zmian pojemności, wag obciążenia, modelu holdu, nowych tabel, minimum strefy, dopłaty za mały koszyk, usług płatniczych i wdrożenia. To propozycja, nie wykonana zmiana. Decyzje D1–D3 poniżej pozostają otwarte; dokument nie jest gotowy do bezwarunkowej realizacji.
+
+## Acceptance criteria
+
+AC1. Otwarcie istniejącego „Zmień” odbioru wymusza świeży katalog, również przy pustym koszyku. Dowóz otrzymuje analogiczny zwijany panel z „Zmień”; jego otwarcie oraz jawne ponowne pytanie wymuszają nową wycenę dla aktualnego adresu i koszyka. Przy brakujących danych UI podaje rzeczywistą przyczynę zamiast udawać otrzymanie terminów; zakres pustego koszyka dowozu wymaga D1.
+
+AC2. Zwinięta lista nie wywołuje zapytań o katalog terminów. Istniejące odświeżanie pozycji/markerów koszyka może działać, ale nie wylicza i nie podmienia list odbioru ani dowozu. Żaden nowy polling list nie powstaje. Zmiana adresu i świadome ponowne zapytanie są zdarzeniami użytkownika, nie pollingiem.
+
+AC3. Klik odbioru zawsze wykonuje sprawdzenie wskazanego terminu przed potwierdzeniem wyboru, także przy pustym koszyku i przed telefonem. Sukces nie pobiera pełnego katalogu. Odmowa pobiera najbliższy realny zamiennik i pokazuje modal „Na wybraną godzinę jest już za późno”; zamiennik pozostaje zaznaczony w widoku, sesji i zapisie lokalnym. Przykład: 13:20 odpada, 13:40 pozostaje wybrane. Brak jakiegokolwiek zamiennika wymaga D2.
+
+AC4. Klik dowozu sprawdza wybrane okno na serwerze, w kontekście aktualnej lokalizacji, adresu i koszyka. Odmowa lub wygaśnięcie oferty po ponownym pytaniu prowadzi do świeżej wyceny i modalu z najbliższym żywym oknem, jeśli istnieje. Odnowiony token, cena, etykieta, termin płatności i wymaganie zgody pochodzą z nowej oferty. Klient nigdy nie uzyskuje automatycznie zgody na dłuższe oczekiwanie.
+
+AC5. „Zamawiam” pozostaje drugą bramką. Odmowa terminu z właściwego checkoutu oraz preflight OTP daje ten sam modal i rzeczywisty zamiennik, bez utraty koszyka i danych kontaktowych, bez automatycznego ponowienia zamówienia. Późniejsze showErrors/render nie kasuje zamiennika ani nie zastępuje modalu ogólnym „Brak wolnych terminów dostawy.”. Inne błędy, np. adres, minimum, płatność lub limit obliczeń, zachowują własne znaczenie.
+
+AC6. Odczyt listy i klik nie tworzą zamówienia, holdu, KitchenWork ani claimu i nie zmieniają liczników pojemności. Dwa sprawdzenia mogą zaakceptować tę samą godzinę przed holdem. Checkout korzysta z istniejących blokad i holdu; nie przepełnia kubełka i nie pozostawia częściowego zapisu po odmowie. Dla odbioru oba zamówienia przyjmowane są, gdy obydwa mieszczą się przy zapisie; przy jednym miejscu zapisuje się jedno. Dalszy klik po zapełnieniu otrzymuje zamiennik. Dodatkowe ograniczenie wersji oferty wspólnej floty wymaga D3.
+
+AC7. `catalog: false` pomija klucz `day_groups` w JSON, również przy odmowie. UI nie interpretuje braku katalogu jako pustej listy. Opóźniona odpowiedź na poprzedni klik, adres lub koszyk nie nadpisuje nowszego wyboru. Błąd sieci nie potwierdza niesprawdzonego terminu i nie oznacza braku dostępności.
+
+## Decisions and constraints
+
+C1. Wymaganie użytkownika: istniejące rezerwacje dopiero przy zamówieniu, bez rezerwacji na ekran. Nie zmieniamy `PreparationCapacity`, `OwnFleet::CheckoutHold` ani wielkości kubełków.
+C2. Techniczne, oparte na kodzie: pusty odbiór sprawdzamy istniejącym `remaining_capacity?` w wariancie bez obciążeń (`cart_items: nil`), czyli wolne miejsce w domyślnej puli. `[]` daje pustą mapę obciążeń i `all? == true`, więc nie nadaje się do tego przypadku. Nie wymyślamy fikcyjnego produktu ani ilości.
+C3. Techniczne: klient nie może użyć całego `CheckoutPreflight` jako walidatora kliknięcia — wymaga danych kontaktowych i niepustego koszyka. Współdzielimy tylko walidację dostępności; checkout zachowuje autorytatywne reguły zapisu i kontaktu.
+C4. Wymaganie: `DeliveryPricingZone.minimum_subtotal_cents` i odpowiedź `below_minimum` pozostają bez zmian. Nie maskujemy odmowy minimum jako braku okien ani nie omijamy minimum pustym koszykiem.
+C5. Techniczne: obejmujemy tradycyjne `DeliveryPromises::Window` oraz `OwnFleet::DeliveryOffer::Window` w trybach shared/draining. Draining nie produkuje nowej oferty w obecnym kodzie; nowy UI tego nie obchodzi.
+C6. Techniczne: podpis, lokalizacja, aktualny adres, koszyk, czas i pojemność są sprawdzane serwerowo. Klik/lista nie wysyła SMS-a i nie wywołuje płatności. Brak odpowiedzi nie jest sukcesem walidacji.
+C7. Proponowana interpretacja „najbliższy”: najwcześniejszy obecnie dostępny termin w istniejącym horyzoncie dla bieżącego kontekstu, z sortowaniem po czasie odbioru/dostarczenia; przy równym czasie zachowujemy typ okna. Oferta następnego dnia może być zamiennikiem. Nie wydłużamy horyzontu.
+C8. Techniczne/UI: jeden modal z opisem zmiany i przyciskiem zamknięcia, obsługą klawiatury i przywróceniem fokusu do nowego wyboru. Żadnej automatycznej wysyłki zamówienia. Opóźnione żądania mają kontrolę kolejności i kontekstu; stan pochodzący z odpowiedzi jest stosowany atomowo.
+
+D1. Decyzja produktu — pusty koszyk dowozu: zarówno `DeliveryPromises#valid_request?`, jak i `OwnFleet::DeliveryOffer#available?` wymagają pozycji; minimum może dodatkowo blokować wycenę. Czy pusty dowóz ma pokazywać wyjaśnienie „dodaj pozycję, aby sprawdzić godziny”, czy wymaga orientacyjnych godzin bez znajomości obciążenia? Pierwsza opcja jest wyjątkiem od ogólnego wymagania pustego koszyka i wymaga zgody; druga wymaga jawnej definicji obciążenia, nie wolno jej dopowiadać. Pozostały plan nie zakłada rozstrzygnięcia.
+D2. Decyzja produktu — rzeczywiście brak zamienników: jak ma wyglądać stan, kiedy serwer nie znajduje żadnej godziny? Propozycja: modal informuje o braku alternatywy, zachowuje koszyk i nie pozwala wysłać zamówienia bez ważnego wyboru. To nie może udawać dostępnego terminu. Zakaz „pustki” w poleceniu nie określa tego stanu.
+D3. Decyzja produktu — dwa zapisy wspólnej floty: obecna ważność oferty obejmuje wersję planu i fingerprint; istniejący test wymaga jednego sukcesu z dwóch jednoczesnych checkoutów tej samej wersji. Czy zachowujemy tę odmowę z natychmiastowym modalem i świeżą ofertą, czy oba mają się zapisać, jeśli świeże planowanie nadal mieści oba zamówienia? Druga opcja wymaga doprecyzowania odnowienia oferty przy zapisie i osobnej rewizji planu; nie wynika automatycznie z „nie zmieniaj modelu rezerwacji”.
+
+## Verification
+
+Planowane: request/service specs walidacji i serializacji; rzeczywiste interakcje przeglądarki (otwarcie, klik przed telefonem, modal, wybór po renderze, checkout); kontrolowane równoczesne checkouty i kontrola braku zapisów przy odczytach; RuboCop na zmienionych plikach. Szczegóły i komendy w IMPLEMENTATION. Nie uruchomiono testów, usług, migracji ani instalacji. Lokalny wynik `feature` nie będzie dowodem działania produkcji. D1–D3 uniemożliwiają obecnie domknięcie całego pokrycia.
+
+===== review/original/IMPLEMENTATION.md =====
+Raw SHA256: 1241018c4da5179c2e50241b7a21dfac5ed92692a042b6dd7e54556139d6607b
+Retained SHA256: 1241018c4da5179c2e50241b7a21dfac5ed92692a042b6dd7e54556139d6607b
+
+# Implementation: Świeże godziny i sprawdzenie wyboru
+
+Batch: B119-trial
+Workflow schema: 4
+Plan revision: 1
+Feature revision: 1
+
+## Execution context
+
+Application (read only in this trial): `/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails`.
+Base inspected: `10a5226206851e98a5360d68efba21188be1be7f`; application code had no listed changes. Existing workflow changes are unrelated and were preserved; prior B119 and backlog contents were not read. This proposal is held only in trial output; branch/PR and lifecycle: [WORK_INDEX](WORK_INDEX.md).
+Instructions: supplied candidate blueprint 4.1.0, schema 4; app router records source commit `259cdc5d10de0e12067ff95ef9f3ef149e0a86e4`, but candidate integrity/currentness against that commit was not compared. App `AGENTS.md`, `ai-workflow/SECURITY.md`, `ai-workflow/TESTING_POLICY.md` apply. Setup reference: app `README.md`, Local Development/Testing and `bin/spec`; setup is not authorized or tested here.
+
+Authority now: preparation, local source reads, artifact writes here, native read-only proposal review only. No application edits, tests/services, dependencies, Git mutations, external publication or implementation. Intended future delivery scope to approve after D1–D3: implementation and listed local checks in an isolated checkout/database, no commits/push/PR until separately authorized with a named destination. Push destination and PR authority: unset, not inferred. Environment resources must be identified and connection targets verified before future tests; use isolated PostgreSQL/PostGIS, fake/stub external providers and synthetic data, dynamic browser ports. No credentials or production data in evidence. Native workers may inherit the selected model; no model-selection mechanism is recorded.
+
+## Tasks
+
+All tasks below are planned, not authorized for execution. Tasks affected by D1–D3 cannot start until those choices are reconciled into a new baseline.
+
+| Task | Status | Outcome | Feature refs | Depends on | Checks |
+| --- | --- | --- | --- | --- | --- |
+| T1 | planned | Read-only pickup selection and response contract, including empty cart and replacement | AC1–3, AC6–7, C1–3,C6–7 | D2/C7 approval | V1,V5 |
+| T2 | planned | Read-only delivery selection check using both offer implementations, fresh quotation and classification | AC1,AC4,AC6–7,C1,C4–7 | T1 shared contract; D1,D2 | V2,V5 |
+| T3 | planned | Expand/list/click UI, modal, durable replacement selection and request ordering | AC1–4,AC7,C2,C4–8 | T1,T2 | V3,V6 |
+| T4 | planned | Recover slot-related checkout and OTP refusals through the same selection flow | AC5–6,C1,C3–8 | T1,T2,T3; D3 | V4,V5,V6 |
+| T5 | planned | Focused combined regression, races, changed-file lint and review of scoped diff | AC1–7,C1–8 | T1–T4 | V1–V6 |
+
+### Shared contract and owning changes
+
+Proposed names below are design choices, not existing APIs. Extend the existing `Public::CartRecoveryController#availability` POST; no new tables or reservation endpoint. Add optional `slot_intent: list | check | recover | background`. Existing remove-line/remove-unavailable routes and callers without the field retain their cart-cleanup contract. `catalog` retains its meaning for pickup JSON; false always omits `day_groups`.
+
+For new callers add `slot_selection: {kind, state, requested_token, selected, replacement, reason, message}`; `kind` pickup/delivery, `state` accepted/replaced/unavailable/blocked. `selected` exists on acceptance; `replacement` exists only after a fresh successful alternative check. Pickup descriptors carry signed token, starts_at, label and surface_label. Delivery descriptors are complete newly serialized windows including token, promise times, fee/address context, expiry/deadline and consent requirement. `unavailable` is genuinely no alternative (D2); `blocked` names unmet prerequisites, minimum, geocoding or computation failure, never fabricated capacity loss. Client transport failure is separately retryable and must not become accepted. The server trusts signed tokens and its own pricing/time data, not client labels.
+
+A proposed `Public::SlotSelectionPreview` owns this small orchestration and is called by availability and public checkout-recovery serializers. It uses existing domain validators/quoters, not a second capacity algorithm. `CartRecovery` remains owner of line/discount reconciliation; shared context uses current location, canonical `Orders::CartLines` lines, actual subtotal and address. Unknown menu lines continue to produce existing errors; preview never authorizes order placement.
+
+| Component / task / evidence | Before → after | Material interfaces and responsibilities | Callers / consumers |
+| --- | --- | --- | --- |
+| T1: `cart_recovery_controller.rb`, `public/cart_recovery.rb`, `public/pickup_slot_state.rb`, `queries/pickup_slots_query.rb` | preview with empty `[]` can accept full bucket; `catalog:false` has no next slot → explicit selection intent, correctly normalized empty pickup, separate next-candidate lookup on refusal | Input adds intent; selected token + location + actual cart feed open/time/public eligibility and `remaining_capacity?`. `[]` becomes nil only for empty pickup capacity inspection. Existing capacity math stays unchanged. Output adds selection result/one replacement; false catalog omits groups. | `CartAvailability`, `Pickup`; checkout serializers reuse same preview |
+| T2: `public/delivery_cart_quote.rb`, `orders/checkout/delivery_selection.rb`, `delivery_promises.rb`, `own_fleet/delivery_offer.rb` | quote ignores submitted selected token; click never validates → explicit check of submitted offer followed by fresh quote on refusal | Extract the read-only selected-window validation from DeliverySelection as necessary, retaining location/signature, address/cart, lead time, pricing/minimum, expiry and availability. UI check does not require phone/payment proof or pre-existing long-wait consent. Checkout still enforces online payment and consent. Existing quote serializes fresh windows. | Delivery, checkout recovery; availability service |
+| T3: views `_pickup`, `_delivery`, `cart_controller`, `cart_availability`, `pickup`, `delivery`, `cart_owners`, `cart_runtime` | static HTML and cached refresh/unguarded click → open-triggered forced list request and awaited single selection check | Pickup details gains toggle action; delivery windows move inside analogous details with one Zmień control (replace existing standalone retry button). Explicit address changes may re-quote; timer never requests lists. New modal partial/owner can be introduced, scoped to this behavior. | DOM, CartSession, CartStorage, submit label and consent/deadline UI |
+| T4: `orders/checkout`, public `orders_controller`, `checkout_phone_proofs_controller`, `public/pickup_slots_recovery_payload`, `completion`, `cart_owners` | pickup recovery only clears, queries without cart; delivery errors have no recovery producer → canonical cart-aware selection recovery on known slot errors, applied once | Recognize pickup_slot_full/unavailable and delivery_offer_expired/window_unavailable at response production even if service recovery is nil. Do not map other errors into this group. Build preview with submitted context after failed/rolled-back attempt, then return same selection envelope. | Checkout.submit, OTP.request, Completion, Pickup/Delivery |
+
+### T1 pickup flow
+
+List opening sends current pickup cart and `slot_intent:list,catalog:true`, bypassing acceptedFingerprint/marker shortcuts and empty-count return. `PickupSlotState` + query produce eligible, sorted groups for the current location. Click sends only intended token plus cart context, `check,catalog:false`; it validates location/signature, opening/time eligibility, status and remaining capacity. On success return selected descriptor only; no full-horizon lookup. On rejection query the current eligible horizon once for the nearest fitting slot (C7), return one replacement and modal reason, without `day_groups`. Separate next-slot selection from the current `catalog` guard; do not flip false to true just to get an alternative. No mutation of capacity or reservations.
+
+Use the same normalized context for selected validity, replacement lookup and selected_pickup_slot output; otherwise CartRecovery and PickupSlotState disagree. Preserve legacy cart cleanup fields; Basket.applyCartRecovery must continue working. If replacement descriptor is absent from cached groups, `Pickup.applyRecovery` must insert/update its day and slot before selection, storage and `syncSelectedSlotButton`. Then update selected day, aria-pressed, label, submit text and stored slot together. Never select first and let sync clear it because its old button is absent. A list response may update groups but cannot override a newer click.
+
+### T2 delivery flow
+
+For a nonempty cart and complete address, list/requery bypasses `CartAvailability.needsQuote` and guardedQuote and always calls `DeliveryCartQuote`. Pricing uses actual canonical subtotal with unchanged MatchZone minimum and fees. Incomplete address, below_minimum, geocoder failure and planning timeout remain distinct blocking results. Empty-cart behavior stays unresolved (D1), not a hidden early return deemed success.
+
+A click sends window_token + current address/cart/location to the read-only validation subset. Traditional tokens: verify signature/location, reconstruct DeliveryPromises::Window, apply current zone/commercial quote and `DeliveryPromises.available?`. Shared/draining: `OwnFleet::DeliveryOffer.expired?`, `verify` and recomputation check actual validity; `available?` is not a substitute for fleet verification. `verify` may itself replan; this is still checking the selected offer, not a full UI catalog poll. Invalid/tampered/foreign tokens are refused without accepting their metadata. No request calls `CheckoutHold` or the writing checkout.
+
+On capacity/time/expired-token refusal, run a fresh DeliveryCartQuote once. Choose chronological nearest returned viable offer, include complete new descriptor and modal. Fresh token strings are not stable identities: do not decide an old offer is alive merely by matching labels, or dead solely because a new signature differs. On acceptance use server-validated descriptor. On replacement atomically apply windows, selected token, price, address, deadline, timers and cleared long-wait consent. `Delivery.applyRecovery` must paint the received selected/replacement offer before any token-presence cleanup; old `quote()`/`clearWindow()` and expiry callbacks cannot clear the new token afterward. Expiry/requery uses this same route, and stale responses/timers cannot affect a subsequent selection.
+
+No checkout-retry/changed fleet admission is designed pending D3. Current shared fleet may refuse due to version changes despite remaining capacity; this is exposed, not treated as proof of AC6.
+
+### T3 request and UI lifecycle
+
+`CartAvailability.refresh` keeps marker/line inspection but explicitly uses background with catalog false; the server background path does not calculate delivery window lists, and omitted `delivery` is not read as `{windows:[]}`. List methods force an actual fetch; click does not reuse a polling cache. Remove empty-cart bypass only from selection; do not silently change add/quantity guard behavior. On check success apply selected server descriptor, rather than stale event.currentTarget text. On check refusal apply replacement then show modal, before contact interaction. Do not reuse the current `allowProposed` fail-open catch for checks.
+
+A monotonically increasing selection/list request identity and context fingerprint cover cart, fulfillment, location/address and requested token. Abort or ignore older responses; disable dependent selection/submit while its required check is pending. Closing details cancels/ignores list work; no recurring list refresh is scheduled. Programmatic opening caused by recovery must not create an endless toggle→fetch→recovery loop. No full catalog while closed on initial CartRuntime.connect or later 15-second ticks, including marker changes; fresh list fetch happens only on open or explicit user requery. Existing HTML initial content is retained as initial rendering, not evidence of live availability.
+
+One accessible modal shows refusal and new time, is visible before focus can move to telephone, and returns focus to selected choice when dismissed. Preserve typed contact/cart data. Ensure controller/runtime disconnect disposes delivery expiry timers as well as availability timers; this is required to stop old UI state callbacks from invalidating a new selection, not a general refactor.
+
+### T4 checkout result and downstream state
+
+Pickup: `PickupSelection` already produces full/unavailable errors under location lock; OTP preflight calls it after static validation. Both public controllers currently decorate pickup recovery with `PickupSlotsQuery` lacking cart loads. Replace this projection with canonical lines and the same new preview/response contract, including next selection. Outer invalid-signature failure also gets refusal recovery rather than error only.
+
+Delivery: `DeliverySelection` produces refusal before write; `LockedAttempt.lock_delivery_admission!` and hold failures produce refusal inside the transaction. `Orders::Checkout#recovery_payload` currently only adds pickup/unavailable-lines/bonus. Public response serialization must recognize delivery slot errors even when recovery is absent, invoke the fresh preview after rollback with original current cart/address, and include it. No new hold on recovery, no swallowing of unrelated payment/consent/budget failures, no retry of checkout. The public controllers own response formatting; domain holds remain unchanged.
+
+`Checkout.submit` applies recovery before showErrors; `cart_owners.showErrors` currently clears delivery for these codes and would undo a successful replacement. Remove that unconditional clearing when a valid replacement was applied; use one canonical outcome consumer shared with OTP.request/Completion. Consume modal notification once and preserve selected time through Completion.render, Delivery.paint, Pickup.syncSelectedSlotButton and Basket persistence. Generic error copy remains for non-slot errors. If no alternative, follow D2 only after decision; never manufacture a live choice. OTP failure must not send an SMS; failed checkout leaves no committed partial graph, while successful checkout follows current hold/payment path.
+
+## Verification checks
+
+Planned only. Commands are run from a future authorized isolated application checkout; `bin/spec` was read and supports explicit paths and disjoint browser lane. Existing paths below were found in the repository. New examples are to be added at those seams; a dedicated new service spec may be added once helper ownership is final. No tests/services were executed in this preparation.
+
+| Check | Scope | Command or observable procedure | Required evidence |
+| --- | --- | --- | --- |
+| V1 | focused T1 | `bin/spec spec/requests/public/cart_recovery_spec.rb spec/queries/pickup_slots_query_spec.rb` | Empty pickup list excludes full/closed/past/foreign slots; check live accepts, full returns next; weighted multi-pool cart replacement fits; false catalog omits key on both outcomes; check success avoids horizon/catalog; legacy cleanup still works. No Order/hold/KitchenWork/claim/count delta. |
+| V2 | focused T2 | `bin/spec spec/requests/public/fleet_delivery_quotes_spec.rb spec/requests/public/fleet_checkout_spec.rb spec/services/orders/fleet_checkout_spec.rb spec/services/orders/checkout_spec.rb` | Traditional and fleet live check, expired/changed address/foreign/invalid token, full selected with next viable, real no offers, closed/draining, consent not pre-required at click but required at checkout. Below_minimum and normal fee unchanged; empty delivery scenario after D1. Timeout distinct from no capacity. No reservation writes on preview. |
+| V3 | focused T3 | `bin/spec browser spec/system/public_pickup_slot_labels_spec.rb spec/system/public_delivery_checkout_spec.rb spec/system/fleet_checkout_payment_spec.rb` | Network-count assertions: open fetches with empty/full pickup; unchanged markers never suppress open. Closed timer/initial connect makes no catalog requests, including changed markers. Empty/full click denied → visible dialog and next pressed button before phone. Alternate-response ordering, rejected fetch, list without replacement DOM button, token regeneration, expiry timer and changed address; selection survives rerender/local storage reload. D1/D2 scenarios explicit after decisions. |
+| V4 | focused T4 | `bin/spec spec/requests/public/orders_spec.rb spec/requests/public/checkout_phone_proofs_spec.rb spec/requests/public/fleet_checkout_spec.rb spec/services/orders/checkout_spec.rb spec/services/orders/fleet_checkout_concurrency_spec.rb` | Slot becomes full after successful click: HTTP error includes cart-aware replacement for pickup, traditional and fleet delivery; OTP produces recovery without SMS; rollback leaves no partial Order/payment/hold/claim. Existing idempotent replay unchanged. D3 must define final fleet race expectation. |
+| V5 | focused T1/T2/T4 | Extend real threaded races in checkout_spec and fleet_checkout_concurrency_spec; run via V2/V4, no duplicate command | Two read-only checks both accept before hold; capacity 2 + load 1 pickup saves both, capacity 1 saves one; counts never exceed limits. Then next check returns next real slot. Delivery resource limits also asserted, including fleet's existing stricter version refusal and D3 decision. No stubbing internal capacity validator. |
+| V6 | focused UI + batch lint | `bin/spec browser spec/system/customer_checkout_spec.rb spec/system/public_delivery_checkout_spec.rb spec/system/fleet_checkout_payment_spec.rb` then `bin/rubocop <explicit changed Ruby/spec paths>` | Fill contact after selection, lose time, submit → modal, replacement remains selected after showErrors, consent/deadline update, existing data survives. Keyboard/focus/modal at representative desktop/mobile sizes; capture local evidence if permitted. At delivery time replace lint placeholder with exact changed files and retain invocation; no repo-wide lint. |
+
+Request/spec paths above were confirmed by local file listing. This is not a claimed passing check. No whole fast/browser/visual/release lane, new installs, production proof or external CI are required by this feature proposal. Browser examples should use fake time/network boundaries and synthetic fixtures, without mocking the internal availability decisions being proved. Broader batch check is scoped diff/coverage review and changed-file lint; no full-suite addition.
+
+## Coverage
+
+| Feature refs / affected consumers | Task and check IDs |
+| --- | --- |
+| AC1–2; details, initial connect, timers, address/requery | T1–3; V1–3 |
+| AC3; pickup selected descriptor, day grid, session and storage | T1,T3; V1,V3,V6 |
+| AC4; traditional/fleet token, quote/expiry/consent | T2,T3; V2,V3,V6; D1/D2 remain open |
+| AC5; Orders response, OTP response, Completion/showErrors/render | T4; V4,V6 |
+| AC6,C1; preview side effects and real checkout concurrency | T1,T2,T4; V1,V2,V4,V5; D3 remains open |
+| AC7; serializer omission, latency/errors, background omission | T1–3; V1,V3 |
+| C2,C3; no-cart pickup versus whole checkout eligibility | T1,T4; V1,V4 |
+| C4,C5,C6; minimum, both quote engines, signatures, no SMS/payment at click | T2,T4; V2,V4,V5 |
+| C7; nearest/next-day interpretation | T1,T2; V1,V2; explicit proposal in approval draft |
+| C8; dialog, focus, response ordering, persistent choice | T3,T4; V3,V6 |
+| D1–D3 | Product decisions needed; no execution-ready claim. Revise affected FEATURE/IMPLEMENTATION/checks before implementation. |
+
+===== review/original/FINAL.md =====
+Raw SHA256: b99d24bc89b2a5351cd47b9936a313da16cc0f9e9bb343b531d3ff5adfa56d3d
+Retained SHA256: b99d24bc89b2a5351cd47b9936a313da16cc0f9e9bb343b531d3ff5adfa56d3d
+
+Przygotowałem propozycję **B119-trial**, FEATURE 1 / IMPLEMENTATION 1. **Nie jest jeszcze gotowa do realizacji: potrzebne są trzy decyzje produktowe.** Kod aplikacji pozostał bez zmian.
+
+Po otwarciu „Zmień” klient dostanie świeże godziny. Klik sprawdzi wybrany termin przed wpisywaniem telefonu; odmowa pokaże modal i zaznaczy dostępny zamiennik. „Zamawiam” ponowi kontrolę, a odzyskany termin pozostanie wybrany także po przerysowaniu koszyka. Proponuję rozumieć „najbliższy” jako najwcześniejszy dostępny od teraz, również kolejnego dnia, w obecnym horyzoncie. Oglądanie i kliknięcie niczego nie rezerwują.
+
+| Element | Proponowana zmiana |
+| --- | --- |
+| `CartAvailability` i panel „Zmień” | Otwarcie wymusza pobranie danych zamiast polegać na markerach. Zwinięty panel nie pobiera katalogu. Dowóz otrzyma analogiczny zwijany panel; bez drugiego przycisku odświeżania. |
+| `CartRecovery`, `PickupSlotState` | Nowy cel żądania odróżnia listę, kontrolę, odzyskiwanie i tło. Kontrola zwraca wynik i ewentualny pojedynczy zamiennik. Pusty odbiór sprawdza realnie wolne miejsce; `catalog:false` pomija `day_groups`. |
+| `DeliveryCartQuote`, walidacja `DeliverySelection` | Klik sprawdza podpisane okno w obu mechanizmach dowozu. Odmowa uruchamia świeżą wycenę, z nowym tokenem, ceną i terminem. Minimum strefy i opłaty pozostają bez zmian. Zgoda na dłuższe oczekiwanie wymaga ponownego potwierdzenia. |
+| `Pickup`, `Delivery`, `Completion` i kontrolery checkoutu/OTP | Jeden sposób stosowania odpowiedzi utrzymuje zamiennik w liście, sesji i zapisie lokalnym. Odmowa checkoutu produkuje dane odzyskiwania, a późniejsze wyświetlanie błędów ich nie kasuje. Blokady i hold pozostają obecne. |
+
+Do rozstrzygnięcia:
+
+1. **Pusty koszyk dowozu:** obecne algorytmy potrzebują produktów. Czy wtedy pokazać „dodaj pozycję, aby sprawdzić godziny”, czy mają powstać godziny orientacyjne? Pierwsze oznacza wyjątek od ogólnego wymagania pustego koszyka; drugie wymaga ustalenia obciążenia, którego nie da się wywnioskować z kodu. Nie przyjąłem żadnego wariantu.
+2. **Rzeczywiście brak alternatyw:** proponuję modal z tą informacją, zachowanie koszyka i zablokowanie wysyłki bez ważnego wyboru. Nie można zaznaczyć następnej godziny, gdy żadna nie istnieje. Ten przypadek wymaga zaakceptowania zachowania.
+3. **Wyścig wspólnej floty:** dziś dwa checkouty tej samej wersji oferty dają jeden sukces, nawet jeśli sama kuchnia ma większą pojemność. Czy zachować to ograniczenie i pokazać świeży zamiennik, czy wymagać obu zapisów, jeśli nadal się mieszczą? Drugi wariant wymaga dopracowania odnowienia oferty przy zapisie; obecny plan go nie przemyca.
+
+Największe ryzyka to odpowiedzi przychodzące w innej kolejności, wygasające oferty i skasowanie zamiennika przez dalszy render. Plan obejmuje specy obu mechanizmów dowozu, pustego odbioru, serializacji, checkoutu/OTP, rzeczywistych wyścigów i interakcji przeglądarki oraz RuboCop na zmienionych plikach. **To planowane sprawdzenia — żadnych testów ani usług nie uruchomiono.** Wynik lokalny nie będzie dowodem wdrożenia.
+
+Proszę o rozstrzygnięcie D1–D3 i interpretacji „najbliższego”. Potem trzeba zaktualizować wskazaną bazę dokumentów przed zgodą na implementację i lokalną weryfikację. Ta próba kończy się na przygotowaniu; commit, push, PR i wdrożenie nie są objęte zgodą, a cel publikacji pozostaje nieustalony.
+
+===== review/REVIEW-1.md =====
+Raw SHA256: ddc310f5c142c9cd3bc074c07002b02e3cfd703288c7ae49b692fd948c72d90d
+Retained SHA256: ddc310f5c142c9cd3bc074c07002b02e3cfd703288c7ae49b692fd948c72d90d
+
+# Independent proposal review — B119-trial, review 1
+
+Reviewed FEATURE revision 1, IMPLEMENTATION revision 1 and FINAL from `review/original`. SHA-256 values for those three files match `original/SHA256.json`. Application HEAD inspected: `10a5226206851e98a5360d68efba21188be1be7f`.
+
+Review authority: supplied candidate blueprint section “Proposal readiness” and candidate `skills/workflow-prepare/references/proposal-review.md`; application root/router/security/testing rules. Application inspection was read-only. No application tests, services, installation, Git mutation or implementation. No PROGRESS, previous proposal, backlog, memory or other trial results were read.
+
+**Result: not execution-ready. Two ordinary technical gaps require reconciliation in addition to the exposed product decisions.**
+
+Application paths below are relative to `/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails`; proposal paths are relative to `review/original`.
+
+## Findings
+
+### F1 — Delivery OTP recovery has no reachable refusal producer
+
+**Priority: high. Technical gap, not a product question.**
+
+Proposal locations: FEATURE AC5 (`FEATURE.md:25`), T4 (`IMPLEMENTATION.md:69–73`), V4 (`IMPLEMENTATION.md:84`). These promise recovery from checkout/OTP refusal across pickup, traditional delivery and fleet delivery, and no SMS on that refusal. T4 describes detecting error codes and serializing recovery; it does not define adding delivery validation to the preflight.
+
+Actual path: `Public::CheckoutPhoneProofsController#create` calls preflight and sends the SMS whenever it succeeds (`app/controllers/public/checkout_phone_proofs_controller.rb:9–14`). `Orders::CheckoutPreflight` delegates to `Orders::Checkout.read_only_call`. That method explicitly invokes selection only when `fulfillment_kind != "delivery"` (`app/services/orders/checkout.rb:108–114`). `Eligibility` receives no delivery address/window and checks contact/cart/payment/opening state, not delivery availability (`app/services/orders/checkout/eligibility.rb:15–17,47–55`; `checkout.rb:184–190`). The delivery validators cited in T4 run in the writing checkout, which OTP does not call.
+
+Consequently a stale/full delivery token with otherwise valid input yields successful preflight and proceeds to SMS; no slot error reaches the newly described recovery formatter. Merely handling absent `result.recovery` does not fix this. Reconcile the actual OTP scope and promises: if delivery OTP refusal is required, identify its read-only validator invocation, inputs, error production and no-SMS boundary; otherwise explicitly justify the narrower pickup-only OTP coverage and remove the broader promise. Do not treat this as requiring an owner to design the missing technical path. Verification must drive the real OTP endpoint with a formerly valid, now unavailable delivery selection, without stubbing preflight to return the desired error.
+
+### F2 — Expiry has contradictory fetch rules while the list is closed
+
+**Priority: medium. Technical lifecycle ambiguity.**
+
+Proposal locations: `IMPLEMENTATION.md:55` says expiry/requery uses the same route which, on expired-token refusal, obtains a fresh DeliveryCartQuote and applies new timers. T3 (`IMPLEMENTATION.md:63`) says fresh list fetching happens only on opening or explicit requery; its component map also says timers never request lists. FEATURE AC2 (`FEATURE.md:19`) prohibits catalogue queries from a collapsed list. AC4 qualifies expiry recovery as happening after requery (`FEATURE.md:23`).
+
+Actual entry point: `Delivery.selectWindow` arms a timeout (`app/javascript/controllers/cart/delivery.js:61–65`); `expireWindow` currently clears the selected token and renders an expiry message (`delivery.js:71–75`). This event occurs independently of whether a details panel is open. Wiring that timeout directly to the proposed fresh-quote replacement path would request windows while closed and re-arm the next expiry after replacement. Keeping the current clearing behavior without specifying the deferred recovery would instead leave the user with the cleared choice.
+
+Define the timeout branch separately from an explicit requery: its resulting selection/submit state and exactly when a new quote is allowed. Reconcile T2, T3, AC2/AC4 and the approval summary. V3 should explicitly advance through offer expiry with the panel collapsed, assert the network behavior and resulting state, and then exercise the next permitted user action. This is necessary lifecycle design within the existing requirement, not a request for an unrelated product feature.
+
+## Compact path evidence
+
+| Path | Evidence and assessment |
+| --- | --- |
+| Pickup opening/empty click | Current `CartAvailability.allowSlot` returns early on empty count; refresh also returns early. The plan explicitly bypasses those gates for list/check. `PickupSlotsQuery#capacity_open?` distinguishes absent loads from an empty loads hash, so C2 addresses a real empty-cart error. |
+| Pickup result and durable choice | `Public::CartRecovery#pickup_slot_recovery_payload` conditionally adds day_groups; `PickupSlotState#next_slot` is disabled by catalog:false. T1 explicitly separates replacement lookup from catalogue serialization. `Pickup.applySelectedFromPayload` stores then syncs (`pickup.js:86–91`), and sync clears an absent button (`203–208`); T1 explicitly inserts the replacement before those consumers. |
+| Traditional delivery | `DeliverySelection` verifies signature/location, geocodes, applies pricing and calls `DeliveryPromises.available?`. T2 names those actual checks and separates payment/consent from click validation. A technical qualification: `DeliveryPromises.available?` currently calls `candidate_slots`, which filters the entire horizon before finding the selected preparation slot (`delivery_promises.rb:91–99,122–130`). Thus reuse proves selected-window acceptance, but not a claim that only one slot is inspected internally. No measured performance claim was verified. |
+| Shared fleet/draining | `DeliveryOffer.verify` reconstructs and compares fingerprints (`own_fleet/delivery_offer.rb:20–28`); `valid?` checks expiry/current planning input (`33–39`); `available?` requires nonempty lines and mode shared (`91–94`). T2 correctly distinguishes this from traditional availability and acknowledges draining cannot produce a fresh offer. |
+| Writing checkout rejection | `LockedAttempt` checks delivery before the transaction, checks admission under the location lock, and can reject during holds. The public orders controller currently attaches recovery only when present. T4 explicitly supplies the missing error-code-driven response production after rollback. |
+| Recovery consumers | `Checkout.submit` applies recovery before showErrors (`checkout.js:104–105`); `cart_owners.js:285–290` clears the delivery window on the exact refusal codes. T4 addresses this real later-state erasure, and Completion/OTP consumers are identified. The delivery OTP producer itself remains missing: F1. |
+| Test selection | `bin/spec` supports the explicit service/request and browser paths. Browser excludes visual/release tags (`bin/spec:11–15`), so the planned commands prove functional browser behavior, not the existing tagged width/zoom examples. V6 should not later cite those excluded examples as run. No tests were executed. |
+
+## Product decisions versus technical work
+
+- **D1 is genuine:** empty delivery lacks cart load input in both implementations (`DeliveryPromises#valid_request?`, `DeliveryOffer#available?`). Minimum remains independently enforced (`MatchZone` returns below_minimum). Choosing an informational empty state versus defining an indicative offer changes product behavior; do not invent cart load or silently bypass minimum.
+- **D2 is genuine:** a truly empty viable set cannot produce a real replacement. Its UI state is distinct from recovery when another slot exists.
+- **D3 exposes a real conflict:** fleet validity includes planning freshness/fingerprint, and `spec/services/orders/fleet_checkout_concurrency_spec.rb:35–48` requires one success for simultaneous same-version offers. However, old code/tests do not authorize weakening the user's “both if they fit” requirement. Preserving stricter refusal must be presented as an explicit exception requiring agreement; the alternative still needs a revised technical plan. No approval can be inferred from the current baseline.
+- **C7 is an explicit product interpretation:** earliest available now, including next day, rather than necessarily the next time after the rejected selection. It is exposed in FINAL and remains for confirmation.
+- F1 and F2 are not additional questions the owner should have to solve. They need author reconciliation before presenting an execution-ready proposal.
+
+## Readiness
+
+| Criterion | Status | Evidence |
+| --- | --- | --- |
+| R1 Requirement fidelity | unknown | Scope is mostly traceable and no reservation/minimum change is silently introduced. D1–D3/C7 remain unapproved; F2 leaves closed-list behavior unresolved. D3 cannot be presumed an allowed exception. |
+| R2 Executable flow | fail | Pickup and writing-checkout paths are concretely traced, but delivery OTP has no specified refusal producer (F1); expiry lacks one consistent transition (F2). |
+| R3 Path coverage | unknown | V1–V6 name useful accepting/rejecting, race and consumer checks and valid focused commands. D1–D3 leave expected outcomes open; expiry-while-collapsed needs explicit coverage. Tests remain planned only. |
+| R4 Component and interface changes | fail | Most owners, inputs and envelope consumers are explicit. The promised delivery OTP behavior lacks its validator/producer boundary (F1), and timer versus user-event fetch ownership is inconsistent (F2). |
+| R5 Presentation consistency | pass | FINAL identifies the fixed revisions, component changes, proposed nearest interpretation, all exposed product decisions and execution boundaries without claiming completed tests. It does not claim execution readiness. Update it after resolving F1/F2 so it does not imply only product decisions remain. |
+
+This is a proposal review, not implementation verification. No repair was made. Focused rereview should inspect the reconciled OTP and expiry paths, any changed product baseline, their check rows, and the updated approval summary while carrying forward unresolved decisions.
+
+===== review/REVIEW-2.md =====
+Raw SHA256: 6be3654ccf1264d633c9903b202248f5331c4dffd1ef94227023fa7af2566c8b
+Retained SHA256: 6be3654ccf1264d633c9903b202248f5331c4dffd1ef94227023fa7af2566c8b
+
+# Focused independent rereview — B119-trial, review 2
+
+Baseline: repaired FEATURE 2 / IMPLEMENTATION 2 / FINAL. All three digests match `repaired/SHA256.json`. Application HEAD remains `10a5226206851e98a5360d68efba21188be1be7f`.
+
+This is the single focused rereview under the candidate proposal-review brief and R1–R5 criteria. I compared the fixed original/repaired documents and inspected the changed claims in read-only application code. I did not read PROGRESS, DISPOSITIONS, memory, prior application proposals/backlog, source workflow repository or other experiments. No tests/services, application edits, installations, Git mutations, external publication or additional reviewers.
+
+**Result: the two first-review technical findings are resolved at proposal level. The proposal remains not execution-ready because D1–D3/C7 are unresolved. One small verification-assignment defect remains.**
+
+Application paths below are relative to `/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails`; proposal locations refer to `review/repaired`.
+
+## Changed paths and disposition
+
+| Path | Evidence and assessment |
+| --- | --- |
+| F1: OTP scope | Resolved by removing the unsupported delivery-OTP promise, rather than adding an unrelated endpoint change. `checkout_dom.js:152–153` requests proof for guest pay_on_pickup; `checkout_dom.js:145–149,164–171` and `delivery.js:12–14` require delivery online. `checkout.js:55–61` consequently skips proof requests for the normal delivery journey. Server checkout also requires proof only for guest non-online payment (`orders/checkout.rb:94–95`). Revised AC5/C3 and T4 (`IMPLEMENTATION.md:69–75`) correctly limit OTP recovery to pickup. A crafted delivery OTP request remains explicitly outside this proposal. |
+| Pickup OTP validator and producer | The actual endpoint calls preflight before requesting SMS. Preflight invokes `Orders::Checkout#read_only_call`; that calls `PickupSelection` for pickup (`checkout.rb:108–117`). `PickupSelection` produces full/unavailable errors and records recovery (`pickup_selection.rb:35–49,60–71`). T4 retains canonical cart-aware recovery and V4 now requires the real pickup validator, so the remaining promise has a reachable producer and a real no-SMS boundary. |
+| F2: expiry versus background fetch | Resolved. T2 (`IMPLEMENTATION.md:55`) defines local `needs_recheck`, retains token/label as unconfirmed history and issues no fetch from expiry whether the panel is open or closed. An explicit open/click/submit drives the check; refusal applies a fresh replacement and modal and requires another submit. The plan separates recovery activation from order readiness, which is necessary because current `Checkout.submit` stops at `canSubmit` (`checkout.js:47–54`) and `Delivery.readyToPay` derives readiness from the token/consent (`delivery.js:90–94`). Pending checks block duplicate submits. T3 (`63–65`), AC4 and FINAL agree on this sequence. V3 explicitly tests collapsed expiry, zero requests, the retained label and subsequent user action without automatic order creation. |
+| Traditional selected-window lookup | The added change is grounded: current `DeliveryPromises.available?` calls `candidate_slots` before selecting the signed preparation id (`delivery_promises.rb:91–99`), and `candidate_slots` filters the whole horizon (`122–130`). T2 now names a lookup by the signed preparation id within the same location/horizon and retains kitchen/time/capacity/commercial checks. The ordinary offer path continues to scan the horizon. Its unchanged scheduled branch already builds windows from the selected slot alone (`97–99,210–221`), so the narrowed lookup is consistent with that validator. V2 adds selected-candidate-only evidence and unchanged offer-list behavior. This is a planned check, not a measured performance claim. |
+| Fleet selection and consumer state | Existing first-review evidence remains applicable. T2 retains fleet verification/replanning, fresh replacement descriptors and explicit consent; no hold is added. T1/T4 still address replacement insertion before pickup sync and delivery clearWindow after recovery. The repair changes neither those interfaces nor the writing checkout's lock/hold contract. |
+| Browser and visual lane selection | Revised V6 separates functional browser checks from explicitly targeted visual checks. `bin/spec:11–15` has disjoint tags and `171–179` applies them to explicit targets. The selected visual paths can therefore run the planned tagged modal examples without requiring a whole visual lane. Keyboard/focus remains in browser. One newly added browser-routing assertion is still attached to the wrong check: F3 below. |
+
+## Remaining technical finding
+
+### F3 — V4 cannot prove that the browser skips the OTP endpoint for delivery
+
+**Priority: low; concrete verification-plan defect.**
+
+`IMPLEMENTATION.md:86` (V4) requires “delivery online journey never requests OTP”, but its command contains only request/service specs. The behavior that chooses whether to call `requestProof` is in `app/javascript/controllers/cart/checkout.js:55–61`, driven by `checkout_dom.js:152–153,164–171`. Those commands do not run that JavaScript or a browser and therefore cannot prove that the delivery journey sends no OTP request. A service test can prove online checkout does not require proof, but that is a different observation.
+
+Assign the browser network assertion to the already planned V3 or V6 delivery journey and leave V4's real pickup OTP endpoint/no-SMS and checkout response tests at their current seams. No new broad check, new feature or owner product decision is needed. Until then the verification table assigns a required observation to a command that cannot produce it.
+
+## Carried-forward product matters
+
+The repair does not decide D1, D2, D3 or C7; the first review's evidence remains current:
+
+- **D1:** both delivery implementations require cart lines, while minimum remains separately enforced. Empty delivery behavior still needs an explicit choice; no invented load or minimum bypass is authorized.
+- **D2:** a genuinely empty viable set cannot yield a real replacement; the proposed terminal state remains unapproved.
+- **D3:** fleet validity checks planning freshness/fingerprint and the existing race spec expects one same-version success. Preserving that stricter rule despite remaining capacity would be an exception to the requested acceptance behavior, not something authorized merely by existing tests. Accepting both when still feasible requires a revised executable admission plan. Neither path has been approved.
+- **C7:** earliest available from now, possibly next day, remains an exposed interpretation requiring agreement.
+
+These unresolved branches remain actual limits on full R1–R3 readiness; closing F1/F2 does not close them.
+
+## R1–R5 at FEATURE 2 / IMPLEMENTATION 2
+
+| Criterion | Status | Basis |
+| --- | --- | --- |
+| R1 Requirement fidelity | unknown | Ordinary pickup/nonempty delivery changes and the narrowed OTP scope are grounded. Expiry now respects the no-background-catalogue requirement. D1–D3/C7 still leave material product outcomes or exceptions unapproved. |
+| R2 Executable flow | unknown | F1/F2 are resolved, and changed normal paths now identify actual inputs, validators, producers and consumers. The entire proposal still has deliberately undesigned empty-delivery/no-alternative/fleet-admission branches pending D1–D3; those cannot receive a global pass. |
+| R3 Path coverage | fail | The focused commands and revised expiry/visual coverage are otherwise suitable, but F3 assigns a browser-only observation to service/request commands. D1–D3 also leave final expected outcomes open. No test-pass evidence is claimed. |
+| R4 Component and interface changes | pass | For the specified technical work, owners and shared input/output changes are explicit; OTP is correctly pickup-only, expiry introduces a named local state with defined consumers and gating, and traditional delivery lookup narrows while retaining eligibility rules. Future D3 changes will require another plan baseline before execution. |
+| R5 Presentation consistency | pass | FINAL names revisions 2/2, explains local expiry and explicit recheck, narrows OTP consistently, exposes traditional selected-slot validation, names the unresolved decisions and states that checks are planned. It claims neither implementation nor readiness and retains the authority limits. |
+
+No files were repaired. This final allowed review does not authorize implementation or further review rounds. The remaining work is the small check-assignment correction and product resolution followed by reconciliation of the resulting contract/plan; readiness must not be inferred from resolution of F1/F2 alone.
+
+===== review/DISPOSITIONS.md =====
+Raw SHA256: db476ab670441f2b966b5764a062eb35717221743c4a2e3db36ef18e9eaad864
+Retained SHA256: db476ab670441f2b966b5764a062eb35717221743c4a2e3db36ef18e9eaad864
+
+# First review dispositions — one repair round
+
+Application inspection remained read-only; no tests were run. FEATURE 1 / IMPLEMENTATION 1 / FINAL remain byte-identical in original/. Repaired baseline is FEATURE 2 / IMPLEMENTATION 2; fixed snapshot in repaired/.
+
+- F1 accepted as proposal ambiguity; resolved by narrowing the overstated OTP promise to the actual pickup/pay-on-pickup journey, not by expanding this task into delivery OTP validation. Evidence: checkout_dom.js:152–153 guestPickupProofRequired checks pay_on_pickup, :164–167 forces delivery online; Delivery.select also forces online. Orders::Checkout#read_only_call:108–114 skips delivery. FEATURE AC5/C3, T4, V4, Coverage and FINAL now explicitly preserve that boundary. Delivery actual checkout refusal still produces fresh recovery. No claim of preventing SMS from manually crafted delivery OTP requests; that separate hardening is not undertaken.
+- F2 accepted. Timer is now local-only `needs_recheck`: keeps visible historical choice, does no fetch, cannot authorize order. Explicit open/click or Zamawiam requests check/recovery; replaced offer requires another submit. FEATURE AC4, T2/T3, V3 and FINAL reconcile this state and zero-list-request assertion while collapsed.
+- Compact path qualification, traditional delivery scan: accepted. T2 explicitly narrows selected availability candidate lookup within unchanged location/horizon/eligibility rules; V2 checks successful single-candidate validation. Fleet can require multiple allocated buckets/planning for one offer; no unrelated offer catalogue is requested.
+- Test-lane qualification: accepted. V6 separately names focused visual command and new tagged modal examples; browser evidence is not claimed to include excluded geometry tests.
+- D1–D3 and C7 remain unanswered; current code does not authorize an exception to the requested fleet race behavior. No execution-ready verdict.
+
+===== review/REVIEWER-REQUEST-1.txt =====
+Raw SHA256: b282d2ac678f5f464e443b540029f97b417d77f544c337952d10a911fe02fd58
+Retained SHA256: b282d2ac678f5f464e443b540029f97b417d77f544c337952d10a911fe02fd58
+
+Perform one independent native read-only proposal review for isolated batch B119-trial. Original request: /private/tmp/workflow-lean-prepare-20261001-uuzfiplx/candidate/output/request.md. Fixed proposal inputs (do not edit): /private/tmp/workflow-lean-prepare-20261001-uuzfiplx/candidate/output/review/original/FEATURE.md, IMPLEMENTATION.md, and FINAL.md in that same original directory. Their SHA256.json identities are available there. Do not read PROGRESS.md or any author readiness verdict.
+
+Use ONLY the supplied workflow package /private/tmp/workflow-lean-prepare-20261001-uuzfiplx/candidate. Read skills/workflow-prepare/references/proposal-review.md and applicable blueprint preparation/readiness rules from that package. Application code is read-only at /Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails. Read its root AGENTS.md, ai-workflow/AGENTS.md, SECURITY.md and TESTING_POLICY.md for applicable rules, but the supplied candidate package overrides installed workflow instructions. Do not read prior app B119 proposals, backlog descriptions for this request, transcripts, source workflow repository, sibling experiment directories, METHOD.md, other trial results, or memory. Do not run application tests/services, install anything, mutate Git, publish or implement. Resolve technical claims from relevant application code.
+
+Assess the fixed request/proposal/approval summary using the package review brief. Report concrete findings with code evidence and R1-R5 statuses, and distinguish technical gaps from genuine product choices. Do not repair files. Write your review result only to /private/tmp/workflow-lean-prepare-20261001-uuzfiplx/candidate/output/review/REVIEW-1.md (you may write supporting notes only under that review directory, without changing the original snapshot). Reply with the result path and material findings. No additional reviewers, no model overrides. This is the one first review; any focused rereview will be separately requested.
+
+===== review/REVIEWER-REQUEST-2.txt =====
+Raw SHA256: 1b43ad06b7eb76cc9e795b891ce044251c52ec9049f8bdb3332e2c3a87e453ab
+Retained SHA256: 1b43ad06b7eb76cc9e795b891ce044251c52ec9049f8bdb3332e2c3a87e453ab
+
+Perform the single permitted focused rereview for B119-trial. Fixed revised inputs: /private/tmp/workflow-lean-prepare-20261001-uuzfiplx/candidate/output/review/repaired/FEATURE.md, IMPLEMENTATION.md and FINAL.md, identities in repaired/SHA256.json. Original request and supplied candidate package remain the same; your first result is review/REVIEW-1.md. Review the changed OTP scope/validation and recovery paths, expiry state and request lifecycle, selected traditional-delivery candidate lookup, check coverage/lanes and approval summary. Reconcile R1-R5 at the revised baseline, carrying forward any unresolved matters; do not merely close finding IDs.
+
+Keep the previous read-only and source-isolation restrictions. Do not read PROGRESS.md, DISPOSITIONS.md, other experiments, forbidden application proposals/backlog, or source workflow repository. Do not repair anything or delegate another review. Write result only to /private/tmp/workflow-lean-prepare-20261001-uuzfiplx/candidate/output/review/REVIEW-2.md. This is the final allowed review in this trial. Reply with result path, remaining material findings and readiness statuses. No application tests/services, installs, Git mutations or publication.
+
+===== review/PROVENANCE.md =====
+Raw SHA256: 8a4f8125d266af5c89c986d07d4b1c62b19e5f3602ff3384f5b2d61b12064b84
+Retained SHA256: 8a4f8125d266af5c89c986d07d4b1c62b19e5f3602ff3384f5b2d61b12064b84
+
+# Native reviewer provenance
+
+- First review agent identity: `/root/prepare_lean_trial/proposal_review`.
+- API: `collaboration.spawn_agent`; task_name `proposal_review`.
+- `fork_turns`: `none`.
+- Model and reasoning: inherited; no overrides supplied.
+- Exact task message: `REVIEWER-REQUEST-1.txt` (text matches spawn message).
+- Fixed input snapshot: `original/FEATURE.md`, `original/IMPLEMENTATION.md`, `original/FINAL.md`; content identities in `original/SHA256.json`.
+- Original request: `../request.md`.
+- Review output: `REVIEW-1.md`.
+- Author readiness verdict/PROGRESS was explicitly excluded from reviewer input.
+
+## Focused rereview
+
+- Same native agent identity: `/root/prepare_lean_trial/proposal_review`.
+- API: `collaboration.followup_task`; no new agent, no model overrides.
+- `fork_turns` on this API: not applicable; initial reviewer was spawned with `none` and retains only its own review context plus this follow-up.
+- Exact task message: `REVIEWER-REQUEST-2.txt` (text matches followup message).
+- Fixed revised inputs: `repaired/FEATURE.md`, `repaired/IMPLEMENTATION.md`, `repaired/FINAL.md`; identities in `repaired/SHA256.json`.
+- Review output: `REVIEW-2.md`.
+- Author verdict/PROGRESS/DISPOSITIONS explicitly excluded.
+
+===== Separate review of historical revision 3 proposal =====
+Raw SHA256: 100596969435c96414e48ddfae66cb4299a6ee006e11dbf203b49d796b313001
+Retained SHA256: 100596969435c96414e48ddfae66cb4299a6ee006e11dbf203b49d796b313001
+
+# Proposal review — fixed FEATURE 3 / IMPLEMENTATION 3
+
+**Verdict: not execution-ready.** This is one read-only review of a proposal, not an implementation review or a claim that tests passed. I read the supplied original request and application entry points before the author's FEATURE/IMPLEMENTATION/approval draft. No application changes, tests, installation, or Git mutations were performed.
+
+Input root: `/private/tmp/workflow-candidate-20261001-h4a1m1wt/input/`. Application paths below are relative to `/Users/ciupek/Desktop/programowanie/prywatne/smashnego/smashnego-rails/`. The review criteria came from `/private/tmp/workflow-lean-prepare-20261001-uuzfiplx/candidate/skills/workflow-prepare/references/proposal-review.md` and the linked blueprint R1–R5. No other trial inputs or previous verdicts were used.
+
+## Compact path evidence
+
+| Path | Actual producer and consumer | Proposal assessment |
+| --- | --- | --- |
+| Pickup panel opening | `_pickup.html.erb` has a details panel; recovery -> `Public::PickupSlotState` -> `PickupSlotsQuery` -> `day_groups` -> `Pickup#renderSlotGroups`. | T001 names the trigger and catalogue consumer. Empty-cart normalization is grounded in `PickupSlotsQuery#capacity_open?`: nil loads use the default bucket; empty loads pass `all?`. |
+| Pickup click | `cart_controller.js:160–168` -> `CartAvailability#allowSlot` -> availability controller -> `CartRecovery#pickup_slot_state`; `catalog: false` currently suppresses the successor in `pickup_slot_state.rb:186–193`. | Removing the empty-cart early return and producing a replacement are necessary. The outcome is stated; downstream handling of a successor absent from the old catalogue is incomplete (F4). |
+| Pickup checkout / SMS preflight | Checkout `read_only_call` at `orders/checkout.rb:108–116` calls `PickupSelection` with admission lines; the write path does so under the capacity lock. Both controllers call `PickupSlotsRecoveryPayload`, but their recovery queries omit those lines. `CheckoutPhoneProofsController#create` stops before requesting SMS on failure. | The proposal correctly includes both entry points and preserves hold timing. Its successor inputs are not sufficient for the full cart (F3). |
+| Delivery opening / clicking | `Delivery#quote` -> shared cart availability -> `CartRecovery#delivery_quote` -> `Public::DeliveryCartQuote` -> geocode, zone match, `DeliveryPromises.offer`. The selected delivery token is accepted by the controller but never passed to this quote. | A full quote exists; a selected-window verdict does not exist on this path. T002 does not define its validator interface (F1). Empty-cart offers are explicitly rejected by both implementations (F2). |
+| Delivery checkout | `DeliverySelection` verifies legacy and fleet tokens differently; `LockedAttempt` rechecks admission and performs current holds. Rejections append errors. `Orders::Checkout#recovery_payload` currently emits pickup, unavailable lines, and bonus recovery only. `OrdersController#failure_payload` calls recovery conversion only if recovery is present. | T003 promises delivery recovery without tracing its producer through this gate (F1). |
+| Delivery replacement rendering | `Delivery#selectedOffer` resolves metadata from `session.deliveryWindows`; consent, expiry timer, deadline and rendering depend on that offer. | A token and label with no windows are insufficient for the promised replacement (F4). |
+| Collapsed panel timer | `CartAvailability#payloadFor` calls `quoted` on changed fingerprints/markers; quote calls cart recovery, whose totals and result construction invoke delivery quote independently of pickup `catalog`. | Suppressing `catalog: true` alone does not suppress delivery calculation. The plan does not resolve the mode distinction (F5). |
+| UI verification | `bin/spec` defaults to fast, adds `--tag ~type:system`, including for explicit paths. Both named system files declare `type: :system`. | V001/V003 and the system part of V004 do not run under their printed commands (F6). |
+
+## Confirmed proposal defects and material technical gaps
+
+### F1 — Delivery click validation and checkout recovery lack executable producer contracts
+
+**Locations:** IMPLEMENTATION lines 30–35, S8–S9 (56–58); FEATURE AC5/C11.
+
+The statement that the server checks the clicked window using the quote does not name an actual selected-window validator or its required inputs. `Public::CartRecovery#delivery_quote` (`app/services/public/cart_recovery.rb:236–240`) passes address, cart lines, subtotal and time, but not `delivery_window_token`; `Public::DeliveryCartQuote` builds a fresh list, without validating a supplied token. IMPLEMENTATION line 31 says the click sends only the token, while S8 leaves address/cart provenance unspecified.
+
+There are materially different validators to account for: `Orders::Checkout::DeliverySelection:67–89` verifies ordinary window tokens versus fleet tokens; `OwnFleet::DeliveryOffer:13–28` signs generation time and revalidates the original fingerprint. Membership in a newly generated list is not equivalent to verifying an existing fleet token. Direct use of the checkout selection also has an online-payment and long-wait-consent gate (`delivery_selection.rb:30–45`), so the plan must specify which validation is appropriate before selection and consent.
+
+The checkout half has a separate missing bridge. `Orders::Checkout#recovery_payload:279–285` has no delivery producer, and `Public::OrdersController:79–82` only converts a nonempty recovery. Adding fields to a recovery converter or browser handler alone will not handle a delivery-only error. T003 must identify where these existing rejection codes create recovery and how current cart/address inputs reach successor production. This is not a request to name private helpers; these are shared producer/consumer interfaces required for AC5.
+
+**Consequence:** the click can lack a real verdict, and a failed delivery checkout can still return only errors with no successor. The implementation would have to invent a material part of the design.
+
+### F2 — Empty-cart delivery promise conflicts with both existing offer implementations
+
+**Locations:** IMPLEMENTATION line 30 and S7 (54); FEATURE lines 16/20 and AC1.
+
+The plan promises a full delivery quote even for an empty cart, but neither underlying implementation produces an offer for that input. `DeliveryPromises#valid_request?` (`app/services/delivery_promises.rb:114–115`) requires `cart_lines.present?`; shared fleet takes a different branch but `OwnFleet::DeliveryOffer#available?` (`app/services/own_fleet/delivery_offer.rb:91–94`) also requires lines. `Public::DeliveryCartQuote:39–46` converts the resulting empty offer into the no-window error. The nil normalization explicitly described in T001 only addresses pickup and cannot make either delivery implementation accept an empty cart.
+
+**Consequence:** bypassing the JavaScript empty-cart shortcut makes a request, but still cannot show/select a live delivery window before adding items. The promised flow is not implemented by the named reuse. The empty-cart delivery semantics need an explicit resolution; see product question Q1. A test must cover the actual offer producer, not just the fetch.
+
+### F3 — Checkout successor queries omit the rejected cart's capacity needs
+
+**Locations:** IMPLEMENTATION lines 33–34, S6 (52); FEATURE AC5/C2.
+
+Both `Public::OrdersController#pickup_slots_recovery_payload` (`:108–111`) and `Public::CheckoutPhoneProofsController#recovery_payload` (`:42–45`) use `PickupSlotsQuery.new(location: ...)` without the cart. The new plan changes their output from a full catalogue to one successor but does not add the cart/validated-line input or give its origin. Without it, the default-bucket test can select a slot with one unit left for a cart requiring two units, or ignore an exhausted additional pool. The initial rejection correctly used cart lines; its replacement must satisfy the same relevant load constraints.
+
+**Consequence:** AC5 can automatically select another unusable hour and loop through the same rejection, although a later suitable hour exists. Name the input change for both entry points and verify a successor that fails generic/default availability but differs under the actual cart's loads.
+
+### F4 — Replacement contracts stop before the browser's authoritative state
+
+**Locations:** IMPLEMENTATION lines 26, 30, S4 (48), S8 (56).
+
+Delivery `replacement_window` is explicitly described as token and label while `windows` is omitted. `Delivery#selectedOffer` (`app/javascript/controllers/cart/delivery.js:82–90`) searches only the stored windows list. A freshly minted replacement need not exist there. The expiry setup (`:61–65`), consent requirement (`:90–91`), and deadline display (`:143–154`) need the full offer metadata, including `valid_for_seconds`, `consent_required` and `payment_deadline`. The plan names neither this added data nor how the new offer enters the state used by those consumers. A displayed token/label can therefore have no timer or consent UI, and checkout can reject it for missing long-wait consent.
+
+The pickup sibling of this gap is visible in S4's claim that a replacement absent from the old grid remains selected. `Pickup#applySelectedFromPayload` (`pickup.js:86–91`) immediately calls `syncSelectedSlotButton`, which clears a confirmed selection lacking a button (`:201–209`). `storeSelectedSlot` derives startsAt from that button (`:179–189`), and hydration requires catalogue membership (`:160–176`). S4 states the desired label but does not identify the changed state/reconciliation responsibilities needed to retain it. V001 expects `aria-pressed=true`, which is impossible for the explicitly described absent-button case without a defined render update.
+
+**Consequence:** an apparently applied successor can be cleared, lose persistence, or lack required delivery metadata. Specify the shared result data and its consumer-state integration, and verify after normal render/storage/rehydration, not only immediately after assigning a token.
+
+### F5 — One flag is used for distinct pickup catalogue and delivery timer behaviors without a defined dispatch contract
+
+**Locations:** FEATURE C5; IMPLEMENTATION lines 27/30, S2 (44), S8 (56), V002.
+
+S2 treats `catalog: false` as the collapsed-panel remedy. Today this flag only controls pickup catalogue generation. `Public::CartRecovery` still obtains delivery quote for fee, total and delivery payload (`:45–60`, `:116–119`, `:226–240`). T002 also makes `catalog: false` the trigger for a selected-window validation, including expiry. The plan does not specify how a timer's cart/menu refresh differs from an explicit delivery click or expiry request, particularly when a token is present. Omitting `windows` from the response is not proof that no delivery quotation occurred.
+
+**Consequence:** a changed marker/cart can still cause delivery quoting while the list is collapsed, contrary to C5; alternatively suppressing every such request would disable explicit click/expiry checks. Resolve the request mode and its producer behavior. V002 currently checks `catalog: true` and grid replacement for a full cart, which would miss a hidden delivery computation under `catalog: false`.
+
+### F6 — Printed system-test commands exclude the very tests that provide the UI evidence
+
+**Locations:** IMPLEMENTATION V001/V003/V004 (66–69), V007 (72), and line 74.
+
+`bin/spec` defaults to fast (`bin/spec:25`), whose options are `--tag ~type:system` (`:11–16`); the explicit-target branch retains those options (`:169–179`). Thus `bin/spec spec/system/public_pickup_slot_labels_spec.rb` and `bin/spec spec/system/public_delivery_checkout_spec.rb` exclude those examples. The mixed V004 command runs request examples but excludes its system examples. The unspecified new system spec and system portion of V007 do not repair those printed commands. The supplied application instructions already distinguish focused `bin/spec browser spec/system/...` from the full lane.
+
+In addition, V003/V007 are mapped to C11 but their observable assertions do not trigger the local expiry timer or the server `delivery_offer_expired` branch. None of the listed check definitions explicitly covers the ordinary versus shared-fleet validator paths, including accepting a still-valid fleet token and preserving replacement consent/deadline metadata.
+
+**Consequence:** the required verification can report success without the promised browser checks, and distinct expiry/fleet behavior lacks planned proof. Correct focused command selection and add observable acceptance/rejection conditions for those paths. No test was run during this review.
+
+### F7 — Approval draft hides material exceptions and omits delivery's new result contract
+
+**Locations:** approval-draft lines 3–16 versus FEATURE C6/C8 and IMPLEMENTATION line 30.
+
+The main approval paragraph promises a successor on rejection without explaining the no-successor behavior; FEATURE C8 instead clears the rejected selection, keeps the old grid and shows only the modal. The draft also omits C6's network-failure permission to accept a local choice without a server verdict. Those are material limits to the headline outcome and must be visible as such. Its interface table does mention rejection flags and the absence of `day_groups`, but does not expose delivery's omission of `windows` or the new replacement-window data/state dependency in F4. It finishes with a baseline but no clear requested approval/delivery scope, although IMPLEMENTATION line 12 restricts work to implementation and focused checks without commit/push/PR/deploy.
+
+**Consequence:** approving this text would not mean the operator had been shown all material behavior and interface changes. Reconcile the draft after the technical gaps and genuine product decisions are resolved.
+
+## Product questions and boundaries
+
+- **Q1 — What should empty-cart delivery browsing mean?** The request covers empty-cart clicking and the proposal explicitly promises empty-cart delivery quotation. Current delivery offers require actual lines, and nonzero zone minima may reject subtotal zero. These are code facts, not permission to waive minimums or invent a fictitious cart. Decide the intended observable empty-cart behavior while preserving the explicitly unchanged minimum and hold model. The review does not supply a new load model.
+- **Q2 — Confirm the proposed no-successor and network-failure outcomes.** An actual lack of available hours cannot yield a live successor. C8 and C6 choose material fallback behavior, but the approval draft does not expose those choices. These are genuine product tradeoffs, distinct from the technical fixes above.
+- C2's first available pickup slot and C3's existing ASAP-first ordering are identified in the approval draft as additions; I do not classify those stated choices as hidden scope expansion. Likewise, the empty-cart pickup normalization is required for the user's full-bucket click case and is not an unrelated capacity redesign.
+- Shared-fleet token fingerprint behavior is cited only to establish the required selected-window validation contract. This review does not recommend changing its capacity, reservation or concurrency model.
+
+## R1–R5
+
+| Criterion | Verdict | Evidence |
+| --- | --- | --- |
+| R1 Requirement fidelity | **fail** | Most changes are grounded in the request, including the empty pickup fix and SMS preflight recovery. However the empty-cart delivery outcome is unresolved (F2/Q1), and C6/C8 are material product exceptions not surfaced for approval (F7/Q2). |
+| R2 Executable flow | **fail** | Selected delivery token has no defined validator connection; checkout errors have no defined recovery producer through the nonempty gate (F1). Empty delivery offers remain rejected (F2), pickup successors lack cart inputs (F3), and render/storage can invalidate successors (F4). |
+| R3 Path coverage | **fail** | Browser commands exclude system tests; expiry and distinct fleet/ordinary validator paths lack explicit accepting/rejecting assertions (F6). Collapsed-list checks miss delivery work under `catalog: false` (F5). |
+| R4 Component and interface changes | **fail** | Owners and before/after behavior are listed, but selected-window validation inputs, recovery producer inputs, full replacement metadata/state integration, and timer versus explicit request modes remain unspecified (F1/F3/F4/F5). |
+| R5 Presentation consistency | **fail** | Approval overstates guaranteed replacement, omits fail-open and delivery partial-response interfaces, and omits the explicit delivery scope/requested decision (F7). There is no graph to assess. |
+
+The strongest grounded parts are pickup empty-cart capacity semantics, inclusion of SMS preflight, preservation of existing holds, and omission rather than empty serialization of pickup catalogues. Readiness is blocked by the concrete cross-component gaps above; this verdict does not infer an implementation failure or authorize any additional application work.
