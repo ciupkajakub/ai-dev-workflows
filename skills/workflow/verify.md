@@ -29,11 +29,12 @@ Select evidence that can observe each required result:
   steps, outputs and observed properties. Remote checks cannot silently replace
   required pre-publication proof.
 
-Keep the requirement-to-check mapping in IMPLEMENTATION. Record each required
-scenario as planned, demonstrated, missing or contradicted, with procedure, expected
-and observed result, evidence and actual tested revision/environment. Inspect test
-assertions and executed triggers; passing counts and reviewer agreement are not proof
-of uncovered behavior. Include dirty changes in the tested revision or exact diff.
+In IMPLEMENTATION, map each required scenario to its check, status (planned,
+demonstrated, missing or contradicted), procedure, expected/observed result, evidence
+and tested revision/environment, including dirty changes. Evidence must distinguish
+correct behavior from materially faulty
+implementations. Empty results, mocks, passing counts and reviewer agreement do not
+prove omitted paths. Report only what evidence supports.
 
 Before recommending a user procedure, confirm it is reachable from the affected
 state with the user's permissions and leads to the required result. Distinguish
@@ -55,16 +56,17 @@ in the batch's `evidence/`.
 ## Findings and completion
 
 Give findings a requirement reference, trigger, consequence and supporting evidence.
-Distinguish confirmed defects, missing proof, unresolved hypotheses, duplicates and
-optional improvements. Resolve each material finding by confirmed repair, rejection
-with evidence or an explicit applicable user decision. Pre-existing failures of
-required checks still need a disposition; optional improvements do not expand scope.
+Judge impact against agreed requirements, not reviewer labels. Distinguish defects,
+missing proof, requirement ambiguities, hypotheses, duplicates and proposed extensions.
+Resolve material findings through verified repair, evidence-backed rejection or an
+applicable user decision. Pre-existing required-check failures need a disposition;
+optional improvements do not expand scope.
 
-After any repair, select checks from the full change and recheck affected behavior
-and consumers. Required independent review must cover the final candidate's affected
-behavior. Reuse unaffected evidence with its original revision; repeat only when
-changes, new evidence or unresolved concerns invalidate it. Updating a report alone
-does not invalidate application checks.
+After repairs, check the cause and dependent paths and consumers identified in code,
+not just the reported example. Required independent review
+covers the final candidate's affected behavior. Retain unaffected evidence with its
+original revision; repeat checks only when changes or unresolved concerns invalidate
+it. Report-only updates do not invalidate application checks.
 
 A task is done when its own outcome and checks are demonstrated. A prerequisite
 check may permit dependent work while shared integration checks remain pending.

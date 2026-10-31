@@ -17,12 +17,12 @@ For new or duplicated state, identify the authoritative representation, writers,
 readers and rules that keep representations consistent throughout their lifecycle.
 Multiple representations are acceptable when their roles and consistency are defined.
 
-Tie changes to required outcomes or necessary dependencies. An existing defect is
-relevant if the outcome depends on it or the change increases its consequences;
-resolve its treatment before approval. Unrelated improvements remain outside scope.
-When information is missing or ambiguous, settle observable behavior before adding
-heuristics. A cheaper approach that weakens acceptance criteria is a proposed
-requirement change, not an equivalent solution.
+Limit changes to required outcomes and dependencies, including existing defects
+that prevent success or whose consequences worsen. Resolve their treatment before
+approval. When goals, acceptance criteria or the solution imply different behavior,
+show a concrete example and obtain a decision before approving dependent scope.
+Resolve missing behavior before adding heuristics;
+weakening criteria requires a requirement change. Do not expand scope unilaterally.
 
 Present a preliminary solution and ask only unresolved product/scope questions,
 with recommendations and consequences. Investigate technical facts yourself and
@@ -86,12 +86,12 @@ Plan review never establishes that the resulting implementation works.
 
 ## Present the proposal
 
-When material decisions and blocking findings are resolved, present the outcome,
-selected batch, design rationale, material behavior/contract changes, dependencies,
-risks and planned proof in the user's language. Include environment, branch/base,
-PR destination and any agreed budget. Show the changed caller-to-consumer flow with
-concrete before/after behavior; links alone are insufficient. Link detailed records
-without reproducing their tables or diagrams by default.
+After resolving material decisions and blocking findings, present the outcome,
+batch, rationale, contract changes, dependencies, risks and planned proof in the
+user's language. Show what limitations prevent users from doing or determining.
+Include environment, branch/base, PR destination and agreed budget.
+Show before/after behavior across the affected flow; links alone are insufficient.
+Link details without duplication. Approval accepts presented behavior, not missing evidence.
 
 If a material decision, feasibility assumption or gap in planned verification remains
 unresolved, ask about it rather than calling the plan executable. Planned implementation
