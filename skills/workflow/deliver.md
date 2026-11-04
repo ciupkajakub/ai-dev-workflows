@@ -20,8 +20,9 @@ progress within authority; do not publish a planning checkpoint by default.
 
 Start with the planned check of the most uncertain mechanism. Proceed to dependent
 tasks only when their prerequisite conditions are demonstrated; do not wait for a
-final integration check that requires those tasks. Record task results in IMPLEMENTATION
-and the checkpoint/next action in BATCH.
+final integration check that requires those tasks. Keep task statuses and results in
+IMPLEMENTATION and the checkpoint/next action in BATCH consistent with completed work,
+including approved continuations. Update the current records, preserving approval snapshots.
 
 Implement the selected scope and apply the [evidence standard](verify.md#evidence-standard).
 Repair implementation defects within approved decisions without requesting approval

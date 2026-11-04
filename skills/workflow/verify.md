@@ -17,8 +17,12 @@ Select evidence that can observe each required result:
   their covered contracts; mocked boundaries leave integration unverified. Inspect
   available setup before proposing an exception for required application behavior.
 - Cover materially different primary and fallback/legacy paths under the same required
-  correctness, including relevant failures and preserved behavior. For candidate selection, include alternatives that must
-  not be chosen. Derive variants from the actual change, not an exhaustive cross-product.
+  correctness, including relevant failures and preserved behavior. When replacing or
+  overriding an existing mechanism, inspect its actual behavior, including framework
+  defaults, and check preserved outputs and side effects alongside the intended change.
+  Similar application code is not proof of that baseline. For candidate selection,
+  include alternatives that must not be chosen. Derive variants from the actual change,
+  not an exhaustive cross-product.
 - For stateful behavior, follow recovery through the next user action and check
   server/client state and resources agree. For timing or concurrency, exercise the
   actual ordering mechanism and conditions at use; constructed values that bypass
@@ -45,7 +49,11 @@ source-inspected steps from executed ones; recommending a procedure does not aut
 Apply the review decision from [preparation](prepare.md#review-the-plan-before-approval);
 reassess it if the actual change reveals materially different risk. When required,
 use an agent who did not author the implementation. Supply original requirements,
-approved decisions, base/candidate revisions, relevant code and verification evidence.
+approved decisions and exceptions, prior findings and their dispositions,
+base/candidate revisions, relevant code and verification evidence. Include relevant
+local-only records even when excluded from the diff or PR; pass this context also
+when delegating to a separate review skill or tool. Reassess prior dispositions
+when new evidence invalidates them, not merely because a new review starts.
 
 The reviewer evaluates the full change against required behavior and this evidence
 standard, including known failures outside selected suites. Trace changed data,
@@ -58,11 +66,15 @@ in the batch's `evidence/`.
 Give findings a requirement reference, trigger, consequence and supporting evidence.
 Judge impact against agreed requirements, not reviewer labels. Distinguish defects,
 missing proof, requirement ambiguities, hypotheses, duplicates and proposed extensions.
+Before repairing a suspected defect, confirm it with a focused reproduction or
+conclusive code trace; otherwise retain it as a hypothesis. Where practical, check
+that the regression test fails without the repair and passes with it.
 Resolve material findings through verified repair, evidence-backed rejection or an
 applicable user decision. Pre-existing required-check failures need a disposition;
 optional improvements do not expand scope.
 
 After repairs, check the cause and dependent paths and consumers identified in code,
+including preserved behavior and generated artifacts affected by the repair,
 not just the reported example. Required independent review
 covers the final candidate's affected behavior. Retain unaffected evidence with its
 original revision; repeat checks only when changes or unresolved concerns invalidate

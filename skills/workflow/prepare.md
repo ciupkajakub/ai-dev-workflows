@@ -21,7 +21,8 @@ Limit changes to required outcomes and dependencies, including existing defects
 that prevent success or whose consequences worsen. Resolve their treatment before
 approval. When goals, acceptance criteria or the solution imply different behavior,
 show a concrete example and obtain a decision before approving dependent scope.
-Resolve missing behavior before adding heuristics;
+Unlikely input or an unperformed production check does not resolve a contradiction
+with required behavior. Resolve missing behavior before adding heuristics;
 weakening criteria requires a requirement change. Do not expand scope unilaterally.
 
 Present a preliminary solution and ask only unresolved product/scope questions,
