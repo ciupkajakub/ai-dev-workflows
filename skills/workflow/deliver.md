@@ -29,6 +29,12 @@ Repair implementation defects within approved decisions without requesting appro
 again. Update the flow/contracts and coverage when new affected consumers are found.
 Run shared batch checks at integration points rather than repeating them per task.
 
+Run checks with `python3 -B <skills>/run_check.py --timeout <seconds> -- '<command>'`,
+where `<skills>` is the parent of this skill's real directory, and set the timeout from
+the check's expected duration. Its last line is the result: read `exit`, and open the
+log rather than filtering the output. Join a dependent commit or push only with `&&`.
+Handle any unexpected result through [repair.md](repair.md).
+
 If evidence disproves a design assumption or requires material scope/behavior changes,
 preserve the observation and return to [preparation](prepare.md). Do not change
 requirements to fit the code. Stop with attempts and a recoverable next action when
@@ -52,5 +58,7 @@ fails, save the actual checkpoint and reconcile remote state before retrying.
 
 In the PR/handoff identify the approved snapshot or continuation, delivered behavior,
 verification evidence and tested revision, limitations and unobserved remote checks.
+Add a short "Decisions" section with `decided` and `rejected` findings and their
+reasons, because reviewers started elsewhere may see only the PR.
 Record the PR link and completed handoff in BATCH; identify local-only records.
 Stop at the entry contract's boundary. Further requested feedback returns to preparation.

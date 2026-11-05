@@ -40,6 +40,7 @@ does not authorize reopening a closed PR or restoring a branch.
 - New need, unfinished proposal or requested feedback: [prepare.md](prepare.md).
 - Approved execution, including an interrupted run: [deliver.md](deliver.md).
 - Evidence planning, local checks or assigned implementation review: [verify.md](verify.md).
+- Each review report, requested feedback or unexpected check result, at any stage: [repair.md](repair.md).
 - Read-only inspection: report actual state and stop.
 - Installation, update or record migration: [install.md](../install.md).
 
