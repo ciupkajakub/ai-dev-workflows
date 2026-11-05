@@ -1,0 +1,10 @@
+#!/bin/bash
+case "$1" in
+  up|restart) echo "stack $1: done" ;;
+  ps)
+    echo "NAME     STATUS"
+    echo "app      healthy"
+    echo "mailbox  unhealthy (dial tcp [::]:8025: cannot assign requested address)"
+    ;;
+  *) echo "usage: bin/stack up|restart|ps"; exit 2 ;;
+esac

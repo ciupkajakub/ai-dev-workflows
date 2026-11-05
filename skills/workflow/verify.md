@@ -66,12 +66,9 @@ in the batch's `evidence/`.
 Give findings a requirement reference, trigger, consequence and supporting evidence.
 Judge impact against agreed requirements, not reviewer labels. Distinguish defects,
 missing proof, requirement ambiguities, hypotheses, duplicates and proposed extensions.
-Before repairing a suspected defect, confirm it with a focused reproduction or
-conclusive code trace; otherwise retain it as a hypothesis. Where practical, check
-that the regression test fails without the repair and passes with it.
-Resolve material findings through verified repair, evidence-backed rejection or an
-applicable user decision. Pre-existing required-check failures need a disposition;
-optional improvements do not expand scope.
+Resolve material findings through [repair.md](repair.md): verified repair,
+evidence-backed rejection or an applicable user decision. Pre-existing required-check
+failures need a disposition; optional improvements do not expand scope.
 
 After repairs, check the cause and dependent paths and consumers identified in code,
 including preserved behavior and generated artifacts affected by the repair,

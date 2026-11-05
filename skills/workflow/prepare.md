@@ -106,8 +106,8 @@ on approval follow [deliver.md](deliver.md).
 
 ## Requested feedback and continuations
 
-Reconcile the actual PR/checkout and approved behavior. Classify feedback using the
-[finding rules](verify.md#findings-and-completion). Correct the requirement, design,
+Reconcile the actual PR/checkout and approved behavior. Handle feedback through
+[repair.md](repair.md). Correct the requirement, design,
 verification plan or implementation task responsible for the confirmed problem.
 
 Use the same batch for corrections to its outcome and a new batch for a distinct

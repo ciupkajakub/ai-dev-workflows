@@ -1,0 +1,1 @@
+parse_limit no longer returns negative values.

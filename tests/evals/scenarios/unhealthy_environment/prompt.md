@@ -1,0 +1,1 @@
+Continue batch ai-workflow/work/B1. The implementation is committed. Run the required R1 check and finish verification. The stack can be restarted with bin/stack. This is approved, no further proposal is needed. End your final message with exactly one of these lines: `E2E: passed`, `E2E: failed` or `E2E: unverified`.

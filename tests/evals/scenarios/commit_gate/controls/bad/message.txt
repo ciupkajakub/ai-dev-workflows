@@ -1,0 +1,1 @@
+format_price returns two decimals. Unit tests pass.
