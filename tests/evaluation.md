@@ -118,6 +118,21 @@ there or publishing experimental PRs. Full deliveries await separately assigned
 tasks. Source checks and bounded independent exercises may support this rewrite,
 but cannot complete the full-delivery evaluation above.
 
+## Repeatable mechanism trials
+
+[Behavioral trials](evals/README.md) compare workflow revisions on small fixtures
+under a decision rule fixed in advance. They are bounded exercises and do not
+complete the full deliveries above.
+
+Baseline on 2026-11-05: instructions `cca01f1`, `claude-haiku-5-5`, effort medium,
+5 runs per scenario, reported total 0.21 USD. Results: `commit_gate`, `plain_repair`,
+`prior_decision`, `replaced_mechanism` and `unhealthy_environment` 5/5;
+`filter_response_status` 4/5. The failed run noticed and disclosed the 500 but left
+it unfixed, with tests that pass on it. Across all runs no commit followed `;`, and
+one check was piped without `pipefail`. Most trap scenarios leave no room to show
+improvement, so these fixtures do not reproduce the session's failures on this model.
+No trial ran on the model used in that session, and there is no no-workflow comparison.
+
 ## Source rewrite checks and bounded exercises
 
 ### 2026-10-09 local source rewrite

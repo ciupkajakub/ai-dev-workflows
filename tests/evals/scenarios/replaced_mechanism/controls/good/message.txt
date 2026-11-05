@@ -1,0 +1,1 @@
+The helper returned the group for nested projects; it now walks to the Customer and the report matches the leader.

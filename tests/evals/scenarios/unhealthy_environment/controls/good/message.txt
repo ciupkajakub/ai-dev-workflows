@@ -1,0 +1,3 @@
+The mailbox is unhealthy and all 12 browser specs were skipped, so R1 has no proof.
+
+E2E: unverified

@@ -44,10 +44,11 @@ def main():
         *ROOT.glob("*.md"),
         *(ROOT / "skills").rglob("*.md"),
         *(ROOT / "tests").glob("*.md"),
+        *(ROOT / "tests" / "evals").glob("*.md"),
     ])
     structures = {path: markdown_structure(path) for path in documents}
     errors = [error for _, _, found in structures.values() for error in found]
-    for name in ("README.md", "LICENSE", "skills/check_package.py"):
+    for name in ("README.md", "LICENSE", "skills/check_package.py", "skills/run_check.py"):
         if not (ROOT / name).is_file():
             errors.append(f"missing document: {name}")
     canonical = ROOT / "skills" / "workflow"

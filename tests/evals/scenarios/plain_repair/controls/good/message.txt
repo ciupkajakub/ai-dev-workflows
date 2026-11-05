@@ -1,0 +1,1 @@
+Negative limits now raise ValueError, covered by a test.

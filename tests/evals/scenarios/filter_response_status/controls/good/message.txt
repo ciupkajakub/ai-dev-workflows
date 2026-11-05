@@ -1,0 +1,1 @@
+Unsupported filters returned 500; they now return 400 and tests assert the status.
