@@ -29,10 +29,20 @@ Repair implementation defects within approved decisions without requesting appro
 again. Update the flow/contracts and coverage when new affected consumers are found.
 Run shared batch checks at integration points rather than repeating them per task.
 
-Run checks with `python3 -B <skills>/run_check.py --timeout <seconds> -- '<command>'`,
-where `<skills>` is the parent of this skill's real directory, and set the timeout from
-the check's expected duration. Its last line is the result: read `exit`, and open the
-log rather than filtering the output. Join a dependent commit or push only with `&&`.
+From the application repository root, run each required check through the installed
+wrapper. Use the project's commands and their expected timeouts. For example, if the
+unit suite must pass before integration starts:
+
+```sh
+python3 -B ai-workflow/tooling/skills/run_check.py --timeout 120 -- 'make test-unit' &&
+  python3 -B ai-workflow/tooling/skills/run_check.py --timeout 600 -- 'make test-integration'
+```
+
+Keep dependent checks in separate wrapper calls joined by `&&`. A command such as
+`first; second` returns the status of `second` even if `first` failed. Read `exit`
+on each wrapper's last line and open its full log when needed. Join a dependent
+commit or push only with `&&`. In a custom layout, locate `run_check.py` in the
+parent of this skill's real directory.
 Handle any unexpected result through [repair.md](repair.md).
 
 If evidence disproves a design assumption or requires material scope/behavior changes,

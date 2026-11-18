@@ -1,0 +1,2 @@
+I kept the current lookup based on this comparison.
+{"project_id": 12, "current": "Mobile", "proposed": "Acme"}

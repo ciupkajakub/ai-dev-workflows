@@ -19,6 +19,7 @@ class Context:
     base: str
     final_message: str
     events: list = field(default_factory=list)
+    observations: list[str] = field(default_factory=list)
 
     def git(self, *args):
         return subprocess.run(
