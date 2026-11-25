@@ -52,9 +52,9 @@ Handle any unexpected result through [repair.md](repair.md).
 
 If evidence disproves a design assumption or requires material scope/behavior changes,
 preserve the observation and return to [preparation](prepare.md). Do not change
-requirements to fit the code. Stop with attempts and a recoverable next action when
-a resource/decision is missing, an agreed budget is reached, or attempts repeat
-without new evidence.
+requirements to fit the code. Stop with a recoverable next action when a resource or
+decision is missing, or an agreed budget or the
+[attempt limit](repair.md#stop-after-three-attempts) is reached.
 
 Apply [findings and completion](verify.md#findings-and-completion) to the integrated
 candidate, including required independent review. On resume, reuse valid results

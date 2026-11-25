@@ -16,6 +16,17 @@ output of an unexpected shape, a hang, or a run that executed nothing.
 - A failed or missing diagnostic tool tells you nothing about the system it checks.
   Confirm the environment has changed before repeating a failed run.
 
+## Stop after three attempts
+
+An attempt is a change meant to solve a problem, followed by a check or review showing
+it remains. Diagnosis without a change is not an attempt. The same cause under another
+test, finding or session is the same problem; check its other instances together.
+
+After three attempts, or fewer that bring no new evidence, stop changing code. Leave the
+entry `open`, report what each attempt showed and whether the approach itself is wrong,
+and ask the user how to proceed. Reaching the limit never closes a finding or permits
+publication. Only the user's decision allows more attempts.
+
 ## Keep one entry per finding
 
 In IMPLEMENTATION, record each finding or unexpected result:
@@ -25,7 +36,7 @@ In IMPLEMENTATION, record each finding or unexpected result:
 | Source | Report or check, and its [class](verify.md#findings-and-completion). |
 | Before | Command, exit code and observation, or a conclusive code trace. |
 | Cause | Confirmed cause, or `hypothesis`. |
-| Change | What changed and its commit. Read project rules for that area first. |
+| Change | Each attempt: what changed and its commit. Read project rules for that area first. |
 | After | The regression check fails without the repair and passes with it, or why that is impossible and what else separates right from wrong. |
 | Replaced behavior | Old and new output compared on data real callers reach, or `n/a` with the reason. Passing tests and similar code are not this comparison. |
 | Dependents | Consumers and paths checked. |

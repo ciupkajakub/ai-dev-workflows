@@ -74,6 +74,7 @@ These are evaluation inputs and expectations, not claims of executed trials:
 | All selected tests pass, but a required lifecycle variant is absent or its assertions stop before the next action | The scenario remains missing and the task/finding/batch claim covering it remains incomplete. Dependency-only evidence may permit downstream work without declaring the integrated batch verified. |
 | Every applicable variant has matching final-candidate evidence, required independent review is complete and no required check remains unresolved | Mark the covered task or batch verified and proceed to its authorized next step; do not require another reviewer, full-suite rerun or inapplicable lifecycle scenarios. |
 | Feasibility of a state transition is unknown | Investigate or propose a bounded discovery batch; no approval of dependent work on invented facts. |
+| Three changes fail to solve one problem, then its symptom appears under another test | Execution stops with the finding open, reports each attempt and asks. Renaming the symptom or starting a new session does not reset the count, and nothing is published. |
 | Local regression in an approved implementation | Repair locally, confirm affected paths, then publish once. |
 | Publication succeeds while remote review/CI is pending or fails immediately | Record handoff and stop; do not poll, fix, repush or claim checks passed. |
 | User supplies PR feedback | Assess findings and present an incremental plan before code changes; unchanged tasks and evidence survive. |

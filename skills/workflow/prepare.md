@@ -67,7 +67,8 @@ Have an agent who did not author the plan independently assess the original requ
 project rules, relevant code and the whole plan against this preparation procedure
 and the evidence standard. The review must assess both whether the design is justified
 and whether it can be implemented and verified. The author's concern list is context,
-not a limit on review. No particular model or fixed number of rounds is required.
+not a limit on review. No particular model or minimum number of rounds is required.
+If material findings remain after three rounds, ask the user whether to change the approach.
 
 Keep the reviewed plan snapshot, code revision, checks, findings and supporting
 sources in the batch's `evidence/`; link it from IMPLEMENTATION. The reviewer does
