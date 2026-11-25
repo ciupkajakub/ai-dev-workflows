@@ -53,6 +53,21 @@ in every tool; provider differences below concern discovery only.
    commit/publication scope. Report the source commit, content comparison and
    discovery actually checked.
 
+## Optional PR maintenance
+
+The workflow is complete without this. Only when the user asks to prepare for a tool
+that maintains open PRs, copy the part below the line in
+[pr-maintenance.md](pr-maintenance.md) to the place that tool reads. For Claude Code
+`/ship`, `/steward` and PR Steward that is `.claude/skills/steward/SKILL.md`, as a file
+committed to the default branch. Preserve an existing file and report conflicts. The
+copy is application-owned: package updates do not change it, and removing it removes
+the preparation.
+
+Tell the user that these are instructions and not enforcement, and that branch protection
+and auto-merge settings decide what can merge. For a PR published by the workflow,
+`/steward` starts maintenance only; `/ship` can also commit uncommitted files and
+repeats review. Check `git status` first.
+
 ## Transition from earlier layouts
 
 This is an incompatible instruction/document layout. An authorized package update

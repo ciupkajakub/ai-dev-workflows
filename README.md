@@ -23,6 +23,10 @@ provision environments or enforce the process automatically.
 There is no automatic repair loop after the PR. To address feedback, ask the agent
 to assess it and propose a continuation for approval.
 
+You may instead start a PR maintenance tool such as Claude Code `/steward` yourself, for
+any single PR. The workflow does not need one. See
+[optional PR maintenance](skills/install.md#optional-pr-maintenance).
+
 ## Get started
 
 Clone this repository:
