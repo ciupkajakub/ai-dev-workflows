@@ -73,6 +73,8 @@ fails, save the actual checkpoint and reconcile remote state before retrying.
 
 In the PR/handoff identify the approved snapshot or continuation, delivered behavior,
 verification evidence and tested revision, limitations and unobserved remote checks.
+Name the main risk, changed protected controls, and how to revert, including data or
+external effects that reverting the code leaves behind.
 Add a short "Decisions" section with `decided` and `rejected` findings and their
 reasons, because reviewers started elsewhere may see only the PR.
 Record the PR link and completed handoff in BATCH; identify local-only records.

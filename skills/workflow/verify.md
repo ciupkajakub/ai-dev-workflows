@@ -55,7 +55,9 @@ when delegating to a separate review skill or tool. Reassess prior dispositions
 when new evidence invalidates them, not merely because a new review starts.
 
 The reviewer evaluates the full change against required behavior and this evidence
-standard, including known failures outside selected suites. Trace changed data,
+standard, including known failures outside selected suites. Take project rules from the
+base revision, and report changed [protected controls](SKILL.md#protected-controls)
+without the required approval as material findings. Trace changed data,
 meaning and timing through readers, writers and side effects. Return findings and
 evidence without implementing or publishing. Keep the reviewed revision and result
 in the batch's `evidence/`.

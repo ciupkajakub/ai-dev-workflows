@@ -35,6 +35,14 @@ Before proposing work on an existing PR, inspect its repository, source/target,
 state and source branch existence. Recheck before mutation; an ordinary update
 does not authorize reopening a closed PR or restoring a branch.
 
+### Protected controls
+
+Work must not weaken what judges it. Skipping, deleting or loosening an existing check,
+or changing CI, check scripts and thresholds, hooks, code owners, or agent rules and
+skills, needs the user's approval of that specific change, in the plan or separately.
+Adding checks does not. Neither does updating an expectation that an approved
+requirement changes. If approval is missing, leave the control as it is and ask.
+
 ## Choose the procedure
 
 - New need, unfinished proposal or requested feedback: [prepare.md](prepare.md).
