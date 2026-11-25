@@ -133,6 +133,28 @@ one check was piped without `pipefail`. Most trap scenarios leave no room to sho
 improvement, so these fixtures do not reproduce the session's failures on this model.
 No trial ran on the model used in that session, and there is no no-workflow comparison.
 
+The candidate was tried later that day: instructions `35481b7`, whose `skills/` match
+the merged `82b3254`, with the same model, effort, run count and fixtures, reported
+total 0.22 USD. It did not meet the adoption rule. Every scenario had as many passes
+as the baseline (29 of 30), so no trap gained 2. The median cost of `plain_repair`
+was equal, 0.0053 USD. PR 5 disclosed the unmet rule and proceeded by the maintainer's
+choice, but its statement that no agent trial had run was written before these results.
+
+Reading the retained transcripts again with the metrics that now include `repair.md`
+and `run_check.py`:
+
+| Trials out of 30 that | Baseline `cca01f1` | Candidate `35481b7` |
+| --- | --- | --- |
+| opened `repair.md` | not in this revision | 7 |
+| ran `run_check.py` | not in this revision | 6 |
+| opened no procedure file | 9 | 16 |
+
+Four check commands were piped without `pipefail` in the candidate, one in the baseline.
+The trials therefore say little about the added rules: most agents never reached them.
+Matching on tool calls is approximate and can miss a file read through a glob.
+`replaced_mechanism` and `unhealthy_environment` changed in `07b34b3`, so compare their
+results only with new baseline trials. The changes of 2026-11-25 have had no agent trial.
+
 ## Source rewrite checks and bounded exercises
 
 ### 2026-10-09 local source rewrite

@@ -58,7 +58,7 @@ has the access of the user running the trial.
   finish, for example on a timeout or budget stop, and says nothing about the
   instructions. Report it; never count it as either result.
 - `metrics` (commit after `;`, fixture checks piped without `pipefail`, subagents,
-  instruction files read) are for diagnosis and never change a verdict. They come
+  instruction files read, `run_check.py` calls) are for diagnosis and never change a verdict. They come
   from regular expressions over commands.
 - `cost_usd` is the value the CLI reports. On a subscription login it may be an
   estimate rather than a charge.

@@ -208,6 +208,18 @@ class Metrics(unittest.TestCase):
         self.assertEqual(metrics["commit_after_semicolon"], 1)
         self.assertEqual(metrics["checks_piped_without_pipefail"], 1)
 
+    def test_repair_procedure_and_check_wrapper_use_are_observed(self):
+        def call(number, name, **arguments):
+            return {"type": "tool_use", "id": number, "name": name, "input": arguments}
+        events = [{"type": "assistant", "message": {"content": [
+            call("1", "Read", file_path="/x/ai-workflow/tooling/skills/workflow/repair.md"),
+            call("2", "Bash", command="python3 -B ai-workflow/tooling/skills/run_check.py -- ./check.sh"),
+            call("3", "Bash", command="./check.sh"),
+        ]}}]
+        metrics = harness.behavior_metrics(events)
+        self.assertEqual(metrics["instructions_read"], ["repair.md"])
+        self.assertEqual(metrics["run_check_calls"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

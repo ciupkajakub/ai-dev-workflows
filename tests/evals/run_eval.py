@@ -192,9 +192,10 @@ def behavior_metrics(events):
         ),
         "subagents": sum(name == "Agent" for name, _ in tool_calls(events)),
         "instructions_read": sorted({
-            name for name in ("prepare.md", "deliver.md", "verify.md")
+            name for name in ("prepare.md", "deliver.md", "verify.md", "repair.md")
             if any(f"/{name}" in text or f" {name}" in text for text in serialized)
         }),
+        "run_check_calls": sum("run_check.py" in command for command in commands),
     }
 
 
