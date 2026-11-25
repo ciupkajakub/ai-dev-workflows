@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -95,9 +96,10 @@ class RunCheck(unittest.TestCase):
     def fields(self, result):
         return dict(part.split("=", 1) for part in self.summary(result).split()[1:])
 
-    def run_default_log(self, command, cwd=None):
+    def run_default_log(self, command, cwd=None, env=None):
         return subprocess.run([sys.executable, "-B", str(TOOL), "--", command],
-                              cwd=cwd or self.directory, capture_output=True, text=True, timeout=30)
+                              cwd=cwd or self.directory, capture_output=True, text=True, timeout=30,
+                              env=env)
 
     def test_clean_revision_and_its_tree_are_reported(self):
         self.repository()
@@ -185,7 +187,7 @@ class RunCheck(unittest.TestCase):
         fields = self.fields(result)
         self.assertEqual(fields["rev"], self.output("rev-parse", "HEAD"))
         self.assertEqual((fields["dirty"], fields["tree"]), ("true", "unknown"))
-        self.assertIn("Content not fully identified: ", result.stdout)
+        self.assertRegex(result.stdout, "Content not fully identified: .*embedded")
 
     def test_undecodable_names_and_output_do_not_replace_the_result(self):
         self.repository()
@@ -221,15 +223,44 @@ class RunCheck(unittest.TestCase):
     def test_path_separator_in_the_repository_path_is_supported(self):
         self.directory = self.directory / "a:b"
         self.directory.mkdir()
+        subprocess.run([*self.git(), "init", "-q"], check=True)
+        for name in ("app.txt", "unchanged.txt"):
+            (self.directory / name).write_text("first\n")
+            # Git rewrites recently modified files, which would hide missing objects.
+            os.utime(self.directory / name, (1577836800, 1577836800))
+        self.commit("start")
+        time.sleep(1.2)
+        (self.directory / "app.txt").write_text("second\n")
+        tested = self.fields(self.run_default_log("true"))["tree"]
+        self.commit("tested content")
+        self.assertEqual(tested, self.output("rev-parse", "HEAD^{tree}"))
+
+    def test_git_dir_of_another_repository_is_reported_not_guessed(self):
         self.repository()
-        (self.directory / "unchanged.txt").write_text("only in the repository objects\n")
-        self.commit("second file")
-        worktree = self.directory / "linked"
-        self.output("worktree", "add", "-q", str(worktree))
-        (worktree / "app.txt").write_text("second\n")
-        tested = self.fields(self.run_default_log("true", worktree))["tree"]
-        self.output("-C", str(worktree), "commit", "-qam", "tested content")
-        self.assertEqual(tested, self.output("-C", str(worktree), "rev-parse", "HEAD^{tree}"))
+        other = self.directory.parent / f"{self.directory.name}-other.git"
+        self.addCleanup(shutil.rmtree, other)
+        subprocess.run(["git", "init", "-q", "--bare", str(other)], check=True)
+        for variable, value in (("GIT_DIR", other), ("GIT_INDEX_FILE", other / "index")):
+            with self.subTest(variable):
+                result = self.run_default_log("exit 3", env={**os.environ, variable: str(value)})
+                self.assertEqual(result.returncode, 3)
+                fields = self.fields(result)
+                self.assertEqual((fields["rev"], fields["tree"]), ("unknown", "unknown"))
+                self.assertIn(f"{variable} ", result.stdout)
+
+    def test_closed_or_broken_output_does_not_replace_the_exit_code(self):
+        tool = f"{sys.executable} -B {TOOL} --log {self.directory / 'x.log'} -- 'exit 3'"
+        for command in (f"{tool} >&-", f"{tool} | true; exit ${{PIPESTATUS[0]}}"):
+            with self.subTest(command):
+                result = subprocess.run(["bash", "-c", command], capture_output=True, timeout=30)
+                self.assertEqual(result.returncode, 3, result.stderr)
+
+    def test_log_removed_by_the_command_does_not_replace_the_exit_code(self):
+        result = subprocess.run(
+            [sys.executable, "-B", str(TOOL), "--log", "out/c.log", "--", "rm -rf out; exit 3"],
+            cwd=self.directory, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 3, result.stderr)
+        self.assertIn("Log unavailable", result.stdout)
 
     def test_unavailable_log_directory_falls_back_and_says_so(self):
         self.repository()
