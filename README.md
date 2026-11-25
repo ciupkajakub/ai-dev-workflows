@@ -56,6 +56,32 @@ Use `/workflow` in Cursor or Claude Code. Reply to the proposed plan in ordinary
 language. To resume interrupted work, provide its `ai-workflow/work/<batch-id>/`
 path.
 
+## Update
+
+Changes in this repository do not reach your applications automatically. First update
+your clone:
+
+```sh
+git -C <source-repo> switch main && git -C <source-repo> pull --ff-only
+```
+
+Then ask the agent in each application repository:
+
+```text
+Read <source-repo>/skills/install.md. Update the installed workflow to that checkout's
+HEAD for the tools I use. Compare the current copy with its recorded source commit
+first. Preserve project rules, local edits and work records. Update the recorded source
+commit and verify the package. Do not migrate batches or implement application code.
+```
+
+Start a new agent session afterwards so it reads the new version. To check for an update
+without changing anything, ask instead:
+
+```text
+Read <source-repo>/skills/install.md. Check, read-only, whether the installed workflow
+is intact and whether that checkout's HEAD has an update.
+```
+
 ## Details
 
 - [Installation and updates](skills/install.md)
