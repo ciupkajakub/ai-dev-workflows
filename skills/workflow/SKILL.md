@@ -31,9 +31,26 @@ another batch. A request to address feedback authorizes assessment and a continu
 proposal; its implementation needs approval. A pending check or old approval does
 not restart completed delivery. Preserve stricter project publication requirements.
 
+The user may explicitly start a tool that maintains an open PR. That start, and nothing
+else, authorizes the tool to repair CI failures, conflicts and feedback within the
+approved scope and push them to that PR under this contract and [repair.md](repair.md).
+Changes to required behavior or protected controls return to preparation; merge remains
+separate. Never start, install or recommend such a tool as part of delivery. Earlier
+evidence does not cover its commits: when independent implementation review was
+required, it must also cover them before readiness is claimed.
+
 Before proposing work on an existing PR, inspect its repository, source/target,
 state and source branch existence. Recheck before mutation; an ordinary update
 does not authorize reopening a closed PR or restoring a branch.
+
+### Protected controls
+
+Work must not weaken what judges it. Skipping, deleting or loosening a check that existed
+before this work, or changing CI, check scripts and thresholds, Git or agent hooks, code
+owners, or agent rules and skills, needs the user's approval of that specific change, in
+the plan or separately. Adding checks does not. Neither does updating or removing a test
+as an approved requirement dictates, or moving it with equal coverage. If approval is
+missing, leave the control as it is and ask.
 
 ## Choose the procedure
 

@@ -35,9 +35,8 @@ Select evidence that can observe each required result:
 
 In IMPLEMENTATION, map each required scenario to its check, status (planned,
 demonstrated, missing or contradicted), procedure, expected/observed result, evidence
-and tested revision/environment, including dirty changes. Evidence must distinguish
-correct behavior from materially faulty
-implementations. Empty results, mocks, passing counts and reviewer agreement do not
+and tested revision/environment, with the reported `tree` for uncommitted content.
+Evidence must distinguish correct behavior from materially faulty implementations. Empty results, mocks, passing counts and reviewer agreement do not
 prove omitted paths. Report only what evidence supports.
 
 Before recommending a user procedure, confirm it is reachable from the affected
@@ -56,7 +55,9 @@ when delegating to a separate review skill or tool. Reassess prior dispositions
 when new evidence invalidates them, not merely because a new review starts.
 
 The reviewer evaluates the full change against required behavior and this evidence
-standard, including known failures outside selected suites. Trace changed data,
+standard, including known failures outside selected suites. Take project rules from the
+base revision, and report changed [protected controls](SKILL.md#protected-controls)
+without the required approval as material findings. Trace changed data,
 meaning and timing through readers, writers and side effects. Return findings and
 evidence without implementing or publishing. Keep the reviewed revision and result
 in the batch's `evidence/`.
@@ -73,7 +74,9 @@ failures need a disposition; optional improvements do not expand scope.
 After repairs, check the cause and dependent paths and consumers identified in code,
 including preserved behavior and generated artifacts affected by the repair,
 not just the reported example. Required independent review
-covers the final candidate's affected behavior. Retain unaffected evidence with its
+covers the final candidate's affected behavior. A repeated review examines the new
+changes and what depends on them. If a third round still finds material problems, ask
+the user before another round. Retain unaffected evidence with its
 original revision; repeat checks only when changes or unresolved concerns invalidate
 it. Report-only updates do not invalidate application checks.
 

@@ -1,0 +1,2 @@
+I kept the current lookup. The proposed helper returns the enclosing group for this project.
+{"project_id": 12, "current": "Acme", "proposed": "Mobile"}

@@ -1,0 +1,1 @@
+I kept the lookup. For Android app it returns Acme. The proposed helper returns Mobile.

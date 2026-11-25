@@ -3,9 +3,11 @@
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import re
 import shlex
@@ -23,7 +25,7 @@ sys.path.insert(0, str(EVALS))
 
 from grading import Context  # noqa: E402
 
-CLAUDE_TOOLS = "Bash Read Edit Write Glob Grep Skill Agent"
+CLAUDE_TOOLS = "Bash,Read,Edit,Write,Glob,Grep,Skill,Agent"
 CHECK_COMMAND = r"(unittest|check\.sh|e2e/run\.sh)"
 IDENTITY = ("-c", "user.name=Eval fixture", "-c", "user.email=eval@localhost",
             "-c", "commit.gpgsign=false")
@@ -92,10 +94,63 @@ def claude_command(args):
     return [
         "claude", "-p", "--output-format", "stream-json", "--verbose",
         "--setting-sources", "project", "--strict-mcp-config", "--no-session-persistence",
-        "--permission-mode", "acceptEdits", "--allowedTools", CLAUDE_TOOLS,
+        "--permission-mode", "acceptEdits", "--tools", CLAUDE_TOOLS, "--allowedTools", CLAUDE_TOOLS,
         "--model", args.model, "--effort", args.effort,
         "--max-budget-usd", str(args.max_budget_usd),
     ]
+
+
+def evaluation_fingerprint():
+    """Identify the runner, graders, prompts, fixtures and their executable modes."""
+    sources = [Path(__file__), EVALS / "grading.py", *sorted(SCENARIOS.rglob("*"))]
+    files = [
+        (path.relative_to(EVALS).as_posix(), bool(path.stat().st_mode & 0o111),
+         hashlib.sha256(path.read_bytes()).hexdigest())
+        for path in sources if path.is_file() and "__pycache__" not in path.parts
+    ]
+    return hashlib.sha256(json.dumps(files).encode()).hexdigest()
+
+
+def run_config(args, command):
+    config = {
+        "model": args.model, "effort": args.effort, "executor": command,
+        "timeout": args.timeout, "max_budget_usd": args.max_budget_usd,
+        "evaluation_sha256": evaluation_fingerprint(),
+    }
+    if args.executor_command:
+        # A custom executor often runs an interpreter and a local script.
+        executable = shutil.which(command[0])
+        files = [Path(executable)] if executable else []
+        files.extend(Path(arg) for arg in command[1:] if os.path.isabs(arg) and Path(arg).is_file())
+        config["executor_files"] = {
+            str(path.resolve()): hashlib.sha256(path.read_bytes()).hexdigest() for path in files
+        }
+    else:
+        config["cli_version"] = subprocess.run(
+            ["claude", "--version"], capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    return config
+
+
+def bind_output(out, config):
+    """Publish one complete configuration before any trial can be run or reused."""
+    manifest = out / "run-config.json"
+    if not manifest.exists():
+        if any(out.rglob("result.json")):
+            raise ValueError("Existing results have no run-config.json")
+        with tempfile.NamedTemporaryFile(mode="w", dir=out) as pending:
+            json.dump(config, pending, indent=2)
+            pending.write("\n")
+            pending.flush()
+            try:
+                os.link(pending.name, manifest)
+            except FileExistsError:
+                pass  # Another invocation published its configuration first.
+    previous = json.loads(manifest.read_text())
+    if previous != config:
+        changed = sorted(key for key in previous.keys() | config.keys()
+                         if previous.get(key) != config.get(key))
+        raise ValueError(f"Incompatible evaluation configuration ({', '.join(changed)})")
 
 
 def parse_events(output):
@@ -137,14 +192,22 @@ def behavior_metrics(events):
         ),
         "subagents": sum(name == "Agent" for name, _ in tool_calls(events)),
         "instructions_read": sorted({
-            name for name in ("prepare.md", "deliver.md", "verify.md")
+            name for name in ("prepare.md", "deliver.md", "verify.md", "repair.md")
             if any(f"/{name}" in text or f" {name}" in text for text in serialized)
         }),
+        "run_check_calls": sum(
+            bool(re.search(r"run_check\.py\b.*\s--\s", command)) for command in commands
+        ),
     }
 
 
-def grade(scenario, workspace, base, final_message, events=()):
-    context = Context(Path(workspace), base, final_message, list(events))
+def read_observations(workspace):
+    log = workspace.parent / "observations.log"
+    return log.read_text().splitlines() if log.exists() else []
+
+
+def grade(scenario, workspace, base, final_message, events=(), observations=()):
+    context = Context(Path(workspace), base, final_message, list(events), list(observations))
     criteria = {"responded": bool(final_message.strip())}
     criteria.update(load_grader(scenario).grade(context))
     return {"verdict": "pass" if all(criteria.values()) else "fail", "criteria": criteria}
@@ -158,7 +221,15 @@ def apply_control(scenario, control, workspace):
         shutil.copytree(files, workspace, dirs_exist_ok=True)
         git(workspace, "add", "-A")
         git(workspace, "commit", "-qm", f"Control: {control}")
+    script = directory / "run.sh"
+    if script.exists():
+        subprocess.run(["sh", str(script)], cwd=workspace, env=observation_env(workspace),
+                       capture_output=True, check=True, timeout=120)
     return (directory / "message.txt").read_text()
+
+
+def observation_env(workspace):
+    return {**os.environ, "WORKFLOW_EVAL_OBSERVATIONS": str(workspace.parent / "observations.log")}
 
 
 def check_control(scenario, control, instructions="HEAD"):
@@ -167,10 +238,10 @@ def check_control(scenario, control, instructions="HEAD"):
         workspace = Path(directory) / "workspace"
         base = prepare_workspace(scenario, commit, workspace)
         message = apply_control(scenario, control, workspace) if control != "unchanged" else ""
-        return grade(scenario, workspace, base, message)
+        return grade(scenario, workspace, base, message, observations=read_observations(workspace))
 
 
-def run_trial(args, scenario, instructions, number):
+def run_trial(args, command, scenario, instructions, number):
     variant = instructions[:12]
     directory = Path(args.out) / scenario / variant / str(number)
     result_file = directory / "result.json"
@@ -184,12 +255,11 @@ def run_trial(args, scenario, instructions, number):
     with tempfile.TemporaryDirectory(prefix="workflow-eval-") as temporary:
         workspace = Path(temporary) / "workspace"
         base = prepare_workspace(scenario, instructions, workspace)
-        command = shlex.split(args.executor_command) if args.executor_command else claude_command(args)
         started = time.monotonic()
         try:
             process = subprocess.run(
                 command, cwd=workspace, input=prompt_for(scenario, instructions),
-                capture_output=True, text=True, timeout=args.timeout,
+                capture_output=True, text=True, timeout=args.timeout, env=observation_env(workspace),
             )
             output, error, code = process.stdout, process.stderr, process.returncode
         except subprocess.TimeoutExpired as expired:
@@ -199,6 +269,9 @@ def run_trial(args, scenario, instructions, number):
         (directory / "transcript.jsonl").write_text(output)
         (directory / "stderr.txt").write_text(error)
         events = parse_events(output)
+        init = next((e for e in events if e.get("type") == "system" and e.get("subtype") == "init"), {})
+        result["runtime"] = {key: init.get(key) for key in ("model", "claude_code_version", "tools")}
+        result["observations"] = read_observations(workspace)
         final = next((e for e in reversed(events) if e.get("type") == "result"), {})
         message = final.get("result") or ""
         result.update(
@@ -214,8 +287,11 @@ def run_trial(args, scenario, instructions, number):
             detail = (error.strip() or message)[-300:]
             result.update(verdict="invalid", reason=f"executor exit {code}: {detail}")
         else:
-            result.update(grade(scenario, workspace, base, message, events))
-    result_file.write_text(json.dumps(result, indent=2) + "\n")
+            result.update(grade(scenario, workspace, base, message, events, result["observations"]))
+    with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as pending:
+        json.dump(result, pending, indent=2)
+        pending.write("\n")
+    Path(pending.name).replace(result_file)
     print(f"{scenario} {variant} #{number}: {result['verdict']}", flush=True)
     return result
 
@@ -224,16 +300,28 @@ def report(out):
     results = [json.loads(path.read_text()) for path in sorted(Path(out).rglob("result.json"))]
     rows = {}
     for result in results:
-        key = (result["scenario"], result["instructions"][:12])
+        runtime = result["runtime"]
+        tools = runtime["tools"]
+        environment = (runtime["model"] or "unreported", runtime["claude_code_version"] or "unreported",
+                       ", ".join(sorted(tools)) if tools is not None else "unreported")
+        key = (environment, result["scenario"], result["instructions"][:12])
         row = rows.setdefault(key, {"pass": 0, "fail": 0, "invalid": 0, "missed": {}, "cost": 0.0})
         row[result["verdict"]] += 1
         row["cost"] += result.get("cost_usd") or 0
         for name, value in result.get("criteria", {}).items():
             if not value:
                 row["missed"][name] = row["missed"].get(name, 0) + 1
-    lines = ["| Scenario | Instructions | Pass | Fail | Invalid | Failed criteria | Cost USD |",
-             "| --- | --- | --- | --- | --- | --- | --- |"]
-    for (scenario, variant), row in sorted(rows.items()):
+    config = json.loads((Path(out) / "run-config.json").read_text())
+    lines = [f"Requested model: `{config['model']}`, effort: `{config['effort']}`. "
+             "Full invocation and evaluation fingerprint: [run-config.json](run-config.json).", ""]
+    previous_environment = None
+    for (environment, scenario, variant), row in sorted(rows.items()):
+        if environment != previous_environment:
+            model, version, names = environment
+            lines.extend(["", f"Reported model `{model}`, CLI `{version}`, tools: {names or 'none'}.", "",
+                          "| Scenario | Instructions | Pass | Fail | Invalid | Failed criteria | Cost USD |",
+                          "| --- | --- | --- | --- | --- | --- | --- |"])
+            previous_environment = environment
         missed = ", ".join(f"{k} x{v}" for k, v in sorted(row["missed"].items())) or "-"
         lines.append(f"| {scenario} | {variant} | {row['pass']} | {row['fail']} | "
                      f"{row['invalid']} | {missed} | {row['cost']:.2f} |")
@@ -245,7 +333,7 @@ def report(out):
 def command_controls(args):
     failures = 0
     for scenario in args.scenario or scenario_ids():
-        for control, expected in (("good", "pass"), ("bad", "fail"), ("unchanged", "fail")):
+        for control, expected in scenario_controls(scenario):
             result = check_control(scenario, control)
             matches = result["verdict"] == expected
             failures += not matches
@@ -254,18 +342,32 @@ def command_controls(args):
     return 1 if failures else 0
 
 
+def scenario_controls(scenario):
+    for message in sorted((SCENARIOS / scenario / "controls").glob("*/message.txt")):
+        control = message.parent.name
+        yield control, "pass" if control.startswith("good") else "fail"
+    yield "unchanged", "fail"
+
+
 def command_run(args):
     scenarios = args.scenario or scenario_ids()
     variants = [resolve_instructions(reference) for reference in args.instructions]
     trials = [(s, v, n) for s in scenarios for v in variants for n in range(1, args.runs + 1)]
+    command = shlex.split(args.executor_command) if args.executor_command else claude_command(args)
     if args.dry_run:
         print(f"{len(trials)} trials, at most ${args.max_budget_usd} each: "
               f"{len(scenarios)} scenarios x {len(variants)} variants x {args.runs} runs")
-        print(shlex.join(claude_command(args)))
+        print(shlex.join(command))
         return 0
-    Path(args.out).mkdir(parents=True, exist_ok=True)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    try:
+        bind_output(out, run_config(args, command))
+    except ValueError as error:
+        print(f"{error}. Use a new --out directory; existing results were preserved.", file=sys.stderr)
+        return 2
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        list(pool.map(lambda trial: run_trial(args, *trial), trials))
+        list(pool.map(lambda trial: run_trial(args, command, *trial), trials))
     print(report(args.out))
     return 0
 

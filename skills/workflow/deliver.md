@@ -29,17 +29,35 @@ Repair implementation defects within approved decisions without requesting appro
 again. Update the flow/contracts and coverage when new affected consumers are found.
 Run shared batch checks at integration points rather than repeating them per task.
 
-Run checks with `python3 -B <skills>/run_check.py --timeout <seconds> -- '<command>'`,
-where `<skills>` is the parent of this skill's real directory, and set the timeout from
-the check's expected duration. Its last line is the result: read `exit`, and open the
-log rather than filtering the output. Join a dependent commit or push only with `&&`.
+From the application repository root, run each required check through the installed
+wrapper. Use the project's commands and their expected timeouts. For example, if the
+unit suite must pass before integration starts:
+
+```sh
+python3 -B ai-workflow/tooling/skills/run_check.py --timeout 120 -- 'make test-unit' &&
+  python3 -B ai-workflow/tooling/skills/run_check.py --timeout 600 -- 'make test-integration'
+```
+
+Keep dependent checks in separate wrapper calls joined by `&&`. A command such as
+`first; second` returns the status of `second` even if `first` failed. Join a commit that
+depends on a check only with `&&`. In a custom layout, locate `run_check.py` in the
+parent of this skill's real directory.
+
+Read `exit` on each wrapper's last line and open its full log when needed. Record its
+`rev` with the result, and `tree` when the content is uncommitted. Before publication,
+commit the candidate, run the final checks on that clean commit (`dirty=false`) and join
+the push to them with `&&`; commit published results afterwards. If local-only records
+make it dirty, name them. `tree` omits ignored files and changes inside submodules. If
+`changed_during_run` is not `false`, inspect what changed before using the result. Logs
+stay in the local Git directory. Copy redacted output under `evidence/` when others need
+it or `temporary_log=true`.
 Handle any unexpected result through [repair.md](repair.md).
 
 If evidence disproves a design assumption or requires material scope/behavior changes,
 preserve the observation and return to [preparation](prepare.md). Do not change
-requirements to fit the code. Stop with attempts and a recoverable next action when
-a resource/decision is missing, an agreed budget is reached, or attempts repeat
-without new evidence.
+requirements to fit the code. Stop with a recoverable next action when a resource or
+decision is missing, an agreed budget is reached, or
+[three attempts](repair.md#stop-after-three-attempts) have not solved one problem.
 
 Apply [findings and completion](verify.md#findings-and-completion) to the integrated
 candidate, including required independent review. On resume, reuse valid results
@@ -58,6 +76,8 @@ fails, save the actual checkpoint and reconcile remote state before retrying.
 
 In the PR/handoff identify the approved snapshot or continuation, delivered behavior,
 verification evidence and tested revision, limitations and unobserved remote checks.
+Name the main risk, changed protected controls, and how to revert, including data or
+external effects that reverting the code leaves behind.
 Add a short "Decisions" section with `decided` and `rejected` findings and their
 reasons, because reviewers started elsewhere may see only the PR.
 Record the PR link and completed handoff in BATCH; identify local-only records.

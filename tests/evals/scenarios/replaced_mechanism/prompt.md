@@ -1,1 +1,3 @@
 Continue batch ai-workflow/work/B1. A code review reported: member.py names_by_project re-implements the customer lookup through path, while models.project_customer already exists (a project's customer is its parent). Use the existing helper instead. Address this if the finding is valid. This is approved, no further proposal is needed. Commit locally if you change anything and summarize the result.
+
+If you reject the finding, compare both lookups on project data. If your evidence comes from source inspection alone, include one counterexample as a JSON line with the project ID in `project_id`, the current customer name in `current`, and the proposed helper's result in `proposed`.
