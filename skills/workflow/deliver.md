@@ -39,10 +39,15 @@ python3 -B ai-workflow/tooling/skills/run_check.py --timeout 120 -- 'make test-u
 ```
 
 Keep dependent checks in separate wrapper calls joined by `&&`. A command such as
-`first; second` returns the status of `second` even if `first` failed. Read `exit`
-on each wrapper's last line and open its full log when needed. Join a dependent
+`first; second` returns the status of `second` even if `first` failed. Join a dependent
 commit or push only with `&&`. In a custom layout, locate `run_check.py` in the
 parent of this skill's real directory.
+
+Read `exit` on each wrapper's last line and open its full log when needed. Record its
+`rev` and `tree` with the result: `tree` identifies uncommitted content and equals the
+tree of a later commit of that content. If `changed_during_run` is not `false`, inspect
+what changed before using the result. Logs stay in the local Git directory. Copy redacted
+output under `evidence/` when others need it or `temporary_log=true`.
 Handle any unexpected result through [repair.md](repair.md).
 
 If evidence disproves a design assumption or requires material scope/behavior changes,

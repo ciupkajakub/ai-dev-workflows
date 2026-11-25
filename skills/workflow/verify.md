@@ -35,9 +35,8 @@ Select evidence that can observe each required result:
 
 In IMPLEMENTATION, map each required scenario to its check, status (planned,
 demonstrated, missing or contradicted), procedure, expected/observed result, evidence
-and tested revision/environment, including dirty changes. Evidence must distinguish
-correct behavior from materially faulty
-implementations. Empty results, mocks, passing counts and reviewer agreement do not
+and tested revision/environment, with the reported `tree` for uncommitted content.
+Evidence must distinguish correct behavior from materially faulty implementations. Empty results, mocks, passing counts and reviewer agreement do not
 prove omitted paths. Report only what evidence supports.
 
 Before recommending a user procedure, confirm it is reachable from the affected
