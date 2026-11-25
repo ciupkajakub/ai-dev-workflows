@@ -75,8 +75,8 @@ After repairs, check the cause and dependent paths and consumers identified in c
 including preserved behavior and generated artifacts affected by the repair,
 not just the reported example. Required independent review
 covers the final candidate's affected behavior. A repeated review examines the new
-changes and what depends on them. After three rounds with material findings, ask the
-user whether to change the approach. Retain unaffected evidence with its
+changes and what depends on them. If a third round still finds material problems, ask
+the user before another round. Retain unaffected evidence with its
 original revision; repeat checks only when changes or unresolved concerns invalidate
 it. Report-only updates do not invalidate application checks.
 

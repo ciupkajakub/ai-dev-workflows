@@ -59,7 +59,7 @@ The workflow is complete without this. Only when the user asks to prepare for a 
 that maintains open PRs, copy the part below the line in
 [pr-maintenance.md](pr-maintenance.md) to the place that tool reads. For Claude Code
 `/ship`, `/steward` and PR Steward that is `.claude/skills/steward/SKILL.md`, as a file
-committed to the default branch. Preserve an existing file and report conflicts. The
+merged to the default branch through the project's normal process. Preserve an existing file and report conflicts. The
 copy is application-owned: package updates do not change it, and removing it removes
 the preparation.
 

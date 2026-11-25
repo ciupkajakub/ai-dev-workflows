@@ -215,6 +215,7 @@ class Metrics(unittest.TestCase):
             call("1", "Read", file_path="/x/ai-workflow/tooling/skills/workflow/repair.md"),
             call("2", "Bash", command="python3 -B ai-workflow/tooling/skills/run_check.py -- ./check.sh"),
             call("3", "Bash", command="./check.sh"),
+            call("4", "Bash", command="cat ai-workflow/tooling/skills/run_check.py"),
         ]}}]
         metrics = harness.behavior_metrics(events)
         self.assertEqual(metrics["instructions_read"], ["repair.md"])

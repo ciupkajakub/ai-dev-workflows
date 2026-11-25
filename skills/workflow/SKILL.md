@@ -45,11 +45,12 @@ does not authorize reopening a closed PR or restoring a branch.
 
 ### Protected controls
 
-Work must not weaken what judges it. Skipping, deleting or loosening an existing check,
-or changing CI, check scripts and thresholds, hooks, code owners, or agent rules and
-skills, needs the user's approval of that specific change, in the plan or separately.
-Adding checks does not. Neither does updating an expectation that an approved
-requirement changes. If approval is missing, leave the control as it is and ask.
+Work must not weaken what judges it. Skipping, deleting or loosening a check that existed
+before this work, or changing CI, check scripts and thresholds, Git or agent hooks, code
+owners, or agent rules and skills, needs the user's approval of that specific change, in
+the plan or separately. Adding checks does not. Neither does updating or removing a test
+as an approved requirement dictates, or moving it with equal coverage. If approval is
+missing, leave the control as it is and ask.
 
 ## Choose the procedure
 

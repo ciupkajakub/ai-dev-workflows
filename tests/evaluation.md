@@ -157,8 +157,9 @@ and `run_check.py`:
 Four check commands were piped without `pipefail` in the candidate, one in the baseline.
 The trials therefore say little about the added rules: most agents never reached them.
 Matching on tool calls is approximate and can miss a file read through a glob.
-`replaced_mechanism` and `unhealthy_environment` changed in `07b34b3`, so compare their
-results only with new baseline trials. The changes of 2026-11-25 have had no agent trial.
+None of these results can be compared with new trials: `07b34b3` restricted the executor's
+tools and changed `replaced_mechanism` and `unhealthy_environment`. Run a new baseline.
+The changes of 2026-11-25 have had no agent trial.
 
 ## Source rewrite checks and bounded exercises
 

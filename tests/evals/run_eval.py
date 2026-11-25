@@ -195,7 +195,9 @@ def behavior_metrics(events):
             name for name in ("prepare.md", "deliver.md", "verify.md", "repair.md")
             if any(f"/{name}" in text or f" {name}" in text for text in serialized)
         }),
-        "run_check_calls": sum("run_check.py" in command for command in commands),
+        "run_check_calls": sum(
+            bool(re.search(r"run_check\.py\b.*\s--\s", command)) for command in commands
+        ),
     }
 
 
