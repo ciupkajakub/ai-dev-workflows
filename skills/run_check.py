@@ -3,7 +3,8 @@
 
 The result line identifies the content before the command started: `rev` is HEAD and
 `tree` is the Git tree that committing every non-ignored file would produce. It equals
-`git rev-parse <commit>^{tree}` for a commit of that same content.
+`git rev-parse <commit>^{tree}` for a commit of that same content. It does not cover
+ignored files, files marked assume-unchanged or skip-worktree, or changes inside submodules.
 """
 
 import argparse
@@ -17,17 +18,25 @@ import tempfile
 import time
 
 GIT_TIMEOUT = 120
-UNKNOWN = ("unknown", "unknown", "unknown")
+ENVIRONMENT = dict(os.environ)
+if "GIT_WORK_TREE" not in ENVIRONMENT:
+    # Hooks set GIT_DIR, which makes Git treat any subdirectory as the top of the checkout.
+    ENVIRONMENT.pop("GIT_DIR", None)
 
 
-def git(*args, env=None):
-    result = subprocess.run(["git", *args], capture_output=True, text=True,
-                            timeout=GIT_TIMEOUT, env=env, check=True)
+def git(*args, env=ENVIRONMENT):
+    result = subprocess.run(["git", *args], capture_output=True, text=True, check=True,
+                            errors="surrogateescape", timeout=GIT_TIMEOUT, env=env)
     return result.stdout.rstrip("\n")
 
 
+def inside(path, top):
+    path, top = path.resolve(), Path(top).resolve()
+    return [path.relative_to(top).as_posix()] if path.is_relative_to(top) else []
+
+
 def content_tree(top, log):
-    """Hash the working content without touching the repository's index or objects."""
+    """Hash the working content without writing to the repository's index or objects."""
     with tempfile.TemporaryDirectory(prefix="workflow-tree-") as directory:
         index = Path(directory) / "index"
         objects = Path(directory) / "objects"
@@ -36,28 +45,42 @@ def content_tree(top, log):
         current = Path(git("-C", top, "rev-parse", "--path-format=absolute", "--git-path", "index"))
         if current.exists():
             shutil.copy2(current, index)
-        alternates = git("-C", top, "rev-parse", "--path-format=absolute", "--git-path", "objects")
-        env = {**os.environ, "GIT_INDEX_FILE": str(index), "GIT_OBJECT_DIRECTORY": str(objects),
-               "GIT_ALTERNATE_OBJECT_DIRECTORIES": alternates}
+        source = git("-C", top, "rev-parse", "--path-format=absolute", "--git-path", "objects")
+        # Quoted, because an unquoted entry ends at a path separator.
+        quoted = '"' + source.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        inherited = ENVIRONMENT.get("GIT_ALTERNATE_OBJECT_DIRECTORIES")
+        env = {**ENVIRONMENT, "GIT_INDEX_FILE": str(index), "GIT_OBJECT_DIRECTORY": str(objects),
+               "GIT_ALTERNATE_OBJECT_DIRECTORIES": os.pathsep.join(filter(None, (quoted, inherited)))}
         git("-C", top, "add", "-A", env=env)
-        if log:
-            git("-C", top, "rm", "-q", "-f", "--cached", "--ignore-unmatch", "--",
-                f":(top,literal){log}", env=env)
+        own = inside(log, top) + inside(Path(directory), top)
+        if own:
+            git("-C", top, "reset", "-q", "HEAD", "--",
+                *(f":(top,literal){path}" for path in own), env=env)
         return git("-C", top, "write-tree", env=env)
 
 
-def git_state(log):
+def git_state(log, problems):
     """Return (revision, dirty, tree). The check's own log is not part of the content."""
-    try:
-        top = git("rev-parse", "--show-toplevel")
-        revision = git("rev-parse", "HEAD")
-        resolved, root = log.resolve(), Path(top).resolve()
-        own = resolved.relative_to(root).as_posix() if resolved.is_relative_to(root) else None
-        paths = ["--", ".", f":(exclude,top,literal){own}"] if own else []
-        dirty = bool(git("-C", top, "status", "--porcelain", *paths))
-        return revision, str(dirty).lower(), content_tree(top, own)
-    except (OSError, subprocess.SubprocessError):
-        return UNKNOWN
+    def attempt(read):
+        try:
+            return read()
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            detail = getattr(error, "stderr", None) or str(error)
+            problems.append(detail.strip().splitlines()[-1] if detail.strip() else repr(error))
+            return "unknown"
+
+    top = attempt(lambda: git("rev-parse", "--show-toplevel"))
+    if top == "unknown":
+        return top, top, top
+
+    def is_dirty():
+        own = [f":(exclude,top,literal){path}" for path in inside(log, top)]
+        paths = ["--", ".", *own] if own else []
+        status = git("--no-optional-locks", "-C", top, "status", "--porcelain", *paths)
+        return str(bool(status)).lower()
+
+    return (attempt(lambda: git("rev-parse", "--verify", "HEAD")), attempt(is_dirty),
+            attempt(lambda: content_tree(top, log)))
 
 
 def new_log():
@@ -100,18 +123,22 @@ def main(argv=None):
     args = parser.parse_args(argv)
     log, temporary = (args.log, False) if args.log else new_log()
     log.parent.mkdir(parents=True, exist_ok=True)
-    before = git_state(log)
+    problems = []
+    before = git_state(log, problems)
     started = time.monotonic()
     code, timed_out = run(" ".join(args.command), args.timeout, log)
     seconds = round(time.monotonic() - started)
-    after = git_state(log)
-    if "unknown" in before + after:
+    after = git_state(log, problems)
+    if "unknown" in (before[0], before[2], after[0], after[2]):
         changed = "unknown"
     else:
         changed = str((before[0], before[2]) != (after[0], after[2])).lower()
     revision, dirty, tree = before
     lines = log.read_text(errors="replace").splitlines()
+    sys.stdout.reconfigure(errors="backslashreplace")
     print("\n".join(lines[-args.tail:]))
+    for problem in dict.fromkeys(problems):
+        print(f"Content not fully identified: {problem}")
     print(f"CHECK exit={code} timed_out={str(timed_out).lower()} seconds={seconds} "
           f"rev={revision} dirty={dirty} tree={tree} changed_during_run={changed} "
           f"temporary_log={str(temporary).lower()} log={log}")

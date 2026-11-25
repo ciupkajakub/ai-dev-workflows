@@ -1,5 +1,6 @@
 """Check that run_check reports the real result of a command."""
 
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -141,7 +142,7 @@ class RunCheck(unittest.TestCase):
         fields = self.fields(self.run_default_log("echo rewritten > app.txt"))
         self.assertEqual((fields["dirty"], fields["changed_during_run"]), ("false", "true"))
 
-    def test_index_and_objects_are_not_touched(self):
+    def test_staged_content_and_objects_are_not_changed(self):
         self.repository()
         (self.directory / "new.txt").write_text("untracked\n")
         before = self.output("status", "--porcelain"), self.output("count-objects")
@@ -167,7 +168,70 @@ class RunCheck(unittest.TestCase):
         self.output("worktree", "remove", str(worktree))
         self.assertEqual(Path(fields["log"]).read_text(), "kept\n")
 
-    def test_unwritable_git_directory_falls_back_and_says_so(self):
+    def test_tracked_log_does_not_change_the_reported_tree(self):
+        self.repository()
+        (self.directory / "check.log").write_text("committed\n")
+        self.commit("track a log")
+        fields = self.fields(self.run_tool("echo new output"))
+        self.assertEqual(fields["tree"], self.output("rev-parse", "HEAD^{tree}"))
+        self.assertEqual((fields["dirty"], fields["changed_during_run"]), ("false", "false"))
+
+    def test_unhashable_content_keeps_the_known_revision_and_reports_why(self):
+        self.repository()
+        (self.directory / "embedded").mkdir()
+        subprocess.run(["git", "init", "-q", str(self.directory / "embedded")], check=True)
+        result = self.run_default_log("exit 3")
+        self.assertEqual(result.returncode, 3)
+        fields = self.fields(result)
+        self.assertEqual(fields["rev"], self.output("rev-parse", "HEAD"))
+        self.assertEqual((fields["dirty"], fields["tree"]), ("true", "unknown"))
+        self.assertIn("Content not fully identified: ", result.stdout)
+
+    def test_undecodable_names_and_output_do_not_replace_the_result(self):
+        self.repository()
+        (self.directory / "żó.txt").write_text("x\n")
+        self.output("config", "core.quotepath", "false")
+        result = subprocess.run(
+            [sys.executable, "-B", "-X", "utf8=0", str(TOOL), "--", "printf 'żó\n'; exit 3"],
+            cwd=self.directory, capture_output=True, timeout=30,
+            env={**os.environ, "LC_ALL": "C", "PYTHONCOERCECLOCALE": "0"})
+        self.assertEqual(result.returncode, 3, result.stderr)
+        self.assertIn(b"CHECK exit=3", result.stdout)
+
+    def test_temporary_directory_inside_the_checkout_is_not_content(self):
+        self.repository()
+        temporary = self.directory / "scratch"
+        temporary.mkdir()
+        result = subprocess.run([sys.executable, "-B", str(TOOL), "--", "true"], cwd=self.directory,
+                                capture_output=True, text=True, timeout=30,
+                                env={**os.environ, "TMPDIR": str(temporary)})
+        fields = self.fields(result)
+        self.assertEqual(fields["tree"], self.output("rev-parse", "HEAD^{tree}"))
+        self.assertEqual(fields["changed_during_run"], "false")
+
+    def test_git_dir_from_a_hook_does_not_move_the_top_of_the_checkout(self):
+        self.repository()
+        nested = self.directory / "nested"
+        nested.mkdir()
+        result = subprocess.run([sys.executable, "-B", str(TOOL), "--", "true"], cwd=nested,
+                                capture_output=True, text=True, timeout=30,
+                                env={**os.environ, "GIT_DIR": str(self.directory / ".git")})
+        self.assertEqual(self.fields(result)["tree"], self.output("rev-parse", "HEAD^{tree}"))
+
+    def test_path_separator_in_the_repository_path_is_supported(self):
+        self.directory = self.directory / "a:b"
+        self.directory.mkdir()
+        self.repository()
+        (self.directory / "unchanged.txt").write_text("only in the repository objects\n")
+        self.commit("second file")
+        worktree = self.directory / "linked"
+        self.output("worktree", "add", "-q", str(worktree))
+        (worktree / "app.txt").write_text("second\n")
+        tested = self.fields(self.run_default_log("true", worktree))["tree"]
+        self.output("-C", str(worktree), "commit", "-qam", "tested content")
+        self.assertEqual(tested, self.output("-C", str(worktree), "rev-parse", "HEAD^{tree}"))
+
+    def test_unavailable_log_directory_falls_back_and_says_so(self):
         self.repository()
         (self.directory / ".git/workflow-checks").write_text("not a directory")
         result = self.run_default_log("exit 3")
