@@ -13,6 +13,8 @@ with code/history inspection or tests; an unsuccessful inspection leaves them un
 
 Choose the simplest approach that satisfies the same requirements. Check existing
 mechanisms before adding one, and explain material costs or risks of the choice.
+An existing mechanism is a candidate, not a given: if keeping it needs workarounds
+or costs the need does not justify, compare it with replacing it and present that choice.
 For new or duplicated state, identify the authoritative representation, writers,
 readers and rules that keep representations consistent throughout their lifecycle.
 Multiple representations are acceptable when their roles and consistency are defined.
