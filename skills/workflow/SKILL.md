@@ -21,9 +21,10 @@ Merge and deployment require separate decisions.
 
 A missing or failed required check, or unavailable required review, needs a
 separate explicit exception naming the affected requirements, missing proof and
-remaining uncertainty. General approval or silence does not waive it. Retain the
-exception in BATCH with the approval snapshot. An exception to verification cannot
-authorize a change to required behavior.
+remaining uncertainty. General approval or silence does not waive it. If its scope
+is unclear, apply the narrowest reading and say so; silence does not widen it.
+Retain the exception in BATCH with the approval snapshot. An exception to verification
+cannot authorize a change to required behavior.
 
 Default execution ends after opening or updating the PR and recording handoff.
 Do not wait for CI/review, schedule monitoring, repair feedback, repush or start

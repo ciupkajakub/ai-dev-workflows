@@ -159,7 +159,8 @@ The trials therefore say little about the added rules: most agents never reached
 Matching on tool calls is approximate and can miss a file read through a glob.
 None of these results can be compared with new trials: `07b34b3` restricted the executor's
 tools and changed `replaced_mechanism` and `unhealthy_environment`. Run a new baseline.
-The changes of 2026-11-25 have had no agent trial.
+The changes of 2026-11-25 have had no agent trial. Their first real deliveries
+are recorded in [a separate case](smashnego_2026_11_25_case.md).
 
 ## Source rewrite checks and bounded exercises
 

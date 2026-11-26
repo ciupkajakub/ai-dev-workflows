@@ -28,8 +28,9 @@ Select evidence that can observe each required result:
   actual ordering mechanism and conditions at use; constructed values that bypass
   it cannot establish that behavior. A simpler ownership/resource model does not
   stand in for a materially different one.
-- Inspect project scripts and CI configuration. Use applicable full commands and
-  confirm they select the intended checks. A substitution must preserve required
+- Inspect project scripts and CI configuration. Use applicable full commands over
+  the files CI selects, including records and evidence the work adds, and confirm
+  they select the intended checks. A substitution must preserve required
   steps, outputs and observed properties. Remote checks cannot silently replace
   required pre-publication proof.
 
